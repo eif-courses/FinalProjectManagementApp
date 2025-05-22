@@ -40,10 +40,14 @@
                     </button>
                     <div id="years-dropdown" class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48">
                         <div class="p-3">
+                            {{if .Data.Years}}
                             {{range .Data.Years}}
                             <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
                                 <input type="checkbox" value="{{.}}"> {{.}}
                             </label>
+                            {{end}}
+                            {{else}}
+                            <div class="p-2 text-gray-500 text-sm">{{call .T "no_data_available"}}</div>
                             {{end}}
                         </div>
                     </div>
@@ -58,10 +62,14 @@
                     </button>
                     <div id="groups-dropdown" class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48">
                         <div class="p-3">
+                            {{if .Data.Groups}}
                             {{range .Data.Groups}}
                             <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
                                 <input type="checkbox" value="{{.}}"> {{.}}
                             </label>
+                            {{end}}
+                            {{else}}
+                            <div class="p-2 text-gray-500 text-sm">{{call .T "no_data_available"}}</div>
                             {{end}}
                         </div>
                     </div>
@@ -76,10 +84,14 @@
                     </button>
                     <div id="programs-dropdown" class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-64">
                         <div class="p-3">
+                            {{if .Data.Programs}}
                             {{range .Data.Programs}}
                             <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
                                 <input type="checkbox" value="{{.}}"> {{.}}
                             </label>
+                            {{end}}
+                            {{else}}
+                            <div class="p-2 text-gray-500 text-sm">{{call .T "no_data_available"}}</div>
                             {{end}}
                         </div>
                     </div>
@@ -123,6 +135,7 @@
             </tr>
             </thead>
             <tbody class="divide-y divide-gray-200" id="students-table-body">
+            {{if .Data.Students}}
             {{range .Data.Students}}
             <tr class="hover:bg-gray-50">
                 <td class="p-4">
@@ -165,12 +178,20 @@
                 </td>
             </tr>
             {{end}}
+            {{else}}
+            <tr>
+                <td colspan="5" class="p-8 text-center text-gray-500">
+                    {{call .T "no_students_found"}}
+                </td>
+            </tr>
+            {{end}}
             </tbody>
         </table>
     </div>
 
     <!-- Mobile Cards (visible on mobile) -->
     <div class="md:hidden space-y-4">
+        {{if .Data.Students}}
         {{range .Data.Students}}
         <div class="bg-white rounded-lg shadow-sm p-4">
             <div class="flex justify-between items-start mb-3">
@@ -214,6 +235,11 @@
             </div>
         </div>
         {{end}}
+        {{else}}
+        <div class="bg-white rounded-lg shadow-sm p-8 text-center text-gray-500">
+            {{call .T "no_students_found"}}
+        </div>
+        {{end}}
     </div>
 
     <!-- Pagination -->
@@ -249,6 +275,7 @@
         </div>
         <div class="p-6">
             <form class="space-y-4" onsubmit="submitReport(event)">
+                <input type="hidden" id="student-id" value="">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "student"}}</label>
                     <input type="text" id="student-name" disabled
@@ -261,19 +288,19 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "supervisor_comments"}}</label>
-                    <textarea rows="4" placeholder="{{call .T "enter_comments"}}"
+                    <textarea id="supervisor-comments" rows="4" placeholder="{{call .T "enter_comments"}}"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     required></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "grade"}}</label>
-                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                    <select id="grade" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
                         <option value="">{{call .T "select_grade"}}</option>
-                        <option value="10">{{call .T "excellent"}}</option>
-                        <option value="9">{{call .T "very_good"}}</option>
-                        <option value="8">{{call .T "good"}}</option>
-                        <option value="7">{{call .T "satisfactory"}}</option>
-                        <option value="6">{{call .T "weak"}}</option>
+                        <option value="10">10 - {{call .T "excellent"}}</option>
+                        <option value="9">9 - {{call .T "very_good"}}</option>
+                        <option value="8">8 - {{call .T "good"}}</option>
+                        <option value="7">7 - {{call .T "satisfactory"}}</option>
+                        <option value="6">6 - {{call .T "weak"}}</option>
                     </select>
                 </div>
                 <div class="flex justify-end space-x-3 pt-4">
@@ -306,23 +333,23 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "student"}}</label>
-                    <p class="text-gray-900" id="view-student-name">TestVardas StudentasPavarde</p>
+                    <p class="text-gray-900" id="view-student-name"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "topic"}}</label>
-                    <p class="text-gray-900" id="view-project-title">Baigiamųjų darbų talykla</p>
+                    <p class="text-gray-900" id="view-project-title"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "supervisor_comments"}}</label>
-                    <p class="text-gray-900 bg-gray-50 p-3 rounded" id="view-comments">Puikus projektas. Studentas demonstravo aukštą technologijų supratimo lygį ir gebėjimą spręsti sudėtingas problemas.</p>
+                    <p class="text-gray-900 bg-gray-50 p-3 rounded" id="view-comments"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "grade"}}</label>
-                    <p class="text-green-600 font-medium" id="view-grade">{{call .T "excellent"}}</p>
+                    <p class="text-green-600 font-medium" id="view-grade"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "submission_date"}}</label>
-                    <p class="text-gray-900" id="view-date">2024-01-15</p>
+                    <p class="text-gray-900" id="view-date"></p>
                 </div>
             </div>
             <div class="flex justify-end pt-6">
@@ -350,23 +377,23 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "project_title"}}</label>
-                    <p class="text-gray-900">Baigiamųjų darbų talykla</p>
+                    <p class="text-gray-900" id="topic-title"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "project_title_en"}}</label>
-                    <p class="text-gray-900">Thesis Management System</p>
+                    <p class="text-gray-900" id="topic-title-en"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "problem_statement"}}</label>
-                    <p class="text-gray-900 bg-gray-50 p-3 rounded">Šiuo metu trūksta centralizuotos sistemos baigiamųjų darbų valdymui universitete...</p>
+                    <p class="text-gray-900 bg-gray-50 p-3 rounded" id="topic-problem"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "objective"}}</label>
-                    <p class="text-gray-900 bg-gray-50 p-3 rounded">Sukurti web aplikaciją baigiamųjų darbų valdymui...</p>
+                    <p class="text-gray-900 bg-gray-50 p-3 rounded" id="topic-objective"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{call .T "tasks"}}</label>
-                    <p class="text-gray-900 bg-gray-50 p-3 rounded">1. Sistemos analizė<br>2. Duomenų bazės projektavimas<br>3. Sistemos realizacija...</p>
+                    <p class="text-gray-900 bg-gray-50 p-3 rounded" id="topic-tasks"></p>
                 </div>
             </div>
             <div class="flex justify-end pt-6">
@@ -384,6 +411,8 @@
 
     function toggleDropdown(id) {
         const dropdown = document.getElementById(id + '-dropdown');
+        if (!dropdown) return;
+
         const allDropdowns = document.querySelectorAll('[id$="-dropdown"]');
 
         allDropdowns.forEach(dd => {
@@ -396,22 +425,67 @@
     }
 
     function openModal(modalId, studentId = null) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
         if (studentId) {
             // In a real app, you would fetch student data via API
             // For demo, just populate with dummy data
             if (modalId === 'fill-report-modal') {
-                document.getElementById('student-name').value = 'Studentas Studentauskas';
-                document.getElementById('project-title').value = 'Gyvinų internetinė parduotuvė';
+                const studentNameEl = document.getElementById('student-name');
+                const projectTitleEl = document.getElementById('project-title');
+                const studentIdEl = document.getElementById('student-id');
+
+                if (studentNameEl) studentNameEl.value = 'Studentas Studentauskas';
+                if (projectTitleEl) projectTitleEl.value = 'Baigiamųjų darbų valdymo sistema';
+                if (studentIdEl) studentIdEl.value = studentId;
+            } else if (modalId === 'view-report-modal') {
+                // Populate view modal with data
+                const elements = {
+                    'view-student-name': 'Studentas Studentauskas',
+                    'view-project-title': 'Baigiamųjų darbų valdymo sistema',
+                    'view-comments': 'Puikus projektas. Studentas demonstravo aukštą technologijų supratimo lygį.',
+                    'view-grade': '10 - {{call .T "excellent"}}',
+                    'view-date': new Date().toISOString().split('T')[0]
+                };
+
+                Object.keys(elements).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = elements[id];
+                });
+            } else if (modalId === 'view-topic-modal') {
+                // Populate topic modal with data
+                const elements = {
+                    'topic-title': 'Baigiamųjų darbų valdymo sistema',
+                    'topic-title-en': 'Thesis Management System',
+                    'topic-problem': 'Šiuo metu trūksta centralizuotos sistemos baigiamųjų darbų valdymui universitete...',
+                    'topic-objective': 'Sukurti web aplikaciją baigiamųjų darbų valdymui...',
+                    'topic-tasks': '1. Sistemos analizė\n2. Duomenų bazės projektavimas\n3. Sistemos realizacija...'
+                };
+
+                Object.keys(elements).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = elements[id];
+                });
             }
         }
 
-        document.getElementById(modalId).classList.remove('hidden');
+        modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
 
     function closeModal(modalId) {
-        document.getElementById(modalId).classList.add('hidden');
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
+
+        // Reset form if it's the fill-report-modal
+        if (modalId === 'fill-report-modal') {
+            const form = modal.querySelector('form');
+            if (form) form.reset();
+        }
     }
 
     function openVideoModal(studentId) {
@@ -429,6 +503,17 @@
 
         // In a real app, this would trigger an API call to sort data
         console.log('Sorting by:', column, currentSort.direction);
+
+        // Update sort icons
+        document.querySelectorAll('.fas.fa-sort').forEach(icon => {
+            icon.className = 'fas fa-sort text-gray-400';
+        });
+
+        const activeSort = document.querySelector(`[onclick="sortTable('${column}')"] .fas`);
+        if (activeSort) {
+            activeSort.className = currentSort.direction === 'asc' ?
+                'fas fa-sort-up text-blue-500' : 'fas fa-sort-down text-blue-500';
+        }
     }
 
     function resetFilters() {
@@ -436,7 +521,12 @@
         document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
 
         // Reset search
-        document.querySelector('input[type="text"]').value = '';
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) searchInput.value = '';
+
+        // Reset select
+        const selectElement = document.querySelector('select');
+        if (selectElement) selectElement.selectedIndex = 0;
 
         // In a real app, trigger table refresh
         console.log('Filters reset');
@@ -445,12 +535,27 @@
     function submitReport(event) {
         event.preventDefault();
 
+        const form = event.target;
+        const formData = new FormData(form);
+
+        // Get form values
+        const studentId = document.getElementById('student-id')?.value;
+        const comments = document.getElementById('supervisor-comments')?.value;
+        const grade = document.getElementById('grade')?.value;
+
+        if (!comments || !grade) {
+            alert('{{call .T "please_fill_required_fields"}}');
+            return;
+        }
+
         // In a real app, this would submit to API
+        console.log('Submitting report:', { studentId, comments, grade });
+
         alert('{{call .T "success_saved"}}');
         closeModal('fill-report-modal');
 
         // Optionally refresh the table
-        location.reload();
+        // location.reload();
     }
 
     // Close dropdowns when clicking outside
@@ -465,9 +570,26 @@
     // Close modals when clicking outside
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('fixed')) {
-            closeModal('fill-report-modal');
-            closeModal('view-report-modal');
-            closeModal('view-topic-modal');
+            const modals = ['fill-report-modal', 'view-report-modal', 'view-topic-modal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (modal && !modal.classList.contains('hidden')) {
+                    closeModal(modalId);
+                }
+            });
+        }
+    });
+
+    // Add keyboard support for modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modals = ['fill-report-modal', 'view-report-modal', 'view-topic-modal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (modal && !modal.classList.contains('hidden')) {
+                    closeModal(modalId);
+                }
+            });
         }
     });
 </script>
