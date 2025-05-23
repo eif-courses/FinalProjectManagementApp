@@ -1,4 +1,4 @@
-// auth/entra.go (enhanced version)
+// auth/entra.go - Authentication service (types moved to auth/types.go)
 package auth
 
 import (
@@ -18,102 +18,11 @@ import (
 	"golang.org/x/oauth2/microsoft"
 )
 
-type EntraIDConfig struct {
-	ClientID     string
-	ClientSecret string
-	TenantID     string
-	RedirectURL  string
-}
-
-type UserInfo struct {
-	ID                string `json:"id"`
-	DisplayName       string `json:"displayName"`
-	GivenName         string `json:"givenName"`
-	Surname           string `json:"surname"`
-	UserPrincipalName string `json:"userPrincipalName"`
-	Mail              string `json:"mail"`
-	JobTitle          string `json:"jobTitle"`
-	Department        string `json:"department"`
-	OfficeLocation    string `json:"officeLocation"`
-}
-
-type AuthenticatedUser struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Email       string    `json:"email"`
-	Department  string    `json:"department"`
-	JobTitle    string    `json:"job_title"`
-	Role        string    `json:"role"`
-	RoleID      int       `json:"role_id"` // From database
-	Permissions []string  `json:"permissions"`
-	LoginTime   time.Time `json:"login_time"`
-}
-
-// Database models
-type DepartmentHead struct {
-	ID           int    `db:"id"`
-	Email        string `db:"email"`
-	Name         string `db:"name"`
-	SureName     string `db:"sure_name"`
-	Department   string `db:"department"`
-	DepartmentEn string `db:"department_en"`
-	JobTitle     string `db:"job_title"`
-	Role         int    `db:"role"`
-	IsActive     bool   `db:"is_active"`
-	CreatedAt    int64  `db:"created_at"`
-}
-
-type CommissionMember struct {
-	ID             int    `db:"id"`
-	AccessCode     string `db:"access_code"`
-	Department     string `db:"department"`
-	IsActive       bool   `db:"is_active"`
-	ExpiresAt      int64  `db:"expires_at"`
-	CreatedAt      int64  `db:"created_at"`
-	LastAccessedAt *int64 `db:"last_accessed_at"`
-}
-
 type AuthService struct {
 	config       *EntraIDConfig
 	oauth2Config *oauth2.Config
 	db           *sql.DB
 }
-
-// Role and permission constants
-const (
-	RoleAdmin            = "admin"
-	RoleDepartmentHead   = "department_head"
-	RoleSupervisor       = "supervisor"
-	RoleCommissionMember = "commission_member"
-	RoleStudent          = "student"
-	RoleGuest            = "guest"
-
-	// Role IDs from database (department_heads.role column)
-	RoleIDSystemAdmin    = 0 // System administrator
-	RoleIDDepartmentHead = 1 // Department head
-	RoleIDDeputyHead     = 2 // Deputy department head
-	RoleIDSecretary      = 3 // Department secretary
-	RoleIDCoordinator    = 4 // Program coordinator
-
-	// Permissions
-	PermissionFullAccess            = "full_access"
-	PermissionViewAllStudents       = "view_all_students"
-	PermissionViewAssignedStudents  = "view_assigned_students"
-	PermissionApproveTopics         = "approve_topics"
-	PermissionManageDepartment      = "manage_department"
-	PermissionGenerateReports       = "generate_reports"
-	PermissionCreateReports         = "create_reports"
-	PermissionReviewSubmissions     = "review_submissions"
-	PermissionViewThesis            = "view_thesis"
-	PermissionEvaluateDefense       = "evaluate_defense"
-	PermissionViewOwnData           = "view_own_data"
-	PermissionSubmitTopic           = "submit_topic"
-	PermissionUploadDocuments       = "upload_documents"
-	PermissionManageUsers           = "manage_users"
-	PermissionSystemConfig          = "system_config"
-	PermissionManageCommission      = "manage_commission"
-	PermissionViewDepartmentReports = "view_department_reports"
-)
 
 // NewAuthService creates a new authentication service with database
 func NewAuthService(db *sql.DB) (*AuthService, error) {
@@ -316,10 +225,9 @@ func (a *AuthService) getDepartmentHead(ctx context.Context, email string) (*Dep
 	return &head, nil
 }
 
-// getCommissionMemberByEmail retrieves commission member (this would need adjustment based on your logic)
+// getCommissionMemberByEmail retrieves commission member (placeholder)
 func (a *AuthService) getCommissionMemberByEmail(ctx context.Context, email string) (*CommissionMember, error) {
-	// This is a placeholder - you might need to implement a different logic
-	// since commission_members table uses access_code, not email
+	// This is a placeholder - commission_members table uses access_code, not email
 	// You might want to add an email field or create a mapping table
 	return nil, sql.ErrNoRows
 }
@@ -340,6 +248,7 @@ func (a *AuthService) getDepartmentHeadPermissions(roleID int) (string, []string
 			PermissionManageDepartment,
 			PermissionGenerateReports,
 			PermissionViewDepartmentReports,
+			PermissionManageCommission,
 		}
 	case RoleIDDeputyHead:
 		return RoleDepartmentHead, []string{
@@ -347,6 +256,7 @@ func (a *AuthService) getDepartmentHeadPermissions(roleID int) (string, []string
 			PermissionApproveTopics,
 			PermissionGenerateReports,
 			PermissionViewDepartmentReports,
+			PermissionManageCommission,
 		}
 	case RoleIDSecretary:
 		return RoleDepartmentHead, []string{
@@ -418,85 +328,6 @@ func generateRandomState() (string, error) {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-// User permission checking methods (enhanced)
-
-// HasPermission checks if user has a specific permission
-func (u *AuthenticatedUser) HasPermission(permission string) bool {
-	for _, p := range u.Permissions {
-		if p == permission || p == PermissionFullAccess {
-			return true
-		}
-	}
-	return false
-}
-
-// CanAccessStudents checks if user can access student management
-func (u *AuthenticatedUser) CanAccessStudents() bool {
-	return u.HasPermission(PermissionViewAllStudents) ||
-		u.HasPermission(PermissionViewAssignedStudents) ||
-		u.HasPermission(PermissionFullAccess)
-}
-
-// CanApproveTopics checks if user can approve topics
-func (u *AuthenticatedUser) CanApproveTopics() bool {
-	return u.HasPermission(PermissionApproveTopics) || u.HasPermission(PermissionFullAccess)
-}
-
-// CanManageDepartment checks if user can manage department
-func (u *AuthenticatedUser) CanManageDepartment() bool {
-	return u.HasPermission(PermissionManageDepartment) || u.HasPermission(PermissionFullAccess)
-}
-
-// IsStudent checks if user is a student
-func (u *AuthenticatedUser) IsStudent() bool {
-	return u.Role == RoleStudent
-}
-
-// IsSupervisor checks if user is a supervisor
-func (u *AuthenticatedUser) IsSupervisor() bool {
-	return u.Role == RoleSupervisor
-}
-
-// IsDepartmentHead checks if user is a department head
-func (u *AuthenticatedUser) IsDepartmentHead() bool {
-	return u.Role == RoleDepartmentHead
-}
-
-// IsAdmin checks if user is an admin
-func (u *AuthenticatedUser) IsAdmin() bool {
-	return u.Role == RoleAdmin
-}
-
-// GetDisplayRole returns user-friendly role name
-func (u *AuthenticatedUser) GetDisplayRole() string {
-	switch u.Role {
-	case RoleAdmin:
-		return "Administrator"
-	case RoleDepartmentHead:
-		// Return more specific role based on RoleID
-		switch u.RoleID {
-		case RoleIDDepartmentHead:
-			return "Department Head"
-		case RoleIDDeputyHead:
-			return "Deputy Department Head"
-		case RoleIDSecretary:
-			return "Department Secretary"
-		case RoleIDCoordinator:
-			return "Program Coordinator"
-		default:
-			return "Department Head"
-		}
-	case RoleSupervisor:
-		return "Supervisor"
-	case RoleCommissionMember:
-		return "Commission Member"
-	case RoleStudent:
-		return "Student"
-	default:
-		return "Guest"
-	}
 }
 
 // Helper methods for database operations

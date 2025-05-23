@@ -15,9 +15,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	_ "github.com/go-sql-driver/mysql" // Add this MySQL driver import
+	_ "github.com/go-sql-driver/mysql" // MySQL database driver
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/golang-migrate/migrate/v4/database/mysql" // MySQL migrate driver
+	_ "github.com/golang-migrate/migrate/v4/source/file"    // File source driver
 	"github.com/joho/godotenv"
 
 	"FinalProjectManagementApp/auth"
@@ -110,8 +111,10 @@ func main() {
 }
 
 func runMigrations(config *database.Config) error {
-	// Build the database URL for migrations
+	// Try the simpler approach first
 	databaseURL := config.GetMigrationURL()
+
+	log.Printf("Attempting to run migrations with URL: %s", maskPassword(databaseURL))
 
 	// Create migrations instance using the simpler New function
 	m, err := migrate.New("file://migrations", databaseURL)
@@ -126,6 +129,24 @@ func runMigrations(config *database.Config) error {
 
 	log.Println("✅ Migrations completed successfully")
 	return nil
+}
+
+// Helper function to mask password in logs
+func maskPassword(url string) string {
+	if strings.Contains(url, "@") {
+		parts := strings.Split(url, "@")
+		if len(parts) == 2 {
+			// Extract user part and mask password
+			userPart := parts[0]
+			if strings.Contains(userPart, ":") {
+				userParts := strings.Split(userPart, ":")
+				if len(userParts) >= 2 {
+					return userParts[0] + ":***@" + parts[1]
+				}
+			}
+		}
+	}
+	return url
 }
 
 // Remove the mustLoadMigrationSource function - it's not needed
