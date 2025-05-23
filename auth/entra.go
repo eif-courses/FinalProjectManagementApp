@@ -1,13 +1,14 @@
-// auth/entra.go
+// auth/entra.go (enhanced version)
 package auth
 
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -24,15 +25,6 @@ type EntraIDConfig struct {
 	RedirectURL  string
 }
 
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-	Scope        string `json:"scope"`
-	IDToken      string `json:"id_token"`
-}
-
 type UserInfo struct {
 	ID                string `json:"id"`
 	DisplayName       string `json:"displayName"`
@@ -46,22 +38,85 @@ type UserInfo struct {
 }
 
 type AuthenticatedUser struct {
-	ID          string
-	Name        string
-	Email       string
-	Department  string
-	JobTitle    string
-	Role        string // Will be determined from email/department
-	Permissions []string
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Email       string    `json:"email"`
+	Department  string    `json:"department"`
+	JobTitle    string    `json:"job_title"`
+	Role        string    `json:"role"`
+	RoleID      int       `json:"role_id"` // From database
+	Permissions []string  `json:"permissions"`
+	LoginTime   time.Time `json:"login_time"`
+}
+
+// Database models
+type DepartmentHead struct {
+	ID           int    `db:"id"`
+	Email        string `db:"email"`
+	Name         string `db:"name"`
+	SureName     string `db:"sure_name"`
+	Department   string `db:"department"`
+	DepartmentEn string `db:"department_en"`
+	JobTitle     string `db:"job_title"`
+	Role         int    `db:"role"`
+	IsActive     bool   `db:"is_active"`
+	CreatedAt    int64  `db:"created_at"`
+}
+
+type CommissionMember struct {
+	ID             int    `db:"id"`
+	AccessCode     string `db:"access_code"`
+	Department     string `db:"department"`
+	IsActive       bool   `db:"is_active"`
+	ExpiresAt      int64  `db:"expires_at"`
+	CreatedAt      int64  `db:"created_at"`
+	LastAccessedAt *int64 `db:"last_accessed_at"`
 }
 
 type AuthService struct {
 	config       *EntraIDConfig
 	oauth2Config *oauth2.Config
+	db           *sql.DB
 }
 
-// NewAuthService creates a new authentication service
-func NewAuthService() *AuthService {
+// Role and permission constants
+const (
+	RoleAdmin            = "admin"
+	RoleDepartmentHead   = "department_head"
+	RoleSupervisor       = "supervisor"
+	RoleCommissionMember = "commission_member"
+	RoleStudent          = "student"
+	RoleGuest            = "guest"
+
+	// Role IDs from database (department_heads.role column)
+	RoleIDSystemAdmin    = 0 // System administrator
+	RoleIDDepartmentHead = 1 // Department head
+	RoleIDDeputyHead     = 2 // Deputy department head
+	RoleIDSecretary      = 3 // Department secretary
+	RoleIDCoordinator    = 4 // Program coordinator
+
+	// Permissions
+	PermissionFullAccess            = "full_access"
+	PermissionViewAllStudents       = "view_all_students"
+	PermissionViewAssignedStudents  = "view_assigned_students"
+	PermissionApproveTopics         = "approve_topics"
+	PermissionManageDepartment      = "manage_department"
+	PermissionGenerateReports       = "generate_reports"
+	PermissionCreateReports         = "create_reports"
+	PermissionReviewSubmissions     = "review_submissions"
+	PermissionViewThesis            = "view_thesis"
+	PermissionEvaluateDefense       = "evaluate_defense"
+	PermissionViewOwnData           = "view_own_data"
+	PermissionSubmitTopic           = "submit_topic"
+	PermissionUploadDocuments       = "upload_documents"
+	PermissionManageUsers           = "manage_users"
+	PermissionSystemConfig          = "system_config"
+	PermissionManageCommission      = "manage_commission"
+	PermissionViewDepartmentReports = "view_department_reports"
+)
+
+// NewAuthService creates a new authentication service with database
+func NewAuthService(db *sql.DB) (*AuthService, error) {
 	config := &EntraIDConfig{
 		ClientID:     os.Getenv("AZURE_CLIENT_ID"),
 		ClientSecret: os.Getenv("AZURE_CLIENT_SECRET"),
@@ -70,8 +125,14 @@ func NewAuthService() *AuthService {
 	}
 
 	// Validate required environment variables
-	if config.ClientID == "" || config.ClientSecret == "" || config.TenantID == "" {
-		panic("Missing required Azure AD environment variables. Please set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, and AZURE_TENANT_ID")
+	if config.ClientID == "" {
+		return nil, fmt.Errorf("AZURE_CLIENT_ID environment variable is required")
+	}
+	if config.ClientSecret == "" {
+		return nil, fmt.Errorf("AZURE_CLIENT_SECRET environment variable is required")
+	}
+	if config.TenantID == "" {
+		return nil, fmt.Errorf("AZURE_TENANT_ID environment variable is required")
 	}
 
 	if config.RedirectURL == "" {
@@ -94,50 +155,64 @@ func NewAuthService() *AuthService {
 	return &AuthService{
 		config:       config,
 		oauth2Config: oauth2Config,
-	}
+		db:           db,
+	}, nil
 }
 
 // GenerateLoginURL generates the login URL for Microsoft authentication
-func (a *AuthService) GenerateLoginURL() string {
-	state := generateRandomState()
-	return a.oauth2Config.AuthCodeURL(state, oauth2.AccessTypeOffline)
+func (a *AuthService) GenerateLoginURL() (string, error) {
+	state, err := generateRandomState()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate state: %w", err)
+	}
+
+	return a.oauth2Config.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
 }
 
 // HandleCallback handles the OAuth callback from Microsoft
-func (a *AuthService) HandleCallback(code, state string) (*AuthenticatedUser, error) {
+func (a *AuthService) HandleCallback(ctx context.Context, code, state string) (*AuthenticatedUser, error) {
+	if code == "" {
+		return nil, fmt.Errorf("authorization code is required")
+	}
+
 	// Exchange code for token
-	token, err := a.oauth2Config.Exchange(context.Background(), code)
+	token, err := a.oauth2Config.Exchange(ctx, code)
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange code for token: %w", err)
 	}
 
 	// Get user info from Microsoft Graph
-	userInfo, err := a.getUserInfo(token.AccessToken)
+	userInfo, err := a.getUserInfo(ctx, token.AccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user info: %w", err)
 	}
 
-	// Determine user role based on email/department
-	role, permissions := a.determineUserRole(userInfo)
+	// Determine user role based on database and email/department
+	role, roleID, permissions, err := a.determineUserRole(ctx, userInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine user role: %w", err)
+	}
 
 	authenticatedUser := &AuthenticatedUser{
 		ID:          userInfo.ID,
 		Name:        userInfo.DisplayName,
-		Email:       userInfo.Mail,
+		Email:       strings.ToLower(userInfo.Mail),
 		Department:  userInfo.Department,
 		JobTitle:    userInfo.JobTitle,
 		Role:        role,
+		RoleID:      roleID,
 		Permissions: permissions,
+		LoginTime:   time.Now(),
 	}
 
 	return authenticatedUser, nil
 }
 
 // getUserInfo fetches user information from Microsoft Graph API
-func (a *AuthService) getUserInfo(accessToken string) (*UserInfo, error) {
-	req, err := http.NewRequest("GET", "https://graph.microsoft.com/v1.0/me", nil)
+func (a *AuthService) getUserInfo(ctx context.Context, accessToken string) (*UserInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://graph.microsoft.com/v1.0/me", nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -146,95 +221,174 @@ func (a *AuthService) getUserInfo(accessToken string) (*UserInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to get user info from Microsoft Graph: %s", string(body))
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Microsoft Graph API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var userInfo UserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode user info: %w", err)
+	}
+
+	// Validate required fields
+	if userInfo.Mail == "" {
+		return nil, fmt.Errorf("user email is required but not provided by Microsoft Graph")
 	}
 
 	return &userInfo, nil
 }
 
-// determineUserRole determines user role based on email domain, department, or other criteria
-func (a *AuthService) determineUserRole(userInfo *UserInfo) (string, []string) {
+// determineUserRole determines user role based on database and email/department
+func (a *AuthService) determineUserRole(ctx context.Context, userInfo *UserInfo) (string, int, []string, error) {
 	email := strings.ToLower(userInfo.Mail)
-	department := strings.ToLower(userInfo.Department)
-	jobTitle := strings.ToLower(userInfo.JobTitle)
 
-	// Define role determination logic
-	switch {
-	// Department heads (based on job title or specific emails)
-	case strings.Contains(jobTitle, "head") ||
-		strings.Contains(jobTitle, "director") ||
-		strings.Contains(jobTitle, "dean") ||
-		isDepartmentHead(email):
-		return "department_head", []string{"view_all_students", "approve_topics", "manage_department", "generate_reports"}
-
-	// Supervisors (lecturers, professors)
-	case strings.Contains(jobTitle, "professor") ||
-		strings.Contains(jobTitle, "lecturer") ||
-		strings.Contains(jobTitle, "dr.") ||
-		strings.Contains(department, "academic"):
-		return "supervisor", []string{"view_assigned_students", "create_reports", "review_submissions"}
-
-	// Commission members (for thesis defense)
-	case strings.Contains(jobTitle, "commission") ||
-		isCommissionMember(email):
-		return "commission_member", []string{"view_thesis", "evaluate_defense"}
-
-	// Students (default for student email domains or specific patterns)
-	case strings.Contains(email, "student") ||
-		strings.HasSuffix(email, "@stud.viko.lt") ||
-		isStudentEmail(email):
-		return "student", []string{"view_own_data", "submit_topic", "upload_documents"}
-
-	// Admin (specific admin emails)
-	case isSystemAdmin(email):
-		return "admin", []string{"full_access", "manage_users", "system_config"}
-
-	default:
-		// Default to student role for unknown users
-		return "student", []string{"view_own_data", "submit_topic", "upload_documents"}
+	// First, check if user is a department head in the database
+	departmentHead, err := a.getDepartmentHead(ctx, email)
+	if err != nil && err != sql.ErrNoRows {
+		return "", 0, nil, fmt.Errorf("failed to check department head: %w", err)
 	}
+
+	if departmentHead != nil && departmentHead.IsActive {
+		role, permissions := a.getDepartmentHeadPermissions(departmentHead.Role)
+		return role, departmentHead.Role, permissions, nil
+	}
+
+	// Check if user is a commission member
+	commissionMember, err := a.getCommissionMemberByEmail(ctx, email)
+	if err != nil && err != sql.ErrNoRows {
+		return "", 0, nil, fmt.Errorf("failed to check commission member: %w", err)
+	}
+
+	if commissionMember != nil && commissionMember.IsActive && time.Now().Unix() < commissionMember.ExpiresAt {
+		return RoleCommissionMember, -1, []string{
+			PermissionViewThesis,
+			PermissionEvaluateDefense,
+		}, nil
+	}
+
+	// Check if user is a supervisor (academic staff)
+	if a.isSupervisor(userInfo) {
+		return RoleSupervisor, -1, []string{
+			PermissionViewAssignedStudents,
+			PermissionCreateReports,
+			PermissionReviewSubmissions,
+		}, nil
+	}
+
+	// Check if user is a student
+	if a.isStudentEmail(email) {
+		return RoleStudent, -1, []string{
+			PermissionViewOwnData,
+			PermissionSubmitTopic,
+			PermissionUploadDocuments,
+		}, nil
+	}
+
+	// Default to guest for unknown users
+	return RoleGuest, -1, []string{}, nil
 }
 
-// Helper functions for role determination
-func isDepartmentHead(email string) bool {
-	departmentHeads := []string{
-		"j.petraitis@viko.lt",
-		"r.kazlauskiene@viko.lt",
-		// Add more department head emails
+// getDepartmentHead retrieves department head from database
+func (a *AuthService) getDepartmentHead(ctx context.Context, email string) (*DepartmentHead, error) {
+	query := `
+		SELECT id, email, name, sure_name, department, department_en, 
+		       job_title, role, is_active, created_at 
+		FROM department_heads 
+		WHERE email = ? AND is_active = 1
+	`
+
+	var head DepartmentHead
+	err := a.db.QueryRowContext(ctx, query, email).Scan(
+		&head.ID, &head.Email, &head.Name, &head.SureName,
+		&head.Department, &head.DepartmentEn, &head.JobTitle,
+		&head.Role, &head.IsActive, &head.CreatedAt,
+	)
+
+	if err != nil {
+		return nil, err
 	}
 
-	for _, head := range departmentHeads {
-		if email == head {
-			return true
+	return &head, nil
+}
+
+// getCommissionMemberByEmail retrieves commission member (this would need adjustment based on your logic)
+func (a *AuthService) getCommissionMemberByEmail(ctx context.Context, email string) (*CommissionMember, error) {
+	// This is a placeholder - you might need to implement a different logic
+	// since commission_members table uses access_code, not email
+	// You might want to add an email field or create a mapping table
+	return nil, sql.ErrNoRows
+}
+
+// getDepartmentHeadPermissions returns permissions based on department head role
+func (a *AuthService) getDepartmentHeadPermissions(roleID int) (string, []string) {
+	switch roleID {
+	case RoleIDSystemAdmin:
+		return RoleAdmin, []string{
+			PermissionFullAccess,
+			PermissionManageUsers,
+			PermissionSystemConfig,
+		}
+	case RoleIDDepartmentHead:
+		return RoleDepartmentHead, []string{
+			PermissionViewAllStudents,
+			PermissionApproveTopics,
+			PermissionManageDepartment,
+			PermissionGenerateReports,
+			PermissionViewDepartmentReports,
+		}
+	case RoleIDDeputyHead:
+		return RoleDepartmentHead, []string{
+			PermissionViewAllStudents,
+			PermissionApproveTopics,
+			PermissionGenerateReports,
+			PermissionViewDepartmentReports,
+		}
+	case RoleIDSecretary:
+		return RoleDepartmentHead, []string{
+			PermissionViewAllStudents,
+			PermissionGenerateReports,
+			PermissionViewDepartmentReports,
+		}
+	case RoleIDCoordinator:
+		return RoleDepartmentHead, []string{
+			PermissionViewAllStudents,
+			PermissionApproveTopics,
+			PermissionGenerateReports,
+		}
+	default:
+		return RoleDepartmentHead, []string{
+			PermissionViewAllStudents,
+			PermissionApproveTopics,
+			PermissionManageDepartment,
+			PermissionGenerateReports,
 		}
 	}
-	return false
 }
 
-func isCommissionMember(email string) bool {
-	// Check if user is in commission members list
-	// This could be fetched from database in real implementation
-	return strings.Contains(email, "commission") ||
-		strings.Contains(email, "committee")
+// isSupervisor checks if user is academic staff
+func (a *AuthService) isSupervisor(userInfo *UserInfo) bool {
+	email := strings.ToLower(userInfo.Mail)
+	jobTitle := strings.ToLower(userInfo.JobTitle)
+
+	return strings.Contains(jobTitle, "professor") ||
+		strings.Contains(jobTitle, "lecturer") ||
+		strings.Contains(jobTitle, "dėstytojas") ||
+		strings.Contains(jobTitle, "profesorius") ||
+		strings.Contains(jobTitle, "docentas") ||
+		strings.Contains(jobTitle, "dr.") ||
+		(strings.Contains(email, "@viko.lt") && !a.isStudentEmail(email))
 }
 
-func isStudentEmail(email string) bool {
-	// Check student email patterns
+// isStudentEmail checks if email belongs to a student
+func (a *AuthService) isStudentEmail(email string) bool {
 	studentPatterns := []string{
 		"@stud.viko.lt",
 		"@student.viko.lt",
-		// Add more student email patterns
 	}
 
 	for _, pattern := range studentPatterns {
@@ -242,36 +396,36 @@ func isStudentEmail(email string) bool {
 			return true
 		}
 	}
-	return false
-}
 
-func isSystemAdmin(email string) bool {
-	admins := []string{
-		"admin@viko.lt",
-		"system@viko.lt",
-		"m.gzegozevskis@eif.viko.lt", // Your admin email
-		// Add more admin emails
-	}
-
-	for _, admin := range admins {
-		if email == admin {
-			return true
+	// Check for student ID patterns (numbers at start)
+	if strings.Contains(email, "@viko.lt") {
+		parts := strings.Split(email, "@")
+		if len(parts) > 0 {
+			localPart := parts[0]
+			if len(localPart) > 0 && localPart[0] >= '0' && localPart[0] <= '9' {
+				return true
+			}
 		}
 	}
+
 	return false
 }
 
 // generateRandomState generates a random state for OAuth security
-func generateRandomState() string {
+func generateRandomState() (string, error) {
 	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
+
+// User permission checking methods (enhanced)
 
 // HasPermission checks if user has a specific permission
 func (u *AuthenticatedUser) HasPermission(permission string) bool {
 	for _, p := range u.Permissions {
-		if p == permission || p == "full_access" {
+		if p == permission || p == PermissionFullAccess {
 			return true
 		}
 	}
@@ -280,27 +434,97 @@ func (u *AuthenticatedUser) HasPermission(permission string) bool {
 
 // CanAccessStudents checks if user can access student management
 func (u *AuthenticatedUser) CanAccessStudents() bool {
-	return u.HasPermission("view_all_students") ||
-		u.HasPermission("view_assigned_students") ||
-		u.HasPermission("full_access")
+	return u.HasPermission(PermissionViewAllStudents) ||
+		u.HasPermission(PermissionViewAssignedStudents) ||
+		u.HasPermission(PermissionFullAccess)
 }
 
 // CanApproveTopics checks if user can approve topics
 func (u *AuthenticatedUser) CanApproveTopics() bool {
-	return u.HasPermission("approve_topics") || u.HasPermission("full_access")
+	return u.HasPermission(PermissionApproveTopics) || u.HasPermission(PermissionFullAccess)
+}
+
+// CanManageDepartment checks if user can manage department
+func (u *AuthenticatedUser) CanManageDepartment() bool {
+	return u.HasPermission(PermissionManageDepartment) || u.HasPermission(PermissionFullAccess)
 }
 
 // IsStudent checks if user is a student
 func (u *AuthenticatedUser) IsStudent() bool {
-	return u.Role == "student"
+	return u.Role == RoleStudent
 }
 
 // IsSupervisor checks if user is a supervisor
 func (u *AuthenticatedUser) IsSupervisor() bool {
-	return u.Role == "supervisor"
+	return u.Role == RoleSupervisor
 }
 
 // IsDepartmentHead checks if user is a department head
 func (u *AuthenticatedUser) IsDepartmentHead() bool {
-	return u.Role == "department_head"
+	return u.Role == RoleDepartmentHead
+}
+
+// IsAdmin checks if user is an admin
+func (u *AuthenticatedUser) IsAdmin() bool {
+	return u.Role == RoleAdmin
+}
+
+// GetDisplayRole returns user-friendly role name
+func (u *AuthenticatedUser) GetDisplayRole() string {
+	switch u.Role {
+	case RoleAdmin:
+		return "Administrator"
+	case RoleDepartmentHead:
+		// Return more specific role based on RoleID
+		switch u.RoleID {
+		case RoleIDDepartmentHead:
+			return "Department Head"
+		case RoleIDDeputyHead:
+			return "Deputy Department Head"
+		case RoleIDSecretary:
+			return "Department Secretary"
+		case RoleIDCoordinator:
+			return "Program Coordinator"
+		default:
+			return "Department Head"
+		}
+	case RoleSupervisor:
+		return "Supervisor"
+	case RoleCommissionMember:
+		return "Commission Member"
+	case RoleStudent:
+		return "Student"
+	default:
+		return "Guest"
+	}
+}
+
+// Helper methods for database operations
+
+// AddDepartmentHead adds a new department head to the database
+func (a *AuthService) AddDepartmentHead(ctx context.Context, head *DepartmentHead) error {
+	query := `
+		INSERT INTO department_heads (email, name, sure_name, department, department_en, job_title, role, is_active)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := a.db.ExecContext(ctx, query,
+		head.Email, head.Name, head.SureName, head.Department,
+		head.DepartmentEn, head.JobTitle, head.Role, head.IsActive)
+
+	return err
+}
+
+// UpdateDepartmentHeadRole updates the role of a department head
+func (a *AuthService) UpdateDepartmentHeadRole(ctx context.Context, email string, roleID int) error {
+	query := `UPDATE department_heads SET role = ? WHERE email = ?`
+	_, err := a.db.ExecContext(ctx, query, roleID, email)
+	return err
+}
+
+// DeactivateDepartmentHead deactivates a department head
+func (a *AuthService) DeactivateDepartmentHead(ctx context.Context, email string) error {
+	query := `UPDATE department_heads SET is_active = 0 WHERE email = ?`
+	_, err := a.db.ExecContext(ctx, query, email)
+	return err
 }

@@ -1,0 +1,369 @@
+{
+  "_comment": "translations/lt.json - Lithuanian translations",
+
+  "common": {
+    "yes": "Taip",
+    "no": "Ne",
+    "save": "Išsaugoti",
+    "cancel": "Atšaukti",
+    "delete": "Ištrinti",
+    "edit": "Redaguoti",
+    "view": "Peržiūrėti",
+    "create": "Sukurti",
+    "update": "Atnaujinti",
+    "search": "Ieškoti",
+    "filter": "Filtruoti",
+    "reset": "Atstatyti",
+    "submit": "Pateikti",
+    "close": "Uždaryti",
+    "back": "Grįžti",
+    "next": "Kitas",
+    "previous": "Ankstesnis",
+    "loading": "Kraunama...",
+    "error": "Klaida",
+    "success": "Sėkmė",
+    "warning": "Įspėjimas",
+    "info": "Informacija",
+    "confirm": "Patvirtinti",
+    "required": "Privalomas",
+    "optional": "Neprivalomas",
+    "all": "Visi",
+    "none": "Nėra",
+    "unknown": "Nežinoma",
+    "active": "Aktyvus",
+    "inactive": "Neaktyvus",
+    "enabled": "Įjungta",
+    "disabled": "Išjungta"
+  },
+
+  "navigation": {
+    "dashboard": "Pagrindinis",
+    "students": "Studentai",
+    "topics": "Temos",
+    "reports": "Ataskaitos",
+    "commission": "Komisija",
+    "administration": "Administravimas",
+    "settings": "Nustatymai",
+    "profile": "Profilis",
+    "logout": "Atsijungti",
+    "login": "Prisijungti",
+    "language": "Kalba"
+  },
+
+  "auth": {
+    "login_title": "Prisijungimas",
+    "login_subtitle": "Prisijunkite prie baigiamųjų darbų valdymo sistemos",
+    "login_with_microsoft": "Prisijungti su Microsoft",
+    "logging_in": "Prisijungiama...",
+    "logout_success": "Sėkmingai atsijungėte",
+    "login_required": "Reikalingas prisijungimas",
+    "access_denied": "Prieiga uždrausta",
+    "insufficient_permissions": "Nepakankamos teisės",
+    "session_expired": "Sesijos galiojimas pasibaigė"
+  },
+
+  "user_roles": {
+    "admin": "Administratorius",
+    "department_head": "Katedros vedėjas",
+    "deputy_head": "Katedros vedėjo pavaduotojas",
+    "secretary": "Sekretorius",
+    "coordinator": "Koordinatorius",
+    "supervisor": "Vadovas",
+    "commission_member": "Komisijos narys",
+    "student": "Studentas",
+    "guest": "Svečias"
+  },
+
+  "student_management": {
+    "title": "Studentų valdymas",
+    "subtitle": "Valdyti baigiamųjų darbų temas ir progresą",
+    "student_list": "Studentų sąrašas",
+    "student_details": "Studento duomenys",
+    "add_student": "Pridėti studentą",
+    "edit_student": "Redaguoti studentą",
+    "no_students_found": "Studentų nerasta",
+    "total_students": "Iš viso studentų",
+    "active_students": "Aktyvūs studentai",
+    "students_with_topics": "Studentai su temomis"
+  },
+
+  "student_fields": {
+    "student_name": "Studento vardas",
+    "student_lastname": "Studento pavardė",
+    "student_email": "Studento el. paštas",
+    "student_number": "Studento numeris",
+    "student_group": "Grupė",
+    "study_program": "Studijų programa",
+    "department": "Katedra",
+    "current_year": "Dabartiniai metai",
+    "supervisor": "Vadovas",
+    "supervisor_email": "Vadovo el. paštas",
+    "reviewer": "Recenzentas",
+    "reviewer_email": "Recenzento el. paštas",
+    "project_title": "Projekto pavadinimas",
+    "project_title_en": "Projekto pavadinimas (angliškai)"
+  },
+
+  "topic_management": {
+    "title": "Temų valdymas",
+    "subtitle": "Tvirtinti ir valdyti baigiamųjų darbų temas",
+    "topic_registration": "Temos registracija",
+    "topic_approval": "Temos tvirtinimas",
+    "topic_details": "Temos detalės",
+    "approve_topic": "Tvirtinti temą",
+    "reject_topic": "Atmesti temą",
+    "topic_approved": "Tema patvirtinta",
+    "topic_rejected": "Tema atmesta",
+    "pending_approval": "Laukia patvirtinimo",
+    "approved_by_head": "Patvirtinta katedros vedėjo",
+    "not_started": "Nepradėta"
+  },
+
+  "topic_fields": {
+    "title": "Pavadinimas",
+    "title_en": "Pavadinimas (angliškai)",
+    "problem": "Problemos formuluotė",
+    "objective": "Tikslas",
+    "tasks": "Uždaviniai",
+    "completion_date": "Baigimo data",
+    "supervisor": "Vadovas",
+    "status": "Būsena",
+    "created_at": "Sukurta",
+    "updated_at": "Atnaujinta",
+    "submitted_at": "Pateikta",
+    "approved_at": "Patvirtinta"
+  },
+
+  "topic_statuses": {
+    "draft": "Juodraštis",
+    "submitted": "Pateikta",
+    "approved": "Patvirtinta",
+    "rejected": "Atmesta"
+  },
+
+  "reports": {
+    "title": "Ataskaitos",
+    "supervisor_report": "Vadovo atsiskaita",
+    "reviewer_report": "Recenzento atsiskaita",
+    "create_report": "Sukurti ataskaitą",
+    "edit_report": "Redaguoti ataskaitą",
+    "view_report": "Peržiūrėti ataskaitą",
+    "fill_report": "Užpildyti ataskaitą",
+    "supervisor_review": "Vadovo įvertinimas",
+    "no_reports_found": "Ataskaitų nerasta",
+    "report_submitted": "Ataskaita pateikta",
+    "report_saved": "Ataskaita išsaugota"
+  },
+
+  "report_fields": {
+    "supervisor_comments": "Vadovo komentarai",
+    "supervisor_name": "Vadovo vardas",
+    "supervisor_position": "Vadovo pareigos",
+    "supervisor_workplace": "Vadovo darbovietė",
+    "grade": "Įvertinimas",
+    "final_comments": "Galutiniai komentarai",
+    "reviewer_details": "Recenzento duomenys",
+    "review_goals": "Tikslų vertinimas",
+    "review_theory": "Teorijos vertinimas",
+    "review_practical": "Praktikos vertinimas",
+    "review_results": "Rezultatų vertinimas",
+    "review_language": "Kalbos vertinimas",
+    "review_pros": "Privalumai",
+    "review_cons": "Trūkumai",
+    "review_questions": "Klausimai gynimui",
+    "submission_date": "Pateikimo data",
+    "is_signed": "Pasirašyta"
+  },
+
+  "grades": {
+    "select_grade": "Pasirinkite įvertinimą",
+    "10": "10 - Puikiai",
+    "9": "9 - Labai gerai",
+    "8": "8 - Gerai",
+    "7": "7 - Patenkinamai",
+    "6": "6 - Silpnai",
+    "5": "5 - Nepatenkinamai",
+    "excellent": "Puikiai",
+    "very_good": "Labai gerai",
+    "good": "Gerai",
+    "satisfactory": "Patenkinamai",
+    "weak": "Silpnai",
+    "poor": "Nepatenkinamai",
+    "not_graded": "Neįvertinta"
+  },
+
+  "commission": {
+    "title": "Komisijos prieiga",
+    "subtitle": "Valdyti komisijos narių prieigą prie gynimo duomenų",
+    "create_access": "Sukurti prieigą",
+    "access_management": "Prieigos valdymas",
+    "access_link": "Prieigos nuoroda",
+    "access_code": "Prieigos kodas",
+    "access_created": "Prieiga sukurta",
+    "access_expired": "Prieiga pasibaigė",
+    "access_active": "Prieiga aktyvi",
+    "copy_link": "Kopijuoti nuorodą",
+    "test_link": "Testuoti nuorodą",
+    "deactivate_access": "Išjungti prieigą",
+    "extend_access": "Pratęsti prieigą",
+    "access_limit": "Prieigos limitas",
+    "access_count": "Prieigų skaičius",
+    "unlimited_access": "Neribota prieiga"
+  },
+
+  "commission_fields": {
+    "description": "Aprašymas",
+    "department": "Katedra",
+    "study_program": "Studijų programa",
+    "year": "Metai",
+    "expires_at": "Galioja iki",
+    "max_access": "Maksimalus prieigų skaičius",
+    "created_by": "Sukūrė",
+    "last_accessed": "Paskutinis prisijungimas"
+  },
+
+  "documents": {
+    "title": "Dokumentai",
+    "upload_document": "Įkelti dokumentą",
+    "document_type": "Dokumento tipas",
+    "filename": "Failo pavadinimas",
+    "file_size": "Failo dydis",
+    "upload_date": "Įkėlimo data",
+    "download": "Atsisiųsti",
+    "no_documents": "Dokumentų nėra",
+    "thesis": "Baigiamasis darbas",
+    "presentation": "Prezentacija",
+    "code": "Programos kodas",
+    "other": "Kita"
+  },
+
+  "videos": {
+    "title": "Vaizdo įrašai",
+    "upload_video": "Įkelti vaizdo įrašą",
+    "video_presentation": "Vaizdo prezentacija",
+    "duration": "Trukmė",
+    "status": "Būsena",
+    "watch_video": "Žiūrėti vaizdo įrašą",
+    "video_player": "Vaizdo grotuvas",
+    "processing": "Apdorojama",
+    "ready": "Paruošta",
+    "error": "Klaida",
+    "pending": "Laukiama"
+  },
+
+  "filters": {
+    "filters": "Filtrai",
+    "reset_filters": "Atstatyti filtrus",
+    "apply_filters": "Taikyti filtrus",
+    "search_placeholder": "Ieškoti studentų, temų...",
+    "department_filter": "Filtruoti pagal katedrą",
+    "program_filter": "Filtruoti pagal programą",
+    "year_filter": "Filtruoti pagal metus",
+    "status_filter": "Filtruoti pagal būseną",
+    "supervisor_filter": "Filtruoti pagal vadovą",
+    "current": "Dabartiniai",
+    "selected": "pasirinkta"
+  },
+
+  "pagination": {
+    "showing_results": "Rodomi %d-%d iš %d rezultatų",
+    "page": "Puslapis",
+    "of": "iš",
+    "per_page": "Vienetas per puslapį",
+    "first": "Pirmas",
+    "last": "Paskutinis",
+    "no_results": "Rezultatų nerasta"
+  },
+
+  "forms": {
+    "field_required": "Šis laukas yra privalomas",
+    "invalid_email": "Netinkamas el. pašto formatas",
+    "invalid_format": "Netinkamas formatas",
+    "too_short": "Per trumpas",
+    "too_long": "Per ilgas",
+    "passwords_dont_match": "Slaptažodžiai nesutampa",
+    "please_fill_required_fields": "Prašome užpildyti visus privalomus laukus",
+    "form_saved_successfully": "Forma sėkmingai išsaugota",
+    "form_submission_error": "Klaida pateikiant formą",
+    "enter_comments": "Įveskite komentarus",
+    "saving": "Išsaugoma"
+  },
+
+  "messages": {
+    "success_saved": "Sėkmingai išsaugota",
+    "success_updated": "Sėkmingai atnaujinta",
+    "success_deleted": "Sėkmingai ištrinta",
+    "success_created": "Sėkmingai sukurta",
+    "error_saving": "Klaida išsaugant",
+    "error_updating": "Klaida atnaujinant",
+    "error_deleting": "Klaida trinant",
+    "error_loading": "Klaida kraunant",
+    "confirm_delete": "Ar tikrai norite ištrinti?",
+    "confirm_action": "Ar tikrai norite atlikti šį veiksmą?",
+    "operation_completed": "Operacija baigta",
+    "operation_failed": "Operacija nepavyko",
+    "no_data_available": "Duomenų nėra",
+    "link_copied": "Nuoroda nukopijuota!"
+  },
+
+  "statistics": {
+    "total": "Iš viso",
+    "completed": "Baigta",
+    "pending": "Laukiama",
+    "in_progress": "Vykdoma",
+    "approved": "Patvirtinta",
+    "rejected": "Atmesta",
+    "percentage": "Procentai",
+    "average": "Vidurkis",
+    "count": "Skaičius"
+  },
+
+  "dates": {
+    "today": "Šiandien",
+    "yesterday": "Vakar",
+    "this_week": "Šią savaitę",
+    "this_month": "Šį mėnesį",
+    "this_year": "Šiais metais",
+    "date_format": "YYYY-MM-DD",
+    "datetime_format": "YYYY-MM-DD HH:mm",
+    "created": "Sukurta",
+    "updated": "Atnaujinta",
+    "expires": "Galioja iki"
+  },
+
+  "system": {
+    "system_administration": "Sistemos administravimas",
+    "user_management": "Naudotojų valdymas",
+    "department_heads": "Katedrų vedėjai",
+    "audit_logs": "Audito žurnalai",
+    "system_settings": "Sistemos nustatymai",
+    "backup": "Atsarginė kopija",
+    "maintenance": "Techninė priežiūra",
+    "health_check": "Sistemos būklė"
+  },
+
+  "errors": {
+    "page_not_found": "Puslapis nerastas",
+    "access_denied": "Prieiga uždrausta",
+    "server_error": "Serverio klaida",
+    "network_error": "Tinklo klaida",
+    "validation_error": "Validacijos klaida",
+    "database_error": "Duomenų bazės klaida",
+    "file_upload_error": "Failo įkėlimo klaida",
+    "invalid_request": "Netinkamas užklausimas",
+    "session_expired": "Sesijos galiojimas pasibaigė",
+    "try_again": "Bandykite dar kartą"
+  },
+
+  "dashboard": {
+    "welcome": "Sveiki atvykę",
+    "overview": "Apžvalga",
+    "recent_activity": "Paskutinė veikla",
+    "quick_actions": "Greiti veiksmai",
+    "statistics": "Statistika",
+    "notifications": "Pranešimai",
+    "student_dashboard": "Studento skydelis",
+    "supervisor_dashboard": "Vadovo skydelis",
+    "admin_dashboard": "Administratoriaus skydelis"
+  }
+}

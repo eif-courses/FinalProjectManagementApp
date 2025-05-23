@@ -1,0 +1,369 @@
+{
+  "_comment": "translations/en.json - English translations",
+
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "create": "Create",
+    "update": "Update",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "submit": "Submit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Information",
+    "confirm": "Confirm",
+    "required": "Required",
+    "optional": "Optional",
+    "all": "All",
+    "none": "None",
+    "unknown": "Unknown",
+    "active": "Active",
+    "inactive": "Inactive",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+
+  "navigation": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "topics": "Topics",
+    "reports": "Reports",
+    "commission": "Commission",
+    "administration": "Administration",
+    "settings": "Settings",
+    "profile": "Profile",
+    "logout": "Logout",
+    "login": "Login",
+    "language": "Language"
+  },
+
+  "auth": {
+    "login_title": "Login",
+    "login_subtitle": "Sign in to the thesis management system",
+    "login_with_microsoft": "Sign in with Microsoft",
+    "logging_in": "Signing in...",
+    "logout_success": "Successfully logged out",
+    "login_required": "Login required",
+    "access_denied": "Access denied",
+    "insufficient_permissions": "Insufficient permissions",
+    "session_expired": "Session expired"
+  },
+
+  "user_roles": {
+    "admin": "Administrator",
+    "department_head": "Department Head",
+    "deputy_head": "Deputy Head",
+    "secretary": "Secretary",
+    "coordinator": "Coordinator",
+    "supervisor": "Supervisor",
+    "commission_member": "Commission Member",
+    "student": "Student",
+    "guest": "Guest"
+  },
+
+  "student_management": {
+    "title": "Student Management",
+    "subtitle": "Manage thesis topics and progress",
+    "student_list": "Student List",
+    "student_details": "Student Details",
+    "add_student": "Add Student",
+    "edit_student": "Edit Student",
+    "no_students_found": "No students found",
+    "total_students": "Total Students",
+    "active_students": "Active Students",
+    "students_with_topics": "Students with Topics"
+  },
+
+  "student_fields": {
+    "student_name": "Student Name",
+    "student_lastname": "Student Surname",
+    "student_email": "Student Email",
+    "student_number": "Student Number",
+    "student_group": "Group",
+    "study_program": "Study Program",
+    "department": "Department",
+    "current_year": "Current Year",
+    "supervisor": "Supervisor",
+    "supervisor_email": "Supervisor Email",
+    "reviewer": "Reviewer",
+    "reviewer_email": "Reviewer Email",
+    "project_title": "Project Title",
+    "project_title_en": "Project Title (English)"
+  },
+
+  "topic_management": {
+    "title": "Topic Management",
+    "subtitle": "Approve and manage thesis topics",
+    "topic_registration": "Topic Registration",
+    "topic_approval": "Topic Approval",
+    "topic_details": "Topic Details",
+    "approve_topic": "Approve Topic",
+    "reject_topic": "Reject Topic",
+    "topic_approved": "Topic Approved",
+    "topic_rejected": "Topic Rejected",
+    "pending_approval": "Pending Approval",
+    "approved_by_head": "Approved by Head",
+    "not_started": "Not Started"
+  },
+
+  "topic_fields": {
+    "title": "Title",
+    "title_en": "Title (English)",
+    "problem": "Problem Statement",
+    "objective": "Objective",
+    "tasks": "Tasks",
+    "completion_date": "Completion Date",
+    "supervisor": "Supervisor",
+    "status": "Status",
+    "created_at": "Created",
+    "updated_at": "Updated",
+    "submitted_at": "Submitted",
+    "approved_at": "Approved"
+  },
+
+  "topic_statuses": {
+    "draft": "Draft",
+    "submitted": "Submitted",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+
+  "reports": {
+    "title": "Reports",
+    "supervisor_report": "Supervisor Report",
+    "reviewer_report": "Reviewer Report",
+    "create_report": "Create Report",
+    "edit_report": "Edit Report",
+    "view_report": "View Report",
+    "fill_report": "Fill Report",
+    "supervisor_review": "Supervisor Review",
+    "no_reports_found": "No reports found",
+    "report_submitted": "Report submitted",
+    "report_saved": "Report saved"
+  },
+
+  "report_fields": {
+    "supervisor_comments": "Supervisor Comments",
+    "supervisor_name": "Supervisor Name",
+    "supervisor_position": "Supervisor Position",
+    "supervisor_workplace": "Supervisor Workplace",
+    "grade": "Grade",
+    "final_comments": "Final Comments",
+    "reviewer_details": "Reviewer Details",
+    "review_goals": "Goals Review",
+    "review_theory": "Theory Review",
+    "review_practical": "Practical Review",
+    "review_results": "Results Review",
+    "review_language": "Language Review",
+    "review_pros": "Pros",
+    "review_cons": "Cons",
+    "review_questions": "Defense Questions",
+    "submission_date": "Submission Date",
+    "is_signed": "Signed"
+  },
+
+  "grades": {
+    "select_grade": "Select Grade",
+    "10": "10 - Excellent",
+    "9": "9 - Very Good",
+    "8": "8 - Good",
+    "7": "7 - Satisfactory",
+    "6": "6 - Weak",
+    "5": "5 - Poor",
+    "excellent": "Excellent",
+    "very_good": "Very Good",
+    "good": "Good",
+    "satisfactory": "Satisfactory",
+    "weak": "Weak",
+    "poor": "Poor",
+    "not_graded": "Not Graded"
+  },
+
+  "commission": {
+    "title": "Commission Access",
+    "subtitle": "Manage commission member access to defense data",
+    "create_access": "Create Access",
+    "access_management": "Access Management",
+    "access_link": "Access Link",
+    "access_code": "Access Code",
+    "access_created": "Access Created",
+    "access_expired": "Access Expired",
+    "access_active": "Access Active",
+    "copy_link": "Copy Link",
+    "test_link": "Test Link",
+    "deactivate_access": "Deactivate Access",
+    "extend_access": "Extend Access",
+    "access_limit": "Access Limit",
+    "access_count": "Access Count",
+    "unlimited_access": "Unlimited Access"
+  },
+
+  "commission_fields": {
+    "description": "Description",
+    "department": "Department",
+    "study_program": "Study Program",
+    "year": "Year",
+    "expires_at": "Expires At",
+    "max_access": "Maximum Access Count",
+    "created_by": "Created By",
+    "last_accessed": "Last Accessed"
+  },
+
+  "documents": {
+    "title": "Documents",
+    "upload_document": "Upload Document",
+    "document_type": "Document Type",
+    "filename": "Filename",
+    "file_size": "File Size",
+    "upload_date": "Upload Date",
+    "download": "Download",
+    "no_documents": "No Documents",
+    "thesis": "Thesis",
+    "presentation": "Presentation",
+    "code": "Program Code",
+    "other": "Other"
+  },
+
+  "videos": {
+    "title": "Videos",
+    "upload_video": "Upload Video",
+    "video_presentation": "Video Presentation",
+    "duration": "Duration",
+    "status": "Status",
+    "watch_video": "Watch Video",
+    "video_player": "Video Player",
+    "processing": "Processing",
+    "ready": "Ready",
+    "error": "Error",
+    "pending": "Pending"
+  },
+
+  "filters": {
+    "filters": "Filters",
+    "reset_filters": "Reset Filters",
+    "apply_filters": "Apply Filters",
+    "search_placeholder": "Search students, topics...",
+    "department_filter": "Filter by Department",
+    "program_filter": "Filter by Program",
+    "year_filter": "Filter by Year",
+    "status_filter": "Filter by Status",
+    "supervisor_filter": "Filter by Supervisor",
+    "current": "Current",
+    "selected": "selected"
+  },
+
+  "pagination": {
+    "showing_results": "Showing %d-%d of %d results",
+    "page": "Page",
+    "of": "of",
+    "per_page": "Per Page",
+    "first": "First",
+    "last": "Last",
+    "no_results": "No results found"
+  },
+
+  "forms": {
+    "field_required": "This field is required",
+    "invalid_email": "Invalid email format",
+    "invalid_format": "Invalid format",
+    "too_short": "Too short",
+    "too_long": "Too long",
+    "passwords_dont_match": "Passwords don't match",
+    "please_fill_required_fields": "Please fill all required fields",
+    "form_saved_successfully": "Form saved successfully",
+    "form_submission_error": "Form submission error",
+    "enter_comments": "Enter comments",
+    "saving": "Saving"
+  },
+
+  "messages": {
+    "success_saved": "Successfully saved",
+    "success_updated": "Successfully updated",
+    "success_deleted": "Successfully deleted",
+    "success_created": "Successfully created",
+    "error_saving": "Error saving",
+    "error_updating": "Error updating",
+    "error_deleting": "Error deleting",
+    "error_loading": "Error loading",
+    "confirm_delete": "Are you sure you want to delete?",
+    "confirm_action": "Are you sure you want to perform this action?",
+    "operation_completed": "Operation completed",
+    "operation_failed": "Operation failed",
+    "no_data_available": "No data available",
+    "link_copied": "Link copied!"
+  },
+
+  "statistics": {
+    "total": "Total",
+    "completed": "Completed",
+    "pending": "Pending",
+    "in_progress": "In Progress",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "percentage": "Percentage",
+    "average": "Average",
+    "count": "Count"
+  },
+
+  "dates": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this_week": "This Week",
+    "this_month": "This Month",
+    "this_year": "This Year",
+    "date_format": "YYYY-MM-DD",
+    "datetime_format": "YYYY-MM-DD HH:mm",
+    "created": "Created",
+    "updated": "Updated",
+    "expires": "Expires"
+  },
+
+  "system": {
+    "system_administration": "System Administration",
+    "user_management": "User Management",
+    "department_heads": "Department Heads",
+    "audit_logs": "Audit Logs",
+    "system_settings": "System Settings",
+    "backup": "Backup",
+    "maintenance": "Maintenance",
+    "health_check": "Health Check"
+  },
+
+  "errors": {
+    "page_not_found": "Page not found",
+    "access_denied": "Access denied",
+    "server_error": "Server error",
+    "network_error": "Network error",
+    "validation_error": "Validation error",
+    "database_error": "Database error",
+    "file_upload_error": "File upload error",
+    "invalid_request": "Invalid request",
+    "session_expired": "Session expired",
+    "try_again": "Try again"
+  },
+
+  "dashboard": {
+    "welcome": "Welcome",
+    "overview": "Overview",
+    "recent_activity": "Recent Activity",
+    "quick_actions": "Quick Actions",
+    "statistics": "Statistics",
+    "notifications": "Notifications",
+    "student_dashboard": "Student Dashboard",
+    "supervisor_dashboard": "Supervisor Dashboard",
+    "admin_dashboard": "Admin Dashboard"
+  }
+}
