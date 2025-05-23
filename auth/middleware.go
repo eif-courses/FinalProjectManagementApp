@@ -1,10 +1,12 @@
-// auth/middleware.go
+// auth/middleware.go - Fixed version
 package auth
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -23,21 +25,27 @@ type AuthMiddleware struct {
 }
 
 // NewAuthMiddleware creates a new authentication middleware
-func NewAuthMiddleware(authService *AuthService) *AuthMiddleware {
+func NewAuthMiddleware(authService *AuthService) (*AuthMiddleware, error) {
+	// Get session secret from environment
+	sessionSecret := os.Getenv("SESSION_SECRET")
+	if sessionSecret == "" {
+		sessionSecret = "your-secret-key-change-this-in-production"
+	}
+
 	// Create session store with secure settings
-	store := sessions.NewCookieStore([]byte("your-secret-key-change-this-in-production"))
+	store := sessions.NewCookieStore([]byte(sessionSecret))
 	store.Options = &sessions.Options{
 		Path:     "/",
 		MaxAge:   86400 * 7, // 7 days
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   os.Getenv("ENV") == "production", // Only secure in production
 		SameSite: http.SameSiteLaxMode,
 	}
 
 	return &AuthMiddleware{
 		authService:  authService,
 		sessionStore: store,
-	}
+	}, nil
 }
 
 // RequireAuth middleware that requires user to be authenticated
@@ -45,6 +53,13 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := am.GetUserFromSession(r)
 		if user == nil {
+			// Store the original URL for redirect after login
+			if r.URL.Path != "/auth/login" {
+				session, _ := am.sessionStore.Get(r, SessionName)
+				session.Values["redirect_url"] = r.URL.String()
+				session.Save(r, w)
+			}
+
 			// Redirect to login
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
@@ -56,7 +71,7 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// RequireRole middleware that requires specific role
+// RequireRole middleware that requires specific roles
 func (am *AuthMiddleware) RequireRole(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +81,7 @@ func (am *AuthMiddleware) RequireRole(roles ...string) func(http.Handler) http.H
 				return
 			}
 
-			// Check if user has required role
+			// Check if user has any of the required roles
 			hasRole := false
 			for _, role := range roles {
 				if user.Role == role {
@@ -76,8 +91,7 @@ func (am *AuthMiddleware) RequireRole(roles ...string) func(http.Handler) http.H
 			}
 
 			if !hasRole {
-				// Removed unused lang variable - just return error directly
-				http.Error(w, "Access denied", http.StatusForbidden)
+				http.Error(w, "Access denied: insufficient permissions", http.StatusForbidden)
 				return
 			}
 
@@ -98,7 +112,7 @@ func (am *AuthMiddleware) RequirePermission(permission string) func(http.Handler
 			}
 
 			if !user.HasPermission(permission) {
-				http.Error(w, "Insufficient permissions", http.StatusForbidden)
+				http.Error(w, "Access denied: insufficient permissions", http.StatusForbidden)
 				return
 			}
 
@@ -110,7 +124,20 @@ func (am *AuthMiddleware) RequirePermission(permission string) func(http.Handler
 
 // LoginHandler handles the login initiation
 func (am *AuthMiddleware) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	loginURL := am.authService.GenerateLoginURL()
+	// Check if user is already logged in
+	if user := am.GetUserFromSession(r); user != nil {
+		// Redirect to dashboard or original URL
+		redirectURL := am.getRedirectURL(r)
+		http.Redirect(w, r, redirectURL, http.StatusFound)
+		return
+	}
+
+	loginURL, err := am.authService.GenerateLoginURL()
+	if err != nil {
+		http.Error(w, "Failed to generate login URL", http.StatusInternalServerError)
+		return
+	}
+
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
 
@@ -118,6 +145,14 @@ func (am *AuthMiddleware) LoginHandler(w http.ResponseWriter, r *http.Request) {
 func (am *AuthMiddleware) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
+	errorParam := r.URL.Query().Get("error")
+
+	// Check for OAuth error
+	if errorParam != "" {
+		errorDescription := r.URL.Query().Get("error_description")
+		http.Error(w, fmt.Sprintf("OAuth error: %s - %s", errorParam, errorDescription), http.StatusBadRequest)
+		return
+	}
 
 	if code == "" {
 		http.Error(w, "Authorization code not found", http.StatusBadRequest)
@@ -125,7 +160,7 @@ func (am *AuthMiddleware) CallbackHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	// Exchange code for user info
-	user, err := am.authService.HandleCallback(code, state)
+	user, err := am.authService.HandleCallback(r.Context(), code, state)
 	if err != nil {
 		http.Error(w, "Authentication failed: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -137,26 +172,41 @@ func (am *AuthMiddleware) CallbackHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Redirect to dashboard
-	http.Redirect(w, r, "/", http.StatusFound)
+	// Get redirect URL and clear it from session
+	redirectURL := am.getRedirectURL(r)
+	am.clearRedirectURL(w, r)
+
+	// Redirect to dashboard or original URL
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 // LogoutHandler handles user logout
 func (am *AuthMiddleware) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := am.sessionStore.Get(r, SessionName)
-	session.Options.MaxAge = -1 // Delete session
+
+	// Clear all session values
+	for key := range session.Values {
+		delete(session.Values, key)
+	}
+
+	// Set session to expire immediately
+	session.Options.MaxAge = -1
 	session.Save(r, w)
 
+	// Redirect to home page
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // SaveUserToSession saves authenticated user to session
 func (am *AuthMiddleware) SaveUserToSession(w http.ResponseWriter, r *http.Request, user *AuthenticatedUser) error {
-	session, _ := am.sessionStore.Get(r, SessionName)
+	session, err := am.sessionStore.Get(r, SessionName)
+	if err != nil {
+		return fmt.Errorf("failed to get session: %w", err)
+	}
 
 	userData, err := json.Marshal(user)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal user data: %w", err)
 	}
 
 	session.Values["user"] = userData
@@ -209,4 +259,24 @@ func (am *AuthMiddleware) UserInfoHandler(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+
+// Helper methods
+func (am *AuthMiddleware) getRedirectURL(r *http.Request) string {
+	session, err := am.sessionStore.Get(r, SessionName)
+	if err != nil {
+		return "/"
+	}
+
+	if redirectURL, ok := session.Values["redirect_url"].(string); ok && redirectURL != "" {
+		return redirectURL
+	}
+
+	return "/"
+}
+
+func (am *AuthMiddleware) clearRedirectURL(w http.ResponseWriter, r *http.Request) {
+	session, _ := am.sessionStore.Get(r, SessionName)
+	delete(session.Values, "redirect_url")
+	session.Save(r, w)
 }

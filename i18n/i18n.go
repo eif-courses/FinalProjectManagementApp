@@ -1,4 +1,4 @@
-// i18n/i18n.go - Simplified working version
+// i18n/i18n.go - Complete i18n package (single file)
 package i18n
 
 import (
@@ -32,7 +32,7 @@ func NewLocalizer() *Localizer {
 	}
 }
 
-// LoadTranslations loads translation files from directory
+// LoadTranslations loads translation files from directory with support for nested JSON
 func (l *Localizer) LoadTranslations(dir string) error {
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil {
@@ -48,16 +48,46 @@ func (l *Localizer) LoadTranslations(dir string) error {
 			return fmt.Errorf("failed to read %s: %w", file, err)
 		}
 
-		var translations map[string]string
-		if err := json.Unmarshal(data, &translations); err != nil {
+		// Parse as nested JSON (your current format)
+		var nestedTranslations map[string]interface{}
+		if err := json.Unmarshal(data, &nestedTranslations); err != nil {
 			return fmt.Errorf("failed to parse %s: %w", file, err)
 		}
 
-		l.translations[lang] = translations
-		fmt.Printf("✅ Loaded %d translations for language: %s\n", len(translations), lang)
+		// Flatten the nested structure
+		flatTranslations := make(map[string]string)
+		l.flattenTranslations("", nestedTranslations, flatTranslations)
+
+		l.translations[lang] = flatTranslations
+		fmt.Printf("✅ Loaded %d translations for language: %s\n", len(flatTranslations), lang)
 	}
 
 	return nil
+}
+
+// flattenTranslations converts nested JSON to flat key-value pairs
+func (l *Localizer) flattenTranslations(prefix string, nested map[string]interface{}, flat map[string]string) {
+	for key, value := range nested {
+		// Skip comment fields
+		if key == "_comment" {
+			continue
+		}
+
+		fullKey := key
+		if prefix != "" {
+			fullKey = prefix + "." + key
+		}
+
+		switch v := value.(type) {
+		case string:
+			flat[fullKey] = v
+		case map[string]interface{}:
+			l.flattenTranslations(fullKey, v, flat)
+		default:
+			// Skip non-string, non-object values
+			continue
+		}
+	}
 }
 
 // T translates a key for the given language
@@ -95,15 +125,6 @@ func (l *Localizer) GetSupportedLanguages() []string {
 		langs = append(langs, lang)
 	}
 	return langs
-}
-
-// Middleware for language detection and context setting
-func (l *Localizer) LanguageMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lang := l.detectLanguage(r)
-		ctx := context.WithValue(r.Context(), LangContextKey, lang)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
 
 // detectLanguage detects user's preferred language
@@ -167,7 +188,21 @@ func GetLangFromContext(ctx context.Context) string {
 	return DefaultLang
 }
 
-// Language switching handler
+// LanguageMiddleware for language detection and context setting
+func (l *Localizer) LanguageMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lang := l.detectLanguage(r)
+
+		// Set language header for client-side detection
+		w.Header().Set("Content-Language", lang)
+
+		// Add language to context
+		ctx := context.WithValue(r.Context(), LangContextKey, lang)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// LanguageSwitchHandler handles language switching
 func (l *Localizer) LanguageSwitchHandler(w http.ResponseWriter, r *http.Request) {
 	lang := r.URL.Query().Get("lang")
 	if lang == "" || !l.isSupported(lang) {
@@ -203,7 +238,7 @@ type LocalizedTemplateData struct {
 	T     func(string, ...interface{}) string
 }
 
-// Helper to create localized template data
+// NewTemplateData creates localized template data
 func (l *Localizer) NewTemplateData(ctx context.Context, title string, user interface{}, data interface{}) LocalizedTemplateData {
 	lang := GetLangFromContext(ctx)
 	return LocalizedTemplateData{
@@ -215,4 +250,17 @@ func (l *Localizer) NewTemplateData(ctx context.Context, title string, user inte
 			return l.T(lang, key, args...)
 		},
 	}
+}
+
+// RequestLocalizationMiddleware combines language detection with content type setting
+func (l *Localizer) RequestLocalizationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set UTF-8 charset for HTML responses
+		if strings.HasSuffix(r.URL.Path, ".html") || strings.Contains(r.Header.Get("Accept"), "text/html") {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		}
+
+		// Apply language middleware
+		l.LanguageMiddleware(next).ServeHTTP(w, r)
+	})
 }

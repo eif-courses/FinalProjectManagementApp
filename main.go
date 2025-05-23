@@ -1,4 +1,4 @@
-// main.go - Chi router with MySQL
+// main.go - Updated with fixed middlewares
 package main
 
 import (
@@ -15,14 +15,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	_ "github.com/go-sql-driver/mysql" // Add this MySQL driver import
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 
 	"FinalProjectManagementApp/auth"
 	"FinalProjectManagementApp/database"
 	"FinalProjectManagementApp/handlers"
+	"FinalProjectManagementApp/i18n"
+	custommiddleware "FinalProjectManagementApp/middleware"
 )
 
 func main() {
@@ -44,6 +46,12 @@ func main() {
 		log.Printf("Migration warning: %v", err)
 	}
 
+	// Initialize i18n
+	localizer := i18n.NewLocalizer()
+	if err := localizer.LoadTranslations("i18n/translations"); err != nil {
+		log.Printf("Failed to load translations: %v", err)
+	}
+
 	// Initialize services
 	authService, err := auth.NewAuthService(db.DB)
 	if err != nil {
@@ -60,7 +68,7 @@ func main() {
 	commissionHandler := handlers.NewCommissionHandler(commissionService, authMiddleware, baseURL)
 
 	// Set up Chi router
-	r := setupRouter(authMiddleware, commissionHandler, commissionService)
+	r := setupRouter(authMiddleware, commissionHandler, commissionService, localizer)
 
 	// Configure server
 	port := getEnv("PORT", "8080")
@@ -75,9 +83,10 @@ func main() {
 	// Start server
 	go func() {
 		log.Printf("🚀 Server starting on port %s", port)
-		log.Printf("🌍 Environment: %s", getEnv("ENVIRONMENT", "development"))
+		log.Printf("🌍 Environment: %s", getEnv("ENV", "development"))
 		log.Printf("🗄️  Database: MySQL (%s)", dbConfig.Host)
 		log.Printf("🔗 Base URL: %s", baseURL)
+		log.Printf("🌐 Supported languages: %v", localizer.GetSupportedLanguages())
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Failed to start server:", err)
@@ -101,21 +110,15 @@ func main() {
 }
 
 func runMigrations(config *database.Config) error {
-	db, err := config.Connect()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
+	// Build the database URL for migrations
+	databaseURL := config.GetMigrationURL()
 
-	driver, err := mysql.WithInstance(db.DB, &mysql.Config{})
+	// Create migrations instance using the simpler New function
+	m, err := migrate.New("file://migrations", databaseURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
-
-	m, err := migrate.NewWithInstance("file", mustLoadMigrationSource(), "mysql", driver)
-	if err != nil {
-		return err
-	}
+	defer m.Close()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
@@ -125,44 +128,66 @@ func runMigrations(config *database.Config) error {
 	return nil
 }
 
-func mustLoadMigrationSource() migrate.Source {
-	source, err := (&migrate.FileMigrationSource{}).Open("file://migrations")
-	if err != nil {
-		log.Fatal("Failed to load migration source:", err)
-	}
-	return source
-}
+// Remove the mustLoadMigrationSource function - it's not needed
 
-func setupRouter(authMiddleware *auth.AuthMiddleware, commissionHandler *handlers.CommissionHandler, commissionService *auth.CommissionAccessService) chi.Router {
+func setupRouter(authMiddleware *auth.AuthMiddleware, commissionHandler *handlers.CommissionHandler, commissionService *auth.CommissionAccessService, localizer *i18n.Localizer) chi.Router {
 	r := chi.NewRouter()
 
-	// Chi middleware
+	// Core Chi middleware (order matters!)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(custommiddleware.RecoveryMiddleware) // Custom recovery with better error handling
+	r.Use(custommiddleware.LoggingMiddleware)  // Custom logging
 	r.Use(middleware.Compress(5))
 
-	// CORS middleware
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:8080"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
+	// Security middleware
+	r.Use(custommiddleware.SecurityHeadersMiddleware)
 
-	// Custom middleware
-	r.Use(securityHeadersMiddleware)
+	// Rate limiting (adjust as needed)
+	if getEnv("ENV", "development") == "production" {
+		r.Use(custommiddleware.RateLimitMiddleware(100)) // 100 requests per minute
+	}
 
-	// Health check
+	// CORS middleware - only if you need API access from other domains
+	// For full-stack Go apps, you usually don't need this unless you have:
+	// - Separate frontend applications (React, Vue, etc.)
+	// - Mobile apps making API calls
+	// - Third-party integrations
+	if needsCORS() {
+		r.Use(cors.Handler(cors.Options{
+			AllowedOrigins:   getAllowedOrigins(),
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Requested-With"},
+			ExposedHeaders:   []string{"Link", "X-Request-ID"},
+			AllowCredentials: true,
+			MaxAge:           300,
+		}))
+	}
+
+	// Internationalization middleware
+	r.Use(localizer.RequestLocalizationMiddleware)
+
+	// Cache control middleware
+	r.Use(custommiddleware.CacheControlMiddleware)
+
+	// Maintenance mode check
+	r.Use(custommiddleware.MaintenanceMiddleware)
+
+	// Timeout middleware for long-running requests
+	r.Use(custommiddleware.TimeoutMiddleware(30 * time.Second))
+
+	// Health check (no auth required)
 	r.Get("/health", healthCheckHandler)
 
-	// Static files
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+	// Language switching endpoint
+	r.Post("/switch-language", localizer.LanguageSwitchHandler)
+	r.Get("/switch-language", localizer.LanguageSwitchHandler)
 
-	// Public commission access (no auth required)
+	// Static files with proper caching
+	fileServer := http.FileServer(http.Dir("./static/"))
+	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+
+	// Public commission access (no auth required, but commission middleware applies)
 	r.Route("/commission", func(r chi.Router) {
 		r.Use(commissionService.CommissionAccessMiddleware)
 		r.Get("/{accessCode}", commissionHandler.CommissionViewHandler)
@@ -188,7 +213,7 @@ func setupRouter(authMiddleware *auth.AuthMiddleware, commissionHandler *handler
 
 		// Student routes
 		r.Route("/students", func(r chi.Router) {
-			r.Use(authMiddleware.RequirePermission(auth.PermissionViewOwnData))
+			r.Use(authMiddleware.RequireRole(auth.RoleStudent))
 			r.Get("/", studentDashboardHandler)
 			r.Get("/profile", studentProfileHandler)
 			r.Post("/profile", studentProfileHandler)
@@ -200,7 +225,7 @@ func setupRouter(authMiddleware *auth.AuthMiddleware, commissionHandler *handler
 
 		// Supervisor routes
 		r.Route("/supervisor", func(r chi.Router) {
-			r.Use(authMiddleware.RequirePermission(auth.PermissionViewAssignedStudents))
+			r.Use(authMiddleware.RequireRole(auth.RoleSupervisor))
 			r.Get("/", supervisorDashboardHandler)
 			r.Get("/students", supervisorStudentsHandler)
 			r.Get("/reports", supervisorReportsHandler)
@@ -265,26 +290,65 @@ func setupRouter(authMiddleware *auth.AuthMiddleware, commissionHandler *handler
 	return r
 }
 
-// Middleware functions
-func securityHeadersMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
+// Helper functions
 
-		if getEnv("ENVIRONMENT", "development") == "production" {
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		}
+// needsCORS determines if CORS middleware is needed
+func needsCORS() bool {
+	// Enable CORS if:
+	// 1. Explicitly enabled via environment variable
+	if getEnv("ENABLE_CORS", "false") == "true" {
+		return true
+	}
 
-		next.ServeHTTP(w, r)
-	})
+	// 2. Development environment (for testing with different ports)
+	if getEnv("ENV", "development") == "development" {
+		return true
+	}
+
+	// 3. API-only mode
+	if getEnv("API_ONLY", "false") == "true" {
+		return true
+	}
+
+	// For traditional server-side rendered apps, CORS is usually not needed
+	return false
+}
+
+func getAllowedOrigins() []string {
+	origins := []string{"http://localhost:8080"} // Always allow self
+
+	// Add additional origins based on environment
+	if getEnv("ENV", "development") == "development" {
+		origins = append(origins,
+			"http://localhost:3000",
+			"http://localhost:3001",
+			"http://127.0.0.1:8080",
+		)
+	}
+
+	// Add production origins from environment
+	if prodOrigins := getEnv("ALLOWED_ORIGINS", ""); prodOrigins != "" {
+		origins = append(origins, strings.Split(prodOrigins, ",")...)
+	}
+
+	return origins
 }
 
 // Handler functions
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"status":"healthy","timestamp":"%s","service":"thesis-management"}`, time.Now().Format(time.RFC3339))
+	fmt.Fprintf(w, `{
+		"status": "healthy",
+		"timestamp": "%s",
+		"service": "thesis-management",
+		"version": "%s",
+		"environment": "%s"
+	}`,
+		time.Now().Format(time.RFC3339),
+		getEnv("APP_VERSION", "1.0.0"),
+		getEnv("ENV", "development"),
+	)
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
@@ -293,6 +357,9 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 		return
 	}
+
+	// Get localized template data
+	templateData := getLocalizedTemplateData(r, "dashboard.title", user, nil)
 
 	// Redirect based on user role
 	switch user.Role {
@@ -303,20 +370,15 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	case auth.RoleDepartmentHead, auth.RoleAdmin:
 		http.Redirect(w, r, "/admin/students", http.StatusFound)
 	default:
-		renderTemplate(w, "dashboard.html", map[string]interface{}{
-			"User":  user,
-			"Title": "Dashboard",
-		})
+		renderTemplate(w, "dashboard.html", templateData)
 	}
 }
 
 // Student handlers
 func studentDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "student_dashboard.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Student Dashboard",
-	})
+	templateData := getLocalizedTemplateData(r, "student_management.title", user, nil)
+	renderTemplate(w, "student_dashboard.html", templateData)
 }
 
 func studentProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -324,15 +386,21 @@ func studentProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		// Handle profile update
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+
 		// TODO: Implement profile update logic
+		// For now, just redirect with success
 		http.Redirect(w, r, "/students/profile?success=1", http.StatusFound)
 		return
 	}
 
-	renderTemplate(w, "student_profile.html", map[string]interface{}{
-		"User":  user,
-		"Title": "My Profile",
+	templateData := getLocalizedTemplateData(r, "navigation.profile", user, map[string]interface{}{
+		"Success": r.URL.Query().Get("success") == "1",
 	})
+	renderTemplate(w, "student_profile.html", templateData)
 }
 
 func studentTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -340,15 +408,22 @@ func studentTopicHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		// Handle topic submission
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+
 		// TODO: Implement topic submission logic
+		// Validate form data, save to database, etc.
+
 		http.Redirect(w, r, "/students/topic?success=1", http.StatusFound)
 		return
 	}
 
-	renderTemplate(w, "student_topic.html", map[string]interface{}{
-		"User":  user,
-		"Title": "My Topic",
+	templateData := getLocalizedTemplateData(r, "topic_management.title", user, map[string]interface{}{
+		"Success": r.URL.Query().Get("success") == "1",
 	})
+	renderTemplate(w, "student_topic.html", templateData)
 }
 
 func studentDocumentsHandler(w http.ResponseWriter, r *http.Request) {
@@ -356,74 +431,121 @@ func studentDocumentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		// Handle document upload
+		// Parse multipart form
+		if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB limit
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+
 		// TODO: Implement document upload logic
+		// Handle file upload, virus scanning, storage, etc.
+
 		http.Redirect(w, r, "/students/documents?success=1", http.StatusFound)
 		return
 	}
 
-	renderTemplate(w, "student_documents.html", map[string]interface{}{
-		"User":  user,
-		"Title": "My Documents",
+	templateData := getLocalizedTemplateData(r, "documents.title", user, map[string]interface{}{
+		"Success": r.URL.Query().Get("success") == "1",
 	})
+	renderTemplate(w, "student_documents.html", templateData)
 }
 
 // Supervisor handlers
 func supervisorDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "supervisor_dashboard.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Supervisor Dashboard",
-	})
+	templateData := getLocalizedTemplateData(r, "dashboard.supervisor_dashboard", user, nil)
+	renderTemplate(w, "supervisor_dashboard.html", templateData)
 }
 
 func supervisorStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "supervisor_students.html", map[string]interface{}{
-		"User":  user,
-		"Title": "My Students",
+
+	// TODO: Fetch students assigned to this supervisor
+	students := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "student_management.title", user, map[string]interface{}{
+		"Students": students,
 	})
+	renderTemplate(w, "supervisor_students.html", templateData)
 }
 
 func supervisorReportsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "supervisor_reports.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Student Reports",
+
+	// TODO: Fetch reports for this supervisor's students
+	reports := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "reports.title", user, map[string]interface{}{
+		"Reports": reports,
 	})
+	renderTemplate(w, "supervisor_reports.html", templateData)
 }
 
 func supervisorCreateReportHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	studentID := chi.URLParam(r, "studentID")
 
-	renderTemplate(w, "supervisor_create_report.html", map[string]interface{}{
-		"User":      user,
+	if r.Method == "POST" {
+		// Handle report creation
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+
+		// TODO: Implement report creation logic
+		// Validate form data, save to database
+
+		http.Redirect(w, r, "/supervisor/reports?created="+studentID, http.StatusFound)
+		return
+	}
+
+	// TODO: Fetch student details
+	templateData := getLocalizedTemplateData(r, "reports.create_report", user, map[string]interface{}{
 		"StudentID": studentID,
-		"Title":     "Create Report",
+		"Student":   nil, // TODO: Load student data
 	})
+	renderTemplate(w, "supervisor_create_report.html", templateData)
 }
 
 // Admin handlers
 func adminStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "admin_students.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Student Management",
+
+	// TODO: Fetch students with filtering/pagination
+	students := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "student_management.title", user, map[string]interface{}{
+		"Students": students,
 	})
+	renderTemplate(w, "admin_students.html", templateData)
 }
 
 func adminStudentsSearchHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement search logic
+	// TODO: Implement search logic with proper filtering
+	query := r.URL.Query().Get("q")
+	department := r.URL.Query().Get("department")
+	program := r.URL.Query().Get("program")
+
+	// Placeholder response
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"students": []}`))
+	fmt.Fprintf(w, `{
+		"students": [],
+		"total": 0,
+		"query": "%s",
+		"filters": {"department": "%s", "program": "%s"}
+	}`, query, department, program)
 }
 
 func adminTopicsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "admin_topics.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Topic Management",
+
+	// TODO: Fetch topics pending approval
+	topics := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "topic_management.title", user, map[string]interface{}{
+		"Topics": topics,
 	})
+	renderTemplate(w, "admin_topics.html", templateData)
 }
 
 func adminApproveTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -435,111 +557,235 @@ func adminApproveTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Implement topic approval logic
-	log.Printf("Topic %s approved by %s", topicID, user.Email)
+	if r.Method == "POST" {
+		// Parse approval data
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
 
-	w.Header().Set("HX-Trigger", "topicApproved")
-	w.WriteHeader(http.StatusOK)
+		approved := r.FormValue("approved") == "true"
+		comments := r.FormValue("comments")
+
+		// TODO: Implement topic approval logic
+		log.Printf("Topic %s %s by %s: %s", topicID,
+			map[bool]string{true: "approved", false: "rejected"}[approved],
+			user.Email, comments)
+
+		// Return appropriate response
+		if r.Header.Get("HX-Request") == "true" {
+			w.Header().Set("HX-Trigger", "topicApproved")
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"success": true, "approved": %t}`, approved)
+		} else {
+			http.Redirect(w, r, "/admin/topics?approved="+topicID, http.StatusFound)
+		}
+		return
+	}
+
+	// Show approval form
+	templateData := getLocalizedTemplateData(r, "topic_management.approve_topic", user, map[string]interface{}{
+		"TopicID": topicID,
+		"Topic":   nil, // TODO: Load topic data
+	})
+	renderTemplate(w, "admin_approve_topic.html", templateData)
 }
 
 func adminReportsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "admin_reports.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Reports",
+
+	// TODO: Fetch all reports with filtering
+	reports := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "reports.title", user, map[string]interface{}{
+		"Reports": reports,
 	})
+	renderTemplate(w, "admin_reports.html", templateData)
 }
 
 // System handlers
 func systemUsersHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "system_users.html", map[string]interface{}{
-		"User":  user,
-		"Title": "User Management",
+
+	// TODO: Fetch all users
+	users := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "system.user_management", user, map[string]interface{}{
+		"Users": users,
 	})
+	renderTemplate(w, "system_users.html", templateData)
 }
 
 func systemUpdateUserRoleHandler(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	email := chi.URLParam(r, "email")
+
+	if !user.IsAdmin() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	// TODO: Implement user role update logic
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	newRole := r.FormValue("role")
+	log.Printf("Updating user %s role to %s by %s", email, newRole, user.Email)
+
 	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"success": true, "email": "%s", "role": "%s"}`, email, newRole)
 }
 
 func systemDepartmentHeadsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "system_department_heads.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Department Heads",
+
+	if r.Method == "POST" {
+		// Handle adding new department head
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+
+		// TODO: Implement department head creation
+		email := r.FormValue("email")
+		log.Printf("Adding department head %s by %s", email, user.Email)
+
+		http.Redirect(w, r, "/system/department-heads?added="+email, http.StatusFound)
+		return
+	}
+
+	// TODO: Fetch department heads
+	departmentHeads := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "system.department_heads", user, map[string]interface{}{
+		"DepartmentHeads": departmentHeads,
+		"Added":           r.URL.Query().Get("added"),
 	})
+	renderTemplate(w, "system_department_heads.html", templateData)
 }
 
 func systemAuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	renderTemplate(w, "system_audit_logs.html", map[string]interface{}{
-		"User":  user,
-		"Title": "Audit Logs",
+
+	// TODO: Fetch audit logs with pagination
+	auditLogs := []interface{}{} // Placeholder
+
+	templateData := getLocalizedTemplateData(r, "system.audit_logs", user, map[string]interface{}{
+		"AuditLogs": auditLogs,
 	})
+	renderTemplate(w, "system_audit_logs.html", templateData)
 }
 
 // API handlers (placeholder implementations)
 func apiStudentsSearchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Implement actual search
 	w.Write([]byte(`{"students": [], "total": 0}`))
 }
 
 func apiStudentDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	studentID := chi.URLParam(r, "studentID")
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Fetch actual student data
 	fmt.Fprintf(w, `{"id": "%s", "name": "Student Name"}`, studentID)
 }
 
 func apiStudentReportsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Fetch student reports
 	w.Write([]byte(`{"reports": []}`))
 }
 
 func apiTopicDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	topicID := chi.URLParam(r, "topicID")
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Fetch actual topic data
 	fmt.Fprintf(w, `{"id": "%s", "title": "Topic Title"}`, topicID)
 }
 
 func apiApproveTopicHandler(w http.ResponseWriter, r *http.Request) {
 	topicID := chi.URLParam(r, "topicID")
-	// TODO: Implement approval logic
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Implement approval logic
 	fmt.Fprintf(w, `{"success": true, "topic_id": "%s"}`, topicID)
 }
 
 func apiReportsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Fetch reports
 	w.Write([]byte(`{"reports": []}`))
 }
 
 func apiCreateReportHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Create report
 	w.Write([]byte(`{"success": true}`))
 }
 
 func apiReportDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	reportID := chi.URLParam(r, "reportID")
 	w.Header().Set("Content-Type", "application/json")
+	// TODO: Fetch actual report data
 	fmt.Fprintf(w, `{"id": "%s", "content": "Report content"}`, reportID)
 }
 
 // Helper functions
+
+func getLocalizedTemplateData(r *http.Request, titleKey string, user *auth.AuthenticatedUser, data interface{}) map[string]interface{} {
+	// Get localizer from context or create basic one
+	lang := i18n.GetLangFromContext(r.Context())
+	if lang == "" {
+		lang = i18n.DefaultLang
+	}
+
+	// This is a simplified version - in production you'd get the localizer from context
+	localizer := i18n.NewLocalizer()
+
+	return map[string]interface{}{
+		"Title": localizer.T(lang, titleKey),
+		"User":  user,
+		"Data":  data,
+		"Lang":  lang,
+		"T": func(key string, args ...interface{}) string {
+			return localizer.T(lang, key, args...)
+		},
+	}
+}
+
 func renderTemplate(w http.ResponseWriter, templateName string, data interface{}) {
-	// TODO: Implement your template rendering logic
-	w.Header().Set("Content-Type", "text/html")
+	// This is a placeholder implementation
+	// In production, you'd use your actual template engine (html/template, Gin, etc.)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+
+	dataMap := data.(map[string]interface{})
 	fmt.Fprintf(w, `
-		<html>
-			<head><title>%s</title></head>
-			<body>
-				<h1>Template: %s</h1>
-				<pre>%+v</pre>
-			</body>
-		</html>
-	`, data.(map[string]interface{})["Title"], templateName, data)
+<!DOCTYPE html>
+<html lang="%s">
+	<head>
+		<title>%s</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
+	<body class="bg-gray-100 min-h-screen">
+		<div class="container mx-auto px-4 py-8">
+			<h1 class="text-3xl font-bold mb-6">%s</h1>
+			<div class="bg-white rounded-lg shadow p-6">
+				<p>Template: <code>%s</code></p>
+				<pre class="mt-4 bg-gray-50 p-4 rounded text-sm overflow-auto">%+v</pre>
+			</div>
+		</div>
+	</body>
+</html>`,
+		dataMap["Lang"],
+		dataMap["Title"],
+		dataMap["Title"],
+		templateName,
+		data,
+	)
 }
 
 func getEnv(key, defaultValue string) string {
