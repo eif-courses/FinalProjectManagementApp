@@ -1,0 +1,197 @@
+<!-- Topic Registration Review Modal Content -->
+<div class="flex justify-between items-center mb-6">
+    <h3 class="text-2xl font-bold text-gray-900">{{ .T "topic_management.topic_registration" }}</h3>
+    <button onclick="closeTopicModal()" class="text-gray-400 hover:text-gray-600">
+        <i class="fas fa-times text-xl"></i>
+    </button>
+</div>
+
+<div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+            <span class="font-semibold text-gray-700">{{ .T "student_fields.student_name" }}:</span>
+            <span class="text-gray-900">{{ .Topic.StudentName }} {{ .Topic.StudentLastname }}</span>
+        </div>
+        <div>
+            <span class="font-semibold text-gray-700">{{ .T "student_fields.student_group" }}:</span>
+            <span class="text-gray-900">{{ .Topic.StudentGroup }}</span>
+        </div>
+        <div>
+            <span class="font-semibold text-gray-700">{{ .T "topic_fields.status" }}:</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                {{ if eq .Topic.Status "submitted" }}bg-yellow-100 text-yellow-800{{ end }}
+            {{ if eq .Topic.Status "approved" }}bg-green-100 text-green-800{{ end }}
+            {{ if eq .Topic.Status "revision" }}bg-orange-100 text-orange-800{{ end }}">
+            {{ .T (printf "topic_statuses.%s" .Topic.Status) }}
+            </span>
+        </div>
+        <div>
+            <span class="font-semibold text-gray-700">{{ .T "topic_fields.submitted_at" }}:</span>
+            <span class="text-gray-900">{{ .Topic.SubmittedAt.Format "2006-01-02 15:04" }}</span>
+        </div>
+    </div>
+</div>
+
+<form id="topicReviewForm" hx-post="/supervisor/topic-registration/{{ .Topic.ID }}/review"
+      hx-target="#topicReviewResult"
+      hx-swap="innerHTML"
+      class="space-y-6">
+
+    <!-- Title (Lithuanian) -->
+    <div class="border border-gray-200 rounded-lg p-4" x-data="{ showComment: false }">
+        <div class="flex justify-between items-start mb-2">
+            <label class="block text-sm font-medium text-gray-700">{{ .T "topic_fields.title" }}</label>
+            <button type="button" @click="showComment = !showComment"
+                    class="text-sm text-blue-600 hover:text-blue-800">
+                <i class="fas fa-comment-dots mr-1"></i>{{ .T "common.add_comment" }}
+            </button>
+        </div>
+        <div class="text-gray-900 bg-gray-50 rounded p-3">{{ .Topic.Title }}</div>
+
+        <!-- Comments Section -->
+        <div x-show="showComment" x-transition class="mt-3">
+            <textarea name="title_comment"
+                      rows="2"
+                      placeholder="{{ .T 'topic_fields.add_comment_placeholder' }}"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Topic.TitleComment }}</textarea>
+        </div>
+
+        <!-- Existing Comments -->
+        {{ if .Topic.Comments.Title }}
+        <div class="mt-3 space-y-2">
+            {{ range .Topic.Comments.Title }}
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-user-circle text-gray-400"></i>
+                    </div>
+                    <div class="ml-3 flex-grow">
+                        <p class="text-sm font-medium text-gray-900">{{ .AuthorName }}</p>
+                        <p class="text-sm text-gray-600">{{ .CommentText }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ .CreatedAt.Format "2006-01-02 15:04" }}</p>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+        {{ end }}
+    </div>
+
+    <!-- Title (English) -->
+    <div class="border border-gray-200 rounded-lg p-4" x-data="{ showComment: false }">
+        <div class="flex justify-between items-start mb-2">
+            <label class="block text-sm font-medium text-gray-700">{{ .T "topic_fields.title_en" }}</label>
+            <button type="button" @click="showComment = !showComment"
+                    class="text-sm text-blue-600 hover:text-blue-800">
+                <i class="fas fa-comment-dots mr-1"></i>{{ .T "common.add_comment" }}
+            </button>
+        </div>
+        <div class="text-gray-900 bg-gray-50 rounded p-3">{{ .Topic.TitleEn }}</div>
+
+        <div x-show="showComment" x-transition class="mt-3">
+            <textarea name="title_en_comment"
+                      rows="2"
+                      placeholder="{{ .T 'topic_fields.add_comment_placeholder' }}"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Topic.TitleEnComment }}</textarea>
+        </div>
+    </div>
+
+    <!-- Problem Statement -->
+    <div class="border border-gray-200 rounded-lg p-4" x-data="{ showComment: false }">
+        <div class="flex justify-between items-start mb-2">
+            <label class="block text-sm font-medium text-gray-700">{{ .T "topic_fields.problem" }}</label>
+            <button type="button" @click="showComment = !showComment"
+                    class="text-sm text-blue-600 hover:text-blue-800">
+                <i class="fas fa-comment-dots mr-1"></i>{{ .T "common.add_comment" }}
+            </button>
+        </div>
+        <div class="text-gray-900 bg-gray-50 rounded p-3 whitespace-pre-wrap">{{ .Topic.Problem }}</div>
+
+        <div x-show="showComment" x-transition class="mt-3">
+            <textarea name="problem_comment"
+                      rows="3"
+                      placeholder="{{ .T 'topic_fields.add_comment_placeholder' }}"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Topic.ProblemComment }}</textarea>
+        </div>
+    </div>
+
+    <!-- Objective -->
+    <div class="border border-gray-200 rounded-lg p-4" x-data="{ showComment: false }">
+        <div class="flex justify-between items-start mb-2">
+            <label class="block text-sm font-medium text-gray-700">{{ .T "topic_fields.objective" }}</label>
+            <button type="button" @click="showComment = !showComment"
+                    class="text-sm text-blue-600 hover:text-blue-800">
+                <i class="fas fa-comment-dots mr-1"></i>{{ .T "common.add_comment" }}
+            </button>
+        </div>
+        <div class="text-gray-900 bg-gray-50 rounded p-3 whitespace-pre-wrap">{{ .Topic.Objective }}</div>
+
+        <div x-show="showComment" x-transition class="mt-3">
+            <textarea name="objective_comment"
+                      rows="2"
+                      placeholder="{{ .T 'topic_fields.add_comment_placeholder' }}"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Topic.ObjectiveComment }}</textarea>
+        </div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="border border-gray-200 rounded-lg p-4" x-data="{ showComment: false }">
+        <div class="flex justify-between items-start mb-2">
+            <label class="block text-sm font-medium text-gray-700">{{ .T "topic_fields.tasks" }}</label>
+            <button type="button" @click="showComment = !showComment"
+                    class="text-sm text-blue-600 hover:text-blue-800">
+                <i class="fas fa-comment-dots mr-1"></i>{{ .T "common.add_comment" }}
+            </button>
+        </div>
+        <div class="text-gray-900 bg-gray-50 rounded p-3 whitespace-pre-wrap">{{ .Topic.Tasks }}</div>
+
+        <div x-show="showComment" x-transition class="mt-3">
+            <textarea name="tasks_comment"
+                      rows="3"
+                      placeholder="{{ .T 'topic_fields.add_comment_placeholder' }}"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Topic.TasksComment }}</textarea>
+        </div>
+    </div>
+
+    <!-- Completion Date -->
+    <div class="border border-gray-200 rounded-lg p-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">{{ .T "topic_fields.completion_date" }}</label>
+        <div class="text-gray-900 bg-gray-50 rounded p-3">{{ .Topic.CompletionDate }}</div>
+    </div>
+
+    <!-- Overall Comment -->
+    <div class="border border-gray-200 rounded-lg p-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">{{ .T "topic_fields.overall_comment" }}</label>
+        <textarea name="overall_comment"
+                  rows="4"
+                  placeholder="{{ .T 'topic_fields.overall_comment_placeholder' }}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex justify-end space-x-3 pt-6 border-t">
+        <button type="button"
+                onclick="closeTopicModal()"
+                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            {{ .T "common.cancel" }}
+        </button>
+
+        {{ if ne .Topic.Status "approved" }}
+        <button type="submit"
+                name="action"
+                value="request_revision"
+                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+            <i class="fas fa-edit mr-1"></i>{{ .T "topic_management.request_revision" }}
+        </button>
+
+        <button type="submit"
+                name="action"
+                value="approve"
+                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            <i class="fas fa-check mr-1"></i>{{ .T "topic_management.approve_topic" }}
+        </button>
+        {{ end }}
+    </div>
+</form>
+
+<div id="topicReviewResult"></div>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .T "supervisor.dashboard_title" }} - {{ .User.Name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-gray-50 font-sans">
+<!-- Navigation -->
+<nav class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex items-center">
+                <img src="/static/images/viko-logo.png" alt="VIKO" class="h-10 mr-3">
+                <h1 class="text-xl font-semibold text-gray-800">{{ .T "common.thesis_management_system" }}</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-600">{{ .User.Name }}</span>
+                <button class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-bell"></i>
+                </button>
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <img class="h-8 w-8 rounded-full" src="https://ui-avatars.com/api/?name={{ .User.Name }}" alt="">
+                    </button>
+                    <div x-show="open" @click.away="open = false" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                        <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ .T "navigation.profile" }}</a>
+                        <a href="/auth/logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ .T "navigation.logout" }}</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-900">{{ .T "supervisor.my_students" }}</h2>
+        <p class="mt-1 text-sm text-gray-600">{{ .T "supervisor.manage_thesis_topics" }}</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-6 bg-white rounded-lg shadow p-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ .T "filters.search" }}</label>
+                <input type="text"
+                       name="search"
+                       placeholder="{{ .T 'filters.search_placeholder' }}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       hx-get="/supervisor/students"
+                       hx-trigger="keyup changed delay:500ms"
+                       hx-target="#students-table">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ .T "filters.group" }}</label>
+                <select name="group"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        hx-get="/supervisor/students"
+                        hx-trigger="change"
+                        hx-target="#students-table">
+                    <option value="">{{ .T "common.all" }}</option>
+                    <option value="PI22B">PI22B</option>
+                    <option value="PIT22">PIT22</option>
+                    <option value="PI22S">PI22S</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ .T "filters.status" }}</label>
+                <select name="status"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        hx-get="/supervisor/students"
+                        hx-trigger="change"
+                        hx-target="#students-table">
+                    <option value="">{{ .T "common.all" }}</option>
+                    <option value="pending">{{ .T "topic_statuses.pending" }}</option>
+                    <option value="approved">{{ .T "topic_statuses.approved" }}</option>
+                    <option value="revision">{{ .T "topic_statuses.revision_needed" }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ .T "filters.year" }}</label>
+                <select name="year"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        hx-get="/supervisor/students"
+                        hx-trigger="change"
+                        hx-target="#students-table">
+                    <option value="">{{ .T "common.all" }}</option>
+                    <option value="2024">2024</option>
+                    <option value="2025" selected>2025</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200" id="students-table">
+            <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ .T "student_fields.student_group" }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ .T "student_fields.student_name" }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ .T "topic_fields.title" }}
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ .T "topic_management.topic_registration" }}
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ .T "documents.title" }}
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ .T "reports.supervisor_report" }}
+                </th>
+            </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+            {{ range .Data.Students }}
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {{ .StudentGroup }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{{ .StudentName }} {{ .StudentLastname }}</div>
+                    <div class="text-sm text-gray-500">{{ .StudentEmail }}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">{{ .FinalProjectTitle }}</div>
+                    {{ if .FinalProjectTitleEn }}
+                    <div class="text-sm text-gray-500 italic">{{ .FinalProjectTitleEn }}</div>
+                    {{ end }}
+                </td>
+                <td class="px-6 py-4 text-center">
+                    {{ if .TopicRegistration }}
+                    {{ if eq .TopicRegistration.Status "submitted" }}
+                    <button onclick="openTopicModal({{ .ID }})"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                        <i class="fas fa-eye mr-1"></i> {{ .T "common.review" }}
+                    </button>
+                    {{ else if eq .TopicRegistration.Status "approved" }}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <i class="fas fa-check-circle mr-1"></i> {{ .T "topic_statuses.approved" }}
+                                </span>
+                    {{ else if eq .TopicRegistration.Status "revision" }}
+                    <button onclick="openTopicModal({{ .ID }})"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-orange-600 hover:bg-orange-700">
+                        <i class="fas fa-edit mr-1"></i> {{ .T "topic_statuses.revision_needed" }}
+                    </button>
+                    {{ else }}
+                    <span class="text-sm text-gray-500">{{ .T "topic_statuses.not_started" }}</span>
+                    {{ end }}
+                    {{ else }}
+                    <span class="text-sm text-gray-500">{{ .T "topic_statuses.not_started" }}</span>
+                    {{ end }}
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <div class="flex justify-center space-x-2">
+                        {{ if .HasThesisDocument }}
+                        <span class="text-green-600" title="{{ .T 'documents.thesis' }}">
+                                    <i class="fas fa-file-pdf"></i>
+                                </span>
+                        {{ end }}
+                        {{ if .HasPresentationVideo }}
+                        <span class="text-blue-600" title="{{ .T 'videos.video_presentation' }}">
+                                    <i class="fas fa-video"></i>
+                                </span>
+                        {{ end }}
+                        {{ if .HasSourceCode }}
+                        <span class="text-purple-600" title="{{ .T 'documents.code' }}">
+                                    <i class="fas fa-file-code"></i>
+                                </span>
+                        {{ end }}
+                        {{ if .HasRecommendation }}
+                        <span class="text-indigo-600" title="{{ .T 'documents.recommendation' }}">
+                                    <i class="fas fa-certificate"></i>
+                                </span>
+                        {{ end }}
+                    </div>
+                    <button onclick="openDocumentsModal({{ .ID }})"
+                            class="mt-1 text-xs text-blue-600 hover:text-blue-800">
+                        {{ .T "common.view_all" }}
+                    </button>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    {{ if .SupervisorReport }}
+                    {{ if .SupervisorReport.IsSigned }}
+                    <button onclick="viewSupervisorReport({{ .ID }})"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-green-600 hover:bg-green-700">
+                        <i class="fas fa-file-signature mr-1"></i> {{ .T "common.view" }}
+                    </button>
+                    {{ else }}
+                    <button onclick="editSupervisorReport({{ .ID }})"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700">
+                        <i class="fas fa-edit mr-1"></i> {{ .T "common.edit" }}
+                    </button>
+                    {{ end }}
+                    {{ else }}
+                    <button onclick="createSupervisorReport({{ .ID }})"
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-indigo-600 hover:bg-indigo-700">
+                        <i class="fas fa-plus mr-1"></i> {{ .T "reports.create_report" }}
+                    </button>
+                    {{ end }}
+                </td>
+            </tr>
+            {{ end }}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="mt-4 flex items-center justify-between">
+        <div class="text-sm text-gray-700">
+            {{ .T "pagination.showing_results" .Data.StartIndex .Data.EndIndex .Data.Total }}
+        </div>
+        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+            {{ if .Data.HasPrev }}
+            <a href="?page={{ .Data.PrevPage }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {{ end }}
+
+            {{ range .Data.Pages }}
+            <a href="?page={{ . }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 {{ if eq . $.Data.CurrentPage }}bg-blue-50 border-blue-500 text-blue-600{{ end }}">
+                {{ . }}
+            </a>
+            {{ end }}
+
+            {{ if .Data.HasNext }}
+            <a href="?page={{ .Data.NextPage }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+            {{ end }}
+        </nav>
+    </div>
+</div>
+
+<!-- Topic Registration Modal -->
+<div id="topicModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+        <div id="topicModalContent">
+            <!-- Content will be loaded via HTMX -->
+        </div>
+    </div>
+</div>
+
+<!-- Documents Modal -->
+<div id="documentsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-3xl shadow-lg rounded-md bg-white">
+        <div id="documentsModalContent">
+            <!-- Content will be loaded via HTMX -->
+        </div>
+    </div>
+</div>
+
+<script>
+    function openTopicModal(studentId) {
+        htmx.ajax('GET', `/supervisor/topic-registration/${studentId}`, {
+            target: '#topicModalContent',
+            swap: 'innerHTML'
+        }).then(() => {
+            document.getElementById('topicModal').classList.remove('hidden');
+        });
+    }
+
+    function closeTopicModal() {
+        document.getElementById('topicModal').classList.add('hidden');
+    }
+
+    function openDocumentsModal(studentId) {
+        htmx.ajax('GET', `/supervisor/documents/${studentId}`, {
+            target: '#documentsModalContent',
+            swap: 'innerHTML'
+        }).then(() => {
+            document.getElementById('documentsModal').classList.remove('hidden');
+        });
+    }
+
+    function closeDocumentsModal() {
+        document.getElementById('documentsModal').classList.add('hidden');
+    }
+
+    function createSupervisorReport(studentId) {
+        window.location.href = `/supervisor/reports/create/${studentId}`;
+    }
+
+    function editSupervisorReport(studentId) {
+        window.location.href = `/supervisor/reports/edit/${studentId}`;
+    }
+
+    function viewSupervisorReport(studentId) {
+        window.location.href = `/supervisor/reports/view/${studentId}`;
+    }
+
+    // Close modals on outside click
+    window.onclick = function(event) {
+        const topicModal = document.getElementById('topicModal');
+        const documentsModal = document.getElementById('documentsModal');
+
+        if (event.target == topicModal) {
+            closeTopicModal();
+        }
+        if (event.target == documentsModal) {
+            closeDocumentsModal();
+        }
+    }
+</script>
+</body>
+</html>

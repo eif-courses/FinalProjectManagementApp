@@ -1,0 +1,49 @@
+<!-- templates/shared/notification.html -->
+{{define "notification"}}
+<div x-data="{ show: true }"
+     x-show="show"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 transform scale-90"
+     x-transition:enter-end="opacity-100 transform scale-100"
+     x-transition:leave="transition ease-in duration-300"
+     x-transition:leave-start="opacity-100 transform scale-100"
+     x-transition:leave-end="opacity-0 transform scale-90"
+     class="fixed top-4 right-4 z-50 max-w-sm w-full">
+
+    <div class="bg-white rounded-lg shadow-lg pointer-events-auto">
+        <div class="p-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    {{if eq .Type "success"}}
+                    <i class="fas fa-check-circle text-green-400 text-xl"></i>
+                    {{else if eq .Type "error"}}
+                    <i class="fas fa-exclamation-circle text-red-400 text-xl"></i>
+                    {{else if eq .Type "warning"}}
+                    <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+                    {{else}}
+                    <i class="fas fa-info-circle text-blue-400 text-xl"></i>
+                    {{end}}
+                </div>
+                <div class="ml-3 w-0 flex-1">
+                    {{if .Title}}
+                    <p class="text-sm font-medium text-gray-900">{{.Title}}</p>
+                    {{end}}
+                    <p class="mt-1 text-sm text-gray-500">{{.Message}}</p>
+                </div>
+                <div class="ml-4 flex-shrink-0 flex">
+                    <button @click="show = false" class="inline-flex text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        Alpine.store('notification').show = false;
+    }, 5000);
+</script>
+{{end}}

@@ -1,0 +1,319 @@
+{{template "base" .}}
+
+{{define "title"}}{{.T "dashboard.department_head_dashboard"}}{{end}}
+
+{{define "content"}}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-900">{{.T "dashboard.department_overview"}}</h2>
+        <p class="mt-1 text-sm text-gray-600">{{.T "dashboard.manage_all_thesis_works"}}</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                    <i class="fas fa-users text-blue-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "statistics.total_students"}}</dt>
+                        <dd class="text-lg font-semibold text-gray-900">{{.Stats.TotalStudents}}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "statistics.pending_topics"}}</dt>
+                        <dd class="text-lg font-semibold text-gray-900">{{.Stats.PendingTopics}}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "statistics.approved_topics"}}</dt>
+                        <dd class="text-lg font-semibold text-gray-900">{{.Stats.ApprovedTopics}}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                    <i class="fas fa-file-alt text-purple-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "statistics.completed_reports"}}</dt>
+                        <dd class="text-lg font-semibold text-gray-900">{{.Stats.CompletedReports}}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-indigo-100 rounded-lg p-3">
+                    <i class="fas fa-star text-indigo-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "statistics.average_grade"}}</dt>
+                        <dd class="text-lg font-semibold text-gray-900">{{printf "%.1f" .Stats.AverageGrade}}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6" x-data="{ activeTab: 'students' }">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <button @click="activeTab = 'students'"
+                        :class="activeTab === 'students' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-users mr-2"></i>{{.T "navigation.students"}}
+                </button>
+                <button @click="activeTab = 'topics'"
+                        :class="activeTab === 'topics' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm relative">
+                    <i class="fas fa-file-alt mr-2"></i>{{.T "navigation.topics"}}
+                    {{if gt .Stats.PendingTopics 0}}
+                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        {{.Stats.PendingTopics}}
+                    </span>
+                    {{end}}
+                </button>
+                <button @click="activeTab = 'reports'"
+                        :class="activeTab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-chart-bar mr-2"></i>{{.T "navigation.reports"}}
+                </button>
+                <button @click="activeTab = 'commission'"
+                        :class="activeTab === 'commission' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-user-tie mr-2"></i>{{.T "navigation.commission"}}
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="mt-6">
+            <!-- Students Tab -->
+            <div x-show="activeTab === 'students'" x-cloak>
+                <div class="bg-white shadow rounded-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">{{.T "student_management.student_list"}}</h3>
+                            <div class="flex space-x-2">
+                                <button class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                                    <i class="fas fa-download mr-1"></i> {{.T "common.export"}}
+                                </button>
+                                <button class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                                    <i class="fas fa-filter mr-1"></i> {{.T "common.filter"}}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Students table content -->
+                    <div hx-get="/admin/students-table"
+                         hx-trigger="load"
+                         hx-target="this">
+                        <div class="p-4 text-center">
+                            <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Topics Tab -->
+            <div x-show="activeTab === 'topics'" x-cloak>
+                <div class="bg-white shadow rounded-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">{{.T "topic_management.pending_approval"}}</h3>
+                    </div>
+
+                    <div hx-get="/admin/topics-table"
+                         hx-trigger="load"
+                         hx-target="this">
+                        <div class="p-4 text-center">
+                            <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div x-show="activeTab === 'reports'" x-cloak>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- By Program Chart -->
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{.T "reports.by_program"}}</h3>
+                        <canvas id="programChart"></canvas>
+                    </div>
+
+                    <!-- Grade Distribution -->
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{.T "reports.grade_distribution"}}</h3>
+                        <canvas id="gradeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="mt-6 bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">{{.T "reports.completion_status"}}</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">{{.T "topic_statuses.approved"}}</span>
+                            <div class="flex items-center">
+                                <div class="w-48 bg-gray-200 rounded-full h-2 mr-2">
+                                    <div class="bg-green-600 h-2 rounded-full" style="width: {{.Stats.TopicApprovalRate}}%"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-900">{{.Stats.TopicApprovalRate}}%</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">{{.T "reports.supervisor_reports"}}</span>
+                            <div class="flex items-center">
+                                <div class="w-48 bg-gray-200 rounded-full h-2 mr-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: {{.Stats.SupervisorReportRate}}%"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-900">{{.Stats.SupervisorReportRate}}%</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">{{.T "reports.reviewer_reports"}}</span>
+                            <div class="flex items-center">
+                                <div class="w-48 bg-gray-200 rounded-full h-2 mr-2">
+                                    <div class="bg-purple-600 h-2 rounded-full" style="width: {{.Stats.ReviewerReportRate}}%"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-900">{{.Stats.ReviewerReportRate}}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commission Tab -->
+            <div x-show="activeTab === 'commission'" x-cloak>
+                <div class="bg-white shadow rounded-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">{{.T "commission.access_management"}}</h3>
+                            <button onclick="openCreateCommissionModal()"
+                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700">
+                                <i class="fas fa-plus mr-1"></i> {{.T "commission.create_access"}}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div hx-get="/admin/commission-table"
+                         hx-trigger="load"
+                         hx-target="this">
+                        <div class="p-4 text-center">
+                            <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Commission Access Modal -->
+<div id="createCommissionModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div id="createCommissionContent">
+            <!-- Will be loaded via HTMX -->
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize charts
+    const programCtx = document.getElementById('programChart').getContext('2d');
+    const gradeCtx = document.getElementById('gradeChart').getContext('2d');
+
+    new Chart(programCtx, {
+        type: 'bar',
+        data: {
+            labels: {{.Stats.ProgramLabels}},
+    datasets: [{
+        label: '{{.T "statistics.students"}}',
+        data: {{.Stats.ProgramData}},
+    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 1
+    }]
+    },
+    options: {
+        responsive: true,
+            scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+    });
+
+    new Chart(gradeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['10', '9', '8', '7', '6', '5'],
+            datasets: [{
+                data: {{.Stats.GradeData}},
+        backgroundColor: [
+            'rgba(34, 197, 94, 0.5)',
+            'rgba(59, 130, 246, 0.5)',
+            'rgba(168, 85, 247, 0.5)',
+            'rgba(251, 191, 36, 0.5)',
+            'rgba(251, 146, 60, 0.5)',
+            'rgba(239, 68, 68, 0.5)'
+        ]
+    }]
+    },
+    options: {
+        responsive: true,
+            plugins: {
+            legend: {
+                position: 'right',
+            }
+        }
+    }
+    });
+
+    function openCreateCommissionModal() {
+        htmx.ajax('GET', '/admin/commission/create-modal', {
+            target: '#createCommissionContent',
+            swap: 'innerHTML'
+        }).then(() => {
+            document.getElementById('createCommissionModal').classList.remove('hidden');
+        });
+    }
+
+    function closeCreateCommissionModal() {
+        document.getElementById('createCommissionModal').classList.add('hidden');
+    }
+</script>
+{{end}}

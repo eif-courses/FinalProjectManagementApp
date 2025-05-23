@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .T "reports.reviewer_report" }} - {{ .Student.GetFullName }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-gray-50 font-sans">
+<!-- Navigation -->
+<nav class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex items-center">
+                <a href="/reviewer" class="text-gray-500 hover:text-gray-700 mr-4">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="text-xl font-semibold text-gray-800">{{ .T "reports.reviewer_report" }}</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-600">{{ .User.Name }}</span>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <div class="text-center mb-6">
+            <img src="/static/img/viko-logo.png" alt="VIKO" class="h-16 mx-auto mb-4">
+            <h2 class="text-xl font-bold uppercase">{{ .T "institution.name" }}</h2>
+            <h3 class="text-lg font-semibold">{{ .T "institution.faculty" }}</h3>
+            <h4 class="text-md">{{ .Department }}</h4>
+            <div class="mt-4">
+                <h1 class="text-2xl font-bold">{{ .T "reports.reviewer_report_title" }}</h1>
+            </div>
+        </div>
+
+        <!-- Thesis Information -->
+        <div class="space-y-2 text-sm">
+            <div>
+                <span class="font-semibold">{{ .T "topic_fields.title" }}:</span>
+                <span>{{ .Student.FinalProjectTitle }}</span>
+            </div>
+            <div>
+                <span class="font-semibold">{{ .T "student_fields.student_name" }}:</span>
+                <span>{{ .Student.GetFullName }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Form -->
+    <form id="reviewerReportForm"
+          hx-post="/reviewer/reports/{{ .Student.ID }}"
+          hx-target="#formResult"
+          class="space-y-6">
+
+        <!-- Reviewer Details -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold mb-4">{{ .T "report_fields.reviewer_details" }}</h3>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.reviewer_personal_details" }} <span class="text-red-500">*</span>
+                </label>
+                <input type="text"
+                       name="reviewer_personal_details"
+                       value="{{ .Report.ReviewerPersonalDetails }}"
+                       placeholder="{{ .T 'report_fields.reviewer_details_placeholder' }}"
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <!-- Review Sections -->
+        <div class="bg-white shadow rounded-lg p-6 space-y-6">
+            <h3 class="text-lg font-semibold mb-4">{{ .T "report_fields.thesis_evaluation" }}</h3>
+
+            <!-- Goals Review -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_goals" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_goals"
+                          rows="3"
+                          required
+                          placeholder="{{ .T 'report_fields.review_goals_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewGoals }}</textarea>
+            </div>
+
+            <!-- Theory Review -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_theory" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_theory"
+                          rows="3"
+                          required
+                          placeholder="{{ .T 'report_fields.review_theory_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewTheory }}</textarea>
+            </div>
+
+            <!-- Practical Review -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_practical" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_practical"
+                          rows="3"
+                          required
+                          placeholder="{{ .T 'report_fields.review_practical_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewPractical }}</textarea>
+            </div>
+
+            <!-- Theory-Practice Link -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_theory_practical_link" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_theory_practical_link"
+                          rows="3"
+                          required
+                          placeholder="{{ .T 'report_fields.review_theory_practical_link_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewTheoryPracticalLink }}</textarea>
+            </div>
+
+            <!-- Results Review -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_results" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_results"
+                          rows="3"
+                          required
+                          placeholder="{{ .T 'report_fields.review_results_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewResults }}</textarea>
+            </div>
+
+            <!-- Practical Significance -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_practical_significance" }}
+                </label>
+                <textarea name="review_practical_significance"
+                          rows="2"
+                          placeholder="{{ .T 'report_fields.review_practical_significance_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewPracticalSignificance }}</textarea>
+            </div>
+
+            <!-- Language Review -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_language" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_language"
+                          rows="2"
+                          required
+                          placeholder="{{ .T 'report_fields.review_language_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewLanguage }}</textarea>
+            </div>
+        </div>
+
+        <!-- Pros and Cons -->
+        <div class="bg-white shadow rounded-lg p-6 space-y-6">
+            <h3 class="text-lg font-semibold mb-4">{{ .T "report_fields.pros_and_cons" }}</h3>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_pros" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_pros"
+                          rows="3"
+                          required
+                          placeholder="{{ .T 'report_fields.review_pros_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewPros }}</textarea>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ .T "report_fields.review_cons" }} <span class="text-red-500">*</span>
+                </label>
+                <textarea name="review_cons"
+                          rows="3"
+                          required
+                          placeholder="{{ .T 'report_fields.review_cons_placeholder' }}"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewCons }}</textarea>
+            </div>
+        </div>
+
+        <!-- Defense Questions -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                {{ .T "report_fields.review_questions" }} <span class="text-red-500">*</span>
+            </label>
+            <textarea name="review_questions"
+                      rows="4"
+                      required
+                      placeholder="{{ .T 'report_fields.review_questions_placeholder' }}"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewQuestions }}</textarea>
+        </div>
+
+        <!-- Grade -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                {{ .T "report_fields.grade" }} <span class="text-red-500">*</span>
+            </label>
+            <select name="grade"
+                    required
+                    class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">{{ .T "grades.select_grade" }}</option>
+                {{ range $i := seq 5 10 }}
+                <option value="{{ $i }}" {{ if eq $.Report.Grade (float64 $i) }}selected{{ end }}>
+                    {{ $i }} - {{ $.T (printf "grades.%d" $i) }}
+                </option>
+                {{ end }}
+            </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <input type="checkbox"
+                           name="is_signed"
+                           id="is_signed"
+                           {{ if .Report.IsSigned }}checked disabled{{ end }}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="is_signed" class="ml-2 text-sm text-gray-700">
+                        {{ .T "report_fields.sign_report" }}
+                    </label>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button type="button"
+                            onclick="window.location.href='/reviewer'"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        {{ .T "common.cancel" }}
+                    </button>
+
+                    {{ if not .Report.IsSigned }}
+                    <button type="submit"
+                            name="action"
+                            value="save"
+                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-save mr-1"></i>{{ .T "common.save" }}
+                    </button>
+
+                    <button type="submit"
+                            name="action"
+                            value="sign"
+                            onclick="return confirm('{{ .T "report_fields.sign_confirmation" }}')"
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <i class="fas fa-signature mr-1"></i>{{ .T "report_fields.sign_and_submit" }}
+                    </button>
+                    {{ else }}
+                    <button type="button"
+                            onclick="window.print()"
+                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        <i class="fas fa-print mr-1"></i>{{ .T "common.print" }}
+                    </button>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div id="formResult" class="mt-4"></div>
+</div>
+
+<!-- Print styles -->
+<style>
+    @media print {
+        nav, .no-print, button, input[type="checkbox"] { display: none !important; }
+        body { background: white; }
+        .shadow { box-shadow: none !important; }
+        .bg-gray-50 { background: white !important; }
+        textarea, select { border: none !important; padding: 0 !important; resize: none !important; }
+    }
+</style>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!-- templates/components/pagination.html -->
+{{define "pagination"}}
+<div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+    <div class="flex-1 flex justify-between sm:hidden">
+        {{if .HasPrev}}
+        <a href="?page={{.PrevPage}}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            {{.T "pagination.previous"}}
+        </a>
+        {{end}}
+        {{if .HasNext}}
+        <a href="?page={{.NextPage}}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            {{.T "pagination.next"}}
+        </a>
+        {{end}}
+    </div>
+
+    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                {{.T "pagination.showing"}}
+                <span class="font-medium">{{.StartIndex}}</span>
+                {{.T "pagination.to"}}
+                <span class="font-medium">{{.EndIndex}}</span>
+                {{.T "pagination.of"}}
+                <span class="font-medium">{{.Total}}</span>
+                {{.T "pagination.results"}}
+            </p>
+        </div>
+
+        <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <!-- First Page -->
+                {{if gt .CurrentPage 1}}
+                <a href="?page=1{{.QueryString}}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">{{.T "pagination.first"}}</span>
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+                {{end}}
+
+                <!-- Previous Page -->
+                {{if .HasPrev}}
+                <a href="?page={{.PrevPage}}{{.QueryString}}" class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">{{.T "pagination.previous"}}</span>
+                    <i class="fas fa-angle-left"></i>
+                </a>
+                {{end}}
+
+                <!-- Page Numbers -->
+                {{range .PageNumbers}}
+                {{if eq . $.CurrentPage}}
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                        {{.}}
+                    </span>
+                {{else if eq . "..."}}
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        ...
+                    </span>
+                {{else}}
+                <a href="?page={{.}}{{$.QueryString}}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    {{.}}
+                </a>
+                {{end}}
+                {{end}}
+
+                <!-- Next Page -->
+                {{if .HasNext}}
+                <a href="?page={{.NextPage}}{{.QueryString}}" class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">{{.T "pagination.next"}}</span>
+                    <i class="fas fa-angle-right"></i>
+                </a>
+                {{end}}
+
+                <!-- Last Page -->
+                {{if lt .CurrentPage .TotalPages}}
+                <a href="?page={{.TotalPages}}{{.QueryString}}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">{{.T "pagination.last"}}</span>
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+                {{end}}
+            </nav>
+        </div>
+    </div>
+</div>
+{{end}}
+
+<!-- HTMX-enabled pagination for dynamic loading -->
+{{define "htmx-pagination"}}
+<div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                {{.T "pagination.showing"}}
+                <span class="font-medium">{{.StartIndex}}</span>
+                {{.T "pagination.to"}}
+                <span class="font-medium">{{.EndIndex}}</span>
+                {{.T "pagination.of"}}
+                <span class="font-medium">{{.Total}}</span>
+                {{.T "pagination.results"}}
+            </p>
+        </div>
+
+        <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                {{range .PageNumbers}}
+                {{if eq . $.CurrentPage}}
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                        {{.}}
+                    </span>
+                {{else if eq . "..."}}
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        ...
+                    </span>
+                {{else}}
+                <button hx-get="{{$.HtmxURL}}?page={{.}}{{$.QueryString}}"
+                        hx-target="{{$.HtmxTarget}}"
+                        hx-swap="innerHTML"
+                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    {{.}}
+                </button>
+                {{end}}
+                {{end}}
+            </nav>
+        </div>
+    </div>
+</div>
+{{end}}

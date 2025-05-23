@@ -1,0 +1,144 @@
+<!-- templates/reviewer/report_view.html -->
+{{template "base" .}}
+
+{{define "title"}}{{.T "reports.reviewer_report"}} - {{.Student.GetFullName}}{{end}}
+
+{{define "head"}}
+<style>
+    @media print {
+        body { margin: 0; }
+        .page-break { page-break-after: always; }
+        .no-print { display: none !important; }
+        .print-only { display: block !important; }
+    }
+    .print-only { display: none; }
+</style>
+{{end}}
+
+{{define "content"}}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Action Buttons (No Print) -->
+    <div class="mb-6 flex justify-between items-center no-print">
+        <a href="/reviewer" class="text-blue-600 hover:text-blue-800">
+            <i class="fas fa-arrow-left mr-2"></i>{{.T "common.back"}}
+        </a>
+        <div class="space-x-2">
+            <button onclick="window.print()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                <i class="fas fa-print mr-1"></i> {{.T "common.print"}}
+            </button>
+            <a href="/reports/reviewer/{{.Report.ID}}/pdf" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                <i class="fas fa-file-pdf mr-1"></i> {{.T "common.download_pdf"}}
+            </a>
+        </div>
+    </div>
+
+    <!-- Report Content -->
+    <div class="bg-white shadow rounded-lg p-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <img src="/static/img/viko-logo.png" alt="VIKO" class="h-20 mx-auto mb-4">
+            <h2 class="text-xl font-bold uppercase">{{.T "institution.name"}}</h2>
+            <h3 class="text-lg font-semibold">{{.T "institution.faculty"}}</h3>
+            <h4 class="text-md">{{.Department}}</h4>
+            <div class="mt-6">
+                <h1 class="text-2xl font-bold">{{.T "reports.reviewer_report_title"}}</h1>
+            </div>
+        </div>
+
+        <!-- Thesis Information -->
+        <div class="mb-8">
+            <p class="mb-2"><span class="font-semibold">{{.T "topic_fields.title"}}:</span> {{.Student.FinalProjectTitle}}</p>
+            <p><span class="font-semibold">{{.T "student_fields.student_name"}}:</span> {{.Student.GetFullName}}</p>
+        </div>
+
+        <!-- Reviewer Information -->
+        <div class="mb-8">
+            <p><span class="font-semibold">{{.T "report_fields.reviewer"}}:</span> {{.Report.ReviewerPersonalDetails}}</p>
+        </div>
+
+        <!-- Evaluation Sections -->
+        <div class="space-y-6 mb-8">
+            <div>
+                <h3 class="font-semibold mb-2">{{.T "report_fields.review_goals"}}</h3>
+                <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewGoals}}</div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold mb-2">{{.T "report_fields.review_theory"}}</h3>
+                <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewTheory}}</div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold mb-2">{{.T "report_fields.review_practical"}}</h3>
+                <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewPractical}}</div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold mb-2">{{.T "report_fields.review_theory_practical_link"}}</h3>
+                <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewTheoryPracticalLink}}</div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold mb-2">{{.T "report_fields.review_results"}}</h3>
+                <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewResults}}</div>
+            </div>
+
+            {{if .Report.ReviewPracticalSignificance}}
+            <div>
+                <h3 class="font-semibold mb-2">{{.T "report_fields.review_practical_significance"}}</h3>
+                <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewPracticalSignificance}}</div>
+            </div>
+            {{end}}
+
+            <div>
+                <h3 class="font-semibold mb-2">{{.T "report_fields.review_language"}}</h3>
+                <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewLanguage}}</div>
+            </div>
+        </div>
+
+        <!-- Pros and Cons -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4">{{.T "report_fields.pros_and_cons"}}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-semibold mb-2 text-green-600">{{.T "report_fields.review_pros"}}</h4>
+                    <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewPros}}</div>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-2 text-red-600">{{.T "report_fields.review_cons"}}</h4>
+                    <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewCons}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Defense Questions -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4">{{.T "report_fields.review_questions"}}</h3>
+            <div class="border border-gray-300 rounded p-3 text-sm whitespace-pre-wrap">{{.Report.ReviewQuestions}}</div>
+        </div>
+
+        <!-- Grade -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4">{{.T "report_fields.final_evaluation"}}</h3>
+            <p class="text-xl">
+                <span class="font-semibold">{{.T "report_fields.grade"}}:</span>
+                <span class="text-2xl font-bold {{.Report.GetGradeColor}}">{{.Report.GetGradeDisplay}}</span>
+            </p>
+        </div>
+
+        <!-- Signature -->
+        <div class="mt-12">
+            <div class="flex justify-between">
+                <div>
+                    <div class="border-b border-gray-400 w-64 mb-2"></div>
+                    <p class="text-sm">{{.Report.ReviewerPersonalDetails}}</p>
+                </div>
+                <div>
+                    <div class="border-b border-gray-400 w-32 mb-2"></div>
+                    <p class="text-sm">{{.T "common.date"}}: {{.Report.UpdatedDate.Format "2006-01-02"}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
