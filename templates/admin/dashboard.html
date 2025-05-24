@@ -1,99 +1,232 @@
-package handlers
+{{template "base" .}}
 
-import (
-"fmt"
-"html/template"
-"log"
-"net/http"
+{{define "title"}}{{.T "dashboard.admin_dashboard"}}{{end}}
 
-"github.com/jmoiron/sqlx"
+{{define "content"}}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900">{{.T "dashboard.welcome"}}, {{.User.Name}}</h2>
+        <p class="mt-1 text-lg text-gray-600">{{.T "dashboard.overview"}}</p>
+    </div>
 
-"FinalProjectManagementApp/auth"
-"FinalProjectManagementApp/i18n"
-)
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <!-- Total Students Card -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                    <i class="fas fa-user-graduate text-blue-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "student_management.total_students"}}</dt>
+                        <dd class="flex items-baseline">
+                            <div class="text-2xl font-semibold text-gray-900">{{.Stats.TotalStudents}}</div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
 
-type AdminHandler struct {
-db        *sqlx.DB
-templates *template.Template
-localizer *i18n.Localizer
-}
+        <!-- Pending Topics Card -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "topic_management.pending_approval"}}</dt>
+                        <dd class="flex items-baseline">
+                            <div class="text-2xl font-semibold text-gray-900">{{.Stats.PendingTopics}}</div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
 
-func NewAdminHandler(db *sqlx.DB, localizer *i18n.Localizer) *AdminHandler {
-return &AdminHandler{
-db:        db,
-localizer: localizer,
-}
-}
+        <!-- Approved Topics Card -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "topic_statuses.approved"}}</dt>
+                        <dd class="flex items-baseline">
+                            <div class="text-2xl font-semibold text-gray-900">{{.Stats.ApprovedTopics}}</div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
 
-func (h *AdminHandler) DashboardHandler(w http.ResponseWriter, r *http.Request) {
-user := auth.GetUserFromContext(r.Context())
-if user == nil {
-log.Println("No user in admin dashboard handler")
-http.Redirect(w, r, "/auth/login", http.StatusFound)
-return
-}
+        <!-- Completed Reports Card -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                    <i class="fas fa-file-alt text-purple-600 text-xl"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">{{.T "statistics.completed"}}</dt>
+                        <dd class="flex items-baseline">
+                            <div class="text-2xl font-semibold text-gray-900">{{.Stats.CompletedReports}}</div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
 
-log.Printf("Admin dashboard accessed by %s", user.Email)
+    <!-- Tab Navigation -->
+    <div class="mb-8">
+        <nav class="flex space-x-4" aria-label="Tabs">
+            <button hx-get="/admin/students-table"
+                    hx-target="#tab-content"
+                    hx-swap="innerHTML"
+                    hx-trigger="click"
+                    hx-indicator="#loading-indicator"
+                    class="tab-button bg-white rounded-md px-3 py-2 text-sm font-medium text-gray-900 hover:text-gray-700 shadow">
+                <i class="fas fa-users mr-2"></i>{{.T "navigation.students"}}
+            </button>
+            <button hx-get="/admin/topics-table"
+                    hx-target="#tab-content"
+                    hx-swap="innerHTML"
+                    hx-trigger="click"
+                    hx-indicator="#loading-indicator"
+                    class="tab-button text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium">
+                <i class="fas fa-file-alt mr-2"></i>{{.T "navigation.topics"}}
+            </button>
+            <button hx-get="/admin/commission-table"
+                    hx-target="#tab-content"
+                    hx-swap="innerHTML"
+                    hx-trigger="click"
+                    hx-indicator="#loading-indicator"
+                    class="tab-button text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium">
+                <i class="fas fa-user-tie mr-2"></i>{{.T "navigation.commission"}}
+            </button>
+        </nav>
+    </div>
 
-// For now, just return a simple HTML response to test
-w.Header().Set("Content-Type", "text/html; charset=utf-8")
-html := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head>
-    <title>Admin Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100">
-<div class="container mx-auto p-8">
-    <h1 class="text-3xl font-bold mb-4">Admin Dashboard</h1>
-    <p class="mb-4">Welcome, %s (%s)</p>
-    <div class="bg-white rounded shadow p-6">
-        <h2 class="text-xl font-semibold mb-2">Quick Stats</h2>
-        <p>This is a temporary admin dashboard.</p>
-        <p class="mt-4">
-            <a href="/auth/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
-        </p>
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="htmx-indicator flex justify-center py-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="tab-content" class="bg-white shadow rounded-lg">
+        <!-- Default content - Students table loaded via HTMX -->
+        <div hx-get="/admin/students-table"
+             hx-trigger="load"
+             hx-swap="outerHTML"
+             hx-indicator="#loading-indicator">
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <!-- Students by Program Chart -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">{{.T "statistics.students_by_program"}}</h3>
+            <canvas id="programChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Grade Distribution Chart -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">{{.T "statistics.grade_distribution"}}</h3>
+            <canvas id="gradeChart" width="400" height="200"></canvas>
+        </div>
     </div>
 </div>
-</body>
-</html>`, user.Name, user.Email)
+{{end}}
 
-w.Write([]byte(html))
-}
+{{define "scripts"}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Tab switching logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-button');
 
-// Add stub methods for other handlers
-func (h *AdminHandler) StudentsHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Students page"))
-}
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active state from all buttons
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('bg-white', 'rounded-md', 'text-gray-900', 'shadow');
+                    btn.classList.add('text-gray-500');
+                });
 
-func (h *AdminHandler) StudentsSearchHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Students search"))
-}
+                // Add active state to clicked button
+                this.classList.remove('text-gray-500');
+                this.classList.add('bg-white', 'rounded-md', 'text-gray-900', 'shadow');
+            });
+        });
 
-func (h *AdminHandler) StudentsTableHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Students table"))
-}
+        // Program Distribution Chart
+        const programCtx = document.getElementById('programChart').getContext('2d');
+        new Chart(programCtx, {
+            type: 'bar',
+            data: {
+                labels: {{.Stats.ProgramLabels}},
+        datasets: [{
+            label: '{{.T "statistics.number_of_students"}}',
+            data: {{.Stats.ProgramData}},
+        backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(251, 146, 60, 0.8)',
+            'rgba(147, 51, 234, 0.8)'
+        ],
+            borderColor: [
+            'rgba(59, 130, 246, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(251, 146, 60, 1)',
+            'rgba(147, 51, 234, 1)'
+        ],
+            borderWidth: 1
+    }]
+    },
+        options: {
+            responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
 
-func (h *AdminHandler) TopicsHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Topics page"))
-}
-
-func (h *AdminHandler) TopicsTableHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Topics table"))
-}
-
-func (h *AdminHandler) ApproveTopicHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Approve topic"))
-}
-
-func (h *AdminHandler) ReportsHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Reports page"))
-}
-
-func (h *AdminHandler) CommissionTableHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Commission table"))
-}
-
-func (h *AdminHandler) CreateCommissionModalHandler(w http.ResponseWriter, r *http.Request) {
-w.Write([]byte("Create commission modal"))
-}
+        // Grade Distribution Chart
+        const gradeCtx = document.getElementById('gradeChart').getContext('2d');
+        new Chart(gradeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['5', '6', '7', '8', '9', '10'],
+                datasets: [{
+                    data: {{.Stats.GradeData}},
+            backgroundColor: [
+                'rgba(239, 68, 68, 0.8)',
+                'rgba(251, 146, 60, 0.8)',
+                'rgba(251, 191, 36, 0.8)',
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(16, 185, 129, 0.8)',
+                'rgba(5, 150, 105, 0.8)'
+            ]
+        }]
+    },
+        options: {
+            responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    });
+</script>
+{{end}}
