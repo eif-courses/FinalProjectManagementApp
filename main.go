@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"syscall"
 	"time"
@@ -73,7 +75,9 @@ func main() {
 	// Log available templates
 	log.Printf("✅ Templates initialized. Available templates:")
 	for _, tmpl := range globalTemplates.Templates() {
-		log.Printf("   - %s", tmpl.Name())
+		if tmpl.Name() != "" {
+			log.Printf("   - %s", tmpl.Name())
+		}
 	}
 
 	// Initialize services
@@ -186,20 +190,187 @@ func initializeTemplates() (*template.Template, error) {
 			}
 			return dict, nil
 		},
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
+		"contains":  strings.Contains,
+		"trim":      strings.TrimSpace,
+		"lower":     strings.ToLower,
+		"upper":     strings.ToUpper,
+		"title":     strings.Title,
+		"replace":   strings.Replace,
+		"split":     strings.Split,
+		"join":      strings.Join,
+		"default": func(def interface{}, value interface{}) interface{} {
+			if value == nil || value == "" {
+				return def
+			}
+			return value
+		},
+		"json": func(v interface{}) (template.JS, error) {
+			data, err := json.Marshal(v)
+			if err != nil {
+				return "", err
+			}
+			return template.JS(data), nil
+		},
+		"safe": func(s string) template.HTML {
+			return template.HTML(s)
+		},
+		"safeJS": func(s string) template.JS {
+			return template.JS(s)
+		},
+		"safeCSS": func(s string) template.CSS {
+			return template.CSS(s)
+		},
+		"safeURL": func(s string) template.URL {
+			return template.URL(s)
+		},
+		"inc": func(i int) int {
+			return i + 1
+		},
+		"dec": func(i int) int {
+			return i - 1
+		},
+		"mod": func(i, j int) int {
+			return i % j
+		},
+		"eq": func(a, b interface{}) bool {
+			return a == b
+		},
+		"ne": func(a, b interface{}) bool {
+			return a != b
+		},
+		"lt": func(a, b interface{}) bool {
+			switch v := a.(type) {
+			case int:
+				if w, ok := b.(int); ok {
+					return v < w
+				}
+			case float64:
+				if w, ok := b.(float64); ok {
+					return v < w
+				}
+			}
+			return false
+		},
+		"le": func(a, b interface{}) bool {
+			switch v := a.(type) {
+			case int:
+				if w, ok := b.(int); ok {
+					return v <= w
+				}
+			case float64:
+				if w, ok := b.(float64); ok {
+					return v <= w
+				}
+			}
+			return false
+		},
+		"gt": func(a, b interface{}) bool {
+			switch v := a.(type) {
+			case int:
+				if w, ok := b.(int); ok {
+					return v > w
+				}
+			case float64:
+				if w, ok := b.(float64); ok {
+					return v > w
+				}
+			}
+			return false
+		},
+		"ge": func(a, b interface{}) bool {
+			switch v := a.(type) {
+			case int:
+				if w, ok := b.(int); ok {
+					return v >= w
+				}
+			case float64:
+				if w, ok := b.(float64); ok {
+					return v >= w
+				}
+			}
+			return false
+		},
+		"and": func(a, b bool) bool {
+			return a && b
+		},
+		"or": func(a, b bool) bool {
+			return a || b
+		},
+		"not": func(a bool) bool {
+			return !a
+		},
+		"len": func(v interface{}) int {
+			switch reflect.TypeOf(v).Kind() {
+			case reflect.Slice, reflect.Array, reflect.Map, reflect.String:
+				return reflect.ValueOf(v).Len()
+			}
+			return 0
+		},
+		"index": func(v interface{}, i int) interface{} {
+			switch reflect.TypeOf(v).Kind() {
+			case reflect.Slice, reflect.Array:
+				return reflect.ValueOf(v).Index(i).Interface()
+			}
+			return nil
+		},
 	}
 
-	// Create new template with functions
+	// Create base template
 	tmpl := template.New("").Funcs(funcMap)
 
-	// Parse templates by reading files directly
+	// First, parse all layout templates
+	layoutFiles, err := filepath.Glob("templates/layouts/*.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to glob layouts: %w", err)
+	}
+
+	for _, file := range layoutFiles {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			log.Printf("Warning: failed to read %s: %v", file, err)
+			continue
+		}
+
+		name := filepath.Base(file)
+		_, err = tmpl.New(name).Parse(string(content))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse layout %s: %w", file, err)
+		}
+		log.Printf("   ✓ Parsed layout: %s", name)
+	}
+
+	// Then parse component templates
+	componentFiles, err := filepath.Glob("templates/components/*.html")
+	if err != nil {
+		log.Printf("Warning: failed to glob components: %v", err)
+	} else {
+		for _, file := range componentFiles {
+			content, err := os.ReadFile(file)
+			if err != nil {
+				log.Printf("Warning: failed to read %s: %v", file, err)
+				continue
+			}
+
+			name := filepath.Base(file)
+			_, err = tmpl.New(name).Parse(string(content))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse component %s: %w", file, err)
+			}
+			log.Printf("   ✓ Parsed component: %s", name)
+		}
+	}
+
+	// Parse all other templates
 	templateDirs := []string{
-		"templates/layouts",
 		"templates/auth",
-		"templates/components",
 		"templates/shared",
 		"templates/supervisor",
 		"templates/reviewer",
 		"templates/admin",
+		"templates/student",
+		"templates/commission",
 	}
 
 	for _, dir := range templateDirs {
@@ -222,6 +393,7 @@ func initializeTemplates() (*template.Template, error) {
 				log.Printf("Error parsing template %s: %v", file, err)
 				return nil, fmt.Errorf("failed to parse %s: %w", file, err)
 			}
+			log.Printf("   ✓ Parsed %s: %s", filepath.Base(dir), name)
 		}
 	}
 
@@ -285,7 +457,7 @@ func setupRouter(
 	// Security middleware
 	r.Use(custommiddleware.SecurityHeadersMiddleware)
 
-	// Rate limiting
+	// Rate limiting for production
 	if getEnv("ENV", "development") == "production" {
 		r.Use(custommiddleware.RateLimitMiddleware(100))
 	}
@@ -328,11 +500,14 @@ func setupRouter(
 	fileServer := http.FileServer(http.Dir("./static/"))
 	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
-	// Public commission access
+	// Public commission access routes
 	r.Route("/commission", func(r chi.Router) {
-		r.Use(commissionService.CommissionAccessMiddleware)
-		r.Get("/{accessCode}", commissionHandler.CommissionViewHandler)
-		r.Get("/{accessCode}/*", commissionHandler.CommissionViewHandler)
+		// Commission access with code in URL
+		r.Route("/{accessCode}", func(r chi.Router) {
+			r.Use(commissionService.CommissionAccessMiddleware)
+			r.Get("/", commissionHandler.CommissionViewHandler)
+			r.Get("/*", commissionHandler.CommissionViewHandler)
+		})
 	})
 
 	// Auth routes
@@ -349,7 +524,7 @@ func setupRouter(
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
 
-		// Dashboard
+		// Root redirects to appropriate dashboard
 		r.Get("/", dashboardHandler)
 		r.Get("/dashboard", dashboardHandler)
 
@@ -415,7 +590,7 @@ func setupRouter(
 			r.Get("/topics-table", adminHandler.TopicsTableHandler)
 			r.Get("/commission-table", adminHandler.CommissionTableHandler)
 
-			// Student management
+			// Full page routes
 			r.Get("/students", adminHandler.StudentsHandler)
 			r.Get("/students/search", adminHandler.StudentsSearchHandler)
 
@@ -494,6 +669,7 @@ func getAllowedOrigins() []string {
 			"http://localhost:3000",
 			"http://localhost:3001",
 			"http://127.0.0.1:8080",
+			"http://127.0.0.1:3000",
 		)
 	}
 
@@ -563,10 +739,17 @@ func authLoginHandler(w http.ResponseWriter, r *http.Request) {
     <title>%s - VIKO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .bg-pattern {
+            background-color: #f3f4f6;
+            background-image: url("data:image/svg+xml,%%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%%3E%%3Cg fill='none' fill-rule='evenodd'%%3E%%3Cg fill='%%234f46e5' fill-opacity='0.05'%%3E%%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%%3E%%3C/g%%3E%%3C/g%%3E%%3C/svg%%3E");
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body class="bg-pattern min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full space-y-8">
         <div class="text-center">
+            <img src="/static/images/viko-logo.png" alt="VIKO" class="h-20 mx-auto mb-4">
             <h2 class="text-3xl font-bold text-gray-900">%s</h2>
             <p class="mt-2 text-sm text-gray-600">%s</p>
         </div>
@@ -582,15 +765,30 @@ func authLoginHandler(w http.ResponseWriter, r *http.Request) {
                 
                 <div>
                     <form action="/auth/microsoft" method="get">
-                        <button type="submit" class="w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <button type="submit" class="w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
                             <i class="fab fa-microsoft mr-2"></i>
                             %s
                         </button>
                     </form>
                 </div>
                 
+                <div class="rounded-md bg-blue-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                %s
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="text-center text-sm text-gray-600">
-                    <p>%s</p>
+                    <a href="#" class="font-medium text-blue-600 hover:text-blue-500">
+                        %s
+                    </a>
                 </div>
             </div>
         </div>
@@ -614,16 +812,17 @@ func authLoginHandler(w http.ResponseWriter, r *http.Request) {
 							<i class="fas fa-exclamation-circle text-red-400"></i>
 						</div>
 						<div class="ml-3">
-							<h3 class="text-sm font-medium text-red-800">Authentication Error</h3>
+							<h3 class="text-sm font-medium text-red-800">%s</h3>
 							<p class="text-sm text-red-700 mt-1">%s</p>
 						</div>
 					</div>
-				</div>`, errMsg)
+				</div>`, globalLocalizer.T(lang, "auth.authentication_error"), errMsg)
 			}
 			return ""
 		}(),
 		globalLocalizer.T(lang, "auth.login_with_microsoft"),
-		"Use your organizational Microsoft account to sign in",
+		globalLocalizer.T(lang, "auth.login_info_message"),
+		globalLocalizer.T(lang, "auth.need_help"),
 	)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -666,27 +865,39 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	case auth.RoleDepartmentHead, auth.RoleAdmin:
 		http.Redirect(w, r, "/admin/", http.StatusFound)
 	default:
-		// Show generic dashboard
-		//lang := i18n.GetLangFromContext(r.Context())
+		// Show generic dashboard for unknown roles
+		lang := i18n.GetLangFromContext(r.Context())
 		html := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
 <head>
     <title>Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto p-8">
-        <h1 class="text-3xl font-bold mb-4">Dashboard</h1>
-        <p class="mb-4">Welcome, %s (%s)</p>
-        <p>Role: %s</p>
-        <div class="mt-4">
-            <a href="/auth/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
+        <h1 class="text-3xl font-bold mb-4">%s</h1>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="mb-4">%s, %s (%s)</p>
+            <p class="mb-4">%s: %s</p>
+            <div class="mt-6">
+                <a href="/auth/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    <i class="fas fa-sign-out-alt mr-2"></i>%s
+                </a>
+            </div>
         </div>
     </div>
 </body>
 </html>
-		`, user.Name, user.Email, user.Role)
+		`,
+			globalLocalizer.T(lang, "dashboard.welcome"),
+			globalLocalizer.T(lang, "dashboard.welcome"),
+			user.Name,
+			user.Email,
+			globalLocalizer.T(lang, "user_roles.role"),
+			user.GetDisplayRole(),
+			globalLocalizer.T(lang, "navigation.logout"))
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write([]byte(html))
@@ -696,56 +907,110 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 // Student handlers (placeholders - implement as needed)
 func studentDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
+	lang := i18n.GetLangFromContext(r.Context())
+
 	html := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Student Dashboard</title>
+    <title>%s</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="bg-gray-100">
-    <div class="container mx-auto p-8">
-        <h1 class="text-3xl font-bold mb-4">Student Dashboard</h1>
-        <p>Welcome, %s</p>
-        <div class="mt-4">
-            <a href="/auth/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold">%s</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">%s</span>
+                    <a href="/auth/logout" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 class="text-2xl font-bold mb-6">%s</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-2">%s</h3>
+                <p class="text-gray-600">%s</p>
+                <a href="/students/topic" class="mt-4 inline-block text-blue-600 hover:text-blue-800">
+                    %s <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-2">%s</h3>
+                <p class="text-gray-600">%s</p>
+                <a href="/students/documents" class="mt-4 inline-block text-blue-600 hover:text-blue-800">
+                    %s <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-2">%s</h3>
+                <p class="text-gray-600">%s</p>
+                <a href="/students/profile" class="mt-4 inline-block text-blue-600 hover:text-blue-800">
+                    %s <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
         </div>
     </div>
 </body>
 </html>
-	`, user.Name)
+	`,
+		globalLocalizer.T(lang, "dashboard.student_dashboard"),
+		globalLocalizer.T(lang, "common.thesis_management_system"),
+		user.Name,
+		globalLocalizer.T(lang, "dashboard.welcome"),
+		globalLocalizer.T(lang, "topic_management.topic_registration"),
+		globalLocalizer.T(lang, "topic_management.subtitle"),
+		globalLocalizer.T(lang, "common.view_details"),
+		globalLocalizer.T(lang, "documents.title"),
+		globalLocalizer.T(lang, "documents.upload_document"),
+		globalLocalizer.T(lang, "common.view_all"),
+		globalLocalizer.T(lang, "navigation.profile"),
+		globalLocalizer.T(lang, "student_fields.student_details"),
+		globalLocalizer.T(lang, "common.view"))
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
 }
 
 func studentProfileHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Student Profile"))
+	w.Write([]byte("Student Profile - To be implemented"))
 }
 
 func studentTopicHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Student Topic"))
+	w.Write([]byte("Student Topic - To be implemented"))
 }
 
 func studentDocumentsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Student Documents"))
+	w.Write([]byte("Student Documents - To be implemented"))
 }
 
 // System handlers (placeholders)
 func systemUsersHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("System Users"))
+	w.Write([]byte("System Users - To be implemented"))
 }
 
 func systemUpdateUserRoleHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Update User Role"))
+	w.Write([]byte("Update User Role - To be implemented"))
 }
 
 func systemDepartmentHeadsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Department Heads"))
+	w.Write([]byte("Department Heads - To be implemented"))
 }
 
 func systemAuditLogsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Audit Logs"))
+	w.Write([]byte("Audit Logs - To be implemented"))
 }
 
 // API handlers (placeholders)

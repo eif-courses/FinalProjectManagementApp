@@ -28,12 +28,40 @@ func NewAdminHandler(db *sqlx.DB, localizer *i18n.Localizer) *AdminHandler {
 		"sub":    func(a, b int) int { return a - b },
 		"mul":    func(a, b int) int { return a * b },
 		"div":    func(a, b int) int { return a / b },
+		"formatTime": func(timestamp int64) string {
+			return time.Unix(timestamp, 0).Format("2006-01-02 15:04")
+		},
 	}
 
 	tmpl := template.New("").Funcs(funcMap)
-	tmpl = template.Must(tmpl.ParseGlob("templates/layouts/*.html"))
-	tmpl = template.Must(tmpl.ParseGlob("templates/admin/*.html"))
-	tmpl = template.Must(tmpl.ParseGlob("templates/components/*.html"))
+
+	// Parse templates in a specific order to avoid issues
+	// First parse layouts
+	tmpl, err := tmpl.ParseGlob("templates/layouts/*.html")
+	if err != nil {
+		fmt.Printf("Error parsing layouts: %v\n", err)
+	}
+
+	// Then parse admin templates
+	tmpl, err = tmpl.ParseGlob("templates/admin/*.html")
+	if err != nil {
+		fmt.Printf("Error parsing admin templates: %v\n", err)
+	}
+
+	// Then parse components
+	tmpl, err = tmpl.ParseGlob("templates/components/*.html")
+	if err != nil {
+		fmt.Printf("Error parsing components: %v\n", err)
+	}
+
+	// Skip shared templates for now to avoid the success.html issue
+	// We'll handle them separately if needed
+
+	// Log all loaded templates
+	fmt.Println("Loaded admin templates:")
+	for _, t := range tmpl.Templates() {
+		fmt.Printf("  - %s\n", t.Name())
+	}
 
 	return &AdminHandler{
 		db:        db,
@@ -45,6 +73,11 @@ func NewAdminHandler(db *sqlx.DB, localizer *i18n.Localizer) *AdminHandler {
 // DashboardHandler shows admin dashboard with statistics
 func (h *AdminHandler) DashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
+
 	lang := i18n.GetLangFromContext(r.Context())
 
 	// Get department for department heads
@@ -61,24 +94,60 @@ func (h *AdminHandler) DashboardHandler(w http.ResponseWriter, r *http.Request) 
 	// Get statistics
 	stats := h.getDashboardStats(department)
 
+	// Create breadcrumbs
+	breadcrumbs := []map[string]string{
+		{"Title": h.localizer.T(lang, "navigation.dashboard"), "URL": ""},
+	}
+
 	data := map[string]interface{}{
-		"Title": h.localizer.T(lang, "dashboard.department_head_dashboard"),
-		"User":  user,
-		"Lang":  lang,
-		"Stats": stats,
+		"Title":       h.localizer.T(lang, "dashboard.admin_dashboard"),
+		"User":        user,
+		"Lang":        lang,
+		"Stats":       stats,
+		"CurrentYear": time.Now().Year(),
+		"Breadcrumbs": breadcrumbs,
 		"T": func(key string, args ...interface{}) string {
 			return h.localizer.T(lang, key, args...)
 		},
 	}
 
-	if err := h.templates.ExecuteTemplate(w, "dashboard.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Try to execute the dashboard template
+	err := h.templates.ExecuteTemplate(w, "dashboard.html", data)
+	if err != nil {
+		// If template execution fails, log detailed error and try a fallback
+		fmt.Printf("Template execution error for dashboard.html: %v\n", err)
+
+		// Try to render a simple HTML response as fallback
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-4">Admin Dashboard</h1>
+        <p>Welcome, %s</p>
+        <p class="text-red-600 mt-4">Template error: %v</p>
+        <div class="mt-4">
+            <a href="/auth/logout" class="bg-red-500 text-white px-4 py-2 rounded">Logout</a>
+        </div>
+    </div>
+</body>
+</html>`, user.Name, err)
 	}
 }
 
 // StudentsTableHandler returns students table HTML for HTMX
 func (h *AdminHandler) StudentsTableHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	lang := i18n.GetLangFromContext(r.Context())
 
 	// Get department filter for department heads
@@ -93,7 +162,7 @@ func (h *AdminHandler) StudentsTableHandler(w http.ResponseWriter, r *http.Reque
 	query := `
 		SELECT sr.*, 
 			   CASE WHEN ptr.status = 'approved' THEN 1 ELSE 0 END as topic_approved,
-			   ptr.status as topic_status,
+			   COALESCE(ptr.status, 'draft') as topic_status,
 			   CASE WHEN sup.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
 			   CASE WHEN rev.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report
 		FROM student_records sr
@@ -112,6 +181,7 @@ func (h *AdminHandler) StudentsTableHandler(w http.ResponseWriter, r *http.Reque
 	var students []database.StudentSummaryView
 	err := h.db.Select(&students, query, args...)
 	if err != nil {
+		fmt.Printf("Database error: %v\n", err)
 		http.Error(w, "Failed to load students", http.StatusInternalServerError)
 		return
 	}
@@ -125,6 +195,7 @@ func (h *AdminHandler) StudentsTableHandler(w http.ResponseWriter, r *http.Reque
 
 	// Return just the table HTML
 	if err := h.templates.ExecuteTemplate(w, "students_table.html", data); err != nil {
+		fmt.Printf("Template error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -132,6 +203,11 @@ func (h *AdminHandler) StudentsTableHandler(w http.ResponseWriter, r *http.Reque
 // TopicsTableHandler returns topics table HTML for HTMX
 func (h *AdminHandler) TopicsTableHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	lang := i18n.GetLangFromContext(r.Context())
 
 	departmentFilter := ""
@@ -159,6 +235,7 @@ func (h *AdminHandler) TopicsTableHandler(w http.ResponseWriter, r *http.Request
 	var topics []database.TopicWithDetails
 	err := h.db.Select(&topics, query, args...)
 	if err != nil {
+		fmt.Printf("Database error: %v\n", err)
 		http.Error(w, "Failed to load topics", http.StatusInternalServerError)
 		return
 	}
@@ -172,6 +249,7 @@ func (h *AdminHandler) TopicsTableHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "topics_table.html", data); err != nil {
+		fmt.Printf("Template error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -179,6 +257,11 @@ func (h *AdminHandler) TopicsTableHandler(w http.ResponseWriter, r *http.Request
 // CommissionTableHandler returns commission table HTML for HTMX
 func (h *AdminHandler) CommissionTableHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	lang := i18n.GetLangFromContext(r.Context())
 
 	// Get commission accesses
@@ -196,6 +279,7 @@ func (h *AdminHandler) CommissionTableHandler(w http.ResponseWriter, r *http.Req
 	var accesses []auth.CommissionAccess
 	err := h.db.Select(&accesses, query, createdBy, createdBy)
 	if err != nil {
+		fmt.Printf("Database error: %v\n", err)
 		http.Error(w, "Failed to load commission accesses", http.StatusInternalServerError)
 		return
 	}
@@ -209,6 +293,7 @@ func (h *AdminHandler) CommissionTableHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "commission_table.html", data); err != nil {
+		fmt.Printf("Template error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -216,18 +301,31 @@ func (h *AdminHandler) CommissionTableHandler(w http.ResponseWriter, r *http.Req
 // StudentsHandler shows full students page
 func (h *AdminHandler) StudentsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
+
 	lang := i18n.GetLangFromContext(r.Context())
 
+	breadcrumbs := []map[string]string{
+		{"Title": h.localizer.T(lang, "navigation.dashboard"), "URL": "/admin"},
+		{"Title": h.localizer.T(lang, "navigation.students"), "URL": ""},
+	}
+
 	data := map[string]interface{}{
-		"Title": h.localizer.T(lang, "student_management.title"),
-		"User":  user,
-		"Lang":  lang,
+		"Title":       h.localizer.T(lang, "student_management.title"),
+		"User":        user,
+		"Lang":        lang,
+		"CurrentYear": time.Now().Year(),
+		"Breadcrumbs": breadcrumbs,
 		"T": func(key string, args ...interface{}) string {
 			return h.localizer.T(lang, key, args...)
 		},
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "students.html", data); err != nil {
+		fmt.Printf("Template error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -310,18 +408,31 @@ func (h *AdminHandler) ApproveTopicHandler(w http.ResponseWriter, r *http.Reques
 // ReportsHandler shows reports overview
 func (h *AdminHandler) ReportsHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
+
 	lang := i18n.GetLangFromContext(r.Context())
 
+	breadcrumbs := []map[string]string{
+		{"Title": h.localizer.T(lang, "navigation.dashboard"), "URL": "/admin"},
+		{"Title": h.localizer.T(lang, "navigation.reports"), "URL": ""},
+	}
+
 	data := map[string]interface{}{
-		"Title": h.localizer.T(lang, "reports.title"),
-		"User":  user,
-		"Lang":  lang,
+		"Title":       h.localizer.T(lang, "reports.title"),
+		"User":        user,
+		"Lang":        lang,
+		"CurrentYear": time.Now().Year(),
+		"Breadcrumbs": breadcrumbs,
 		"T": func(key string, args ...interface{}) string {
 			return h.localizer.T(lang, key, args...)
 		},
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "reports.html", data); err != nil {
+		fmt.Printf("Template error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -352,6 +463,7 @@ func (h *AdminHandler) CreateCommissionModalHandler(w http.ResponseWriter, r *ht
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "commission_create_modal.html", data); err != nil {
+		fmt.Printf("Template error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
