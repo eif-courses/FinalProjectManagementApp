@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -134,10 +135,12 @@ func (am *AuthMiddleware) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	loginURL, err := am.authService.GenerateLoginURL()
 	if err != nil {
+		log.Printf("Failed to generate login URL: %v", err)
 		http.Error(w, "Failed to generate login URL", http.StatusInternalServerError)
 		return
 	}
 
+	log.Printf("Redirecting to login URL: %s", loginURL)
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
 

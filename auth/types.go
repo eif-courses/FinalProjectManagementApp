@@ -82,6 +82,7 @@ const (
 	RoleAdmin            = "admin"
 	RoleDepartmentHead   = "department_head"
 	RoleSupervisor       = "supervisor"
+	RoleReviewer         = "reviewer" // ✅ ADDED: Reviewer role
 	RoleCommissionMember = "commission_member"
 	RoleStudent          = "student"
 	RoleGuest            = "guest"
@@ -208,6 +209,11 @@ func (u *AuthenticatedUser) IsSupervisor() bool {
 	return u.Role == RoleSupervisor
 }
 
+// IsReviewer checks if user is a reviewer
+func (u *AuthenticatedUser) IsReviewer() bool {
+	return u.Role == RoleReviewer
+}
+
 // IsDepartmentHead checks if user is a department head
 func (u *AuthenticatedUser) IsDepartmentHead() bool {
 	return u.Role == RoleDepartmentHead
@@ -239,6 +245,8 @@ func (u *AuthenticatedUser) GetDisplayRole() string {
 		}
 	case RoleSupervisor:
 		return "Supervisor"
+	case RoleReviewer:
+		return "Reviewer"
 	case RoleCommissionMember:
 		return "Commission Member"
 	case RoleStudent:

@@ -1,4 +1,4 @@
-// auth/entra.go - Authentication service (types moved to auth/types.go)
+// auth/entra.go - Authentication service with reviewer role support
 package auth
 
 import (
@@ -180,6 +180,21 @@ func (a *AuthService) determineUserRole(ctx context.Context, userInfo *UserInfo)
 		}, nil
 	}
 
+	// Check if user is a reviewer (assigned as reviewer in student_records)
+	isReviewer, err := a.isReviewer(ctx, email)
+	if err != nil && err != sql.ErrNoRows {
+		return "", 0, nil, fmt.Errorf("failed to check reviewer status: %w", err)
+	}
+
+	if isReviewer {
+		return RoleReviewer, -1, []string{
+			PermissionViewAssignedStudents,
+			PermissionCreateReports,
+			PermissionReviewSubmissions,
+			PermissionViewThesis,
+		}, nil
+	}
+
 	// Check if user is a supervisor (academic staff)
 	if a.isSupervisor(userInfo) {
 		return RoleSupervisor, -1, []string{
@@ -230,6 +245,17 @@ func (a *AuthService) getCommissionMemberByEmail(ctx context.Context, email stri
 	// This is a placeholder - commission_members table uses access_code, not email
 	// You might want to add an email field or create a mapping table
 	return nil, sql.ErrNoRows
+}
+
+// isReviewer checks if user is assigned as a reviewer for any students
+func (a *AuthService) isReviewer(ctx context.Context, email string) (bool, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM student_records WHERE reviewer_email = ?`
+	err := a.db.QueryRowContext(ctx, query, email).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // getDepartmentHeadPermissions returns permissions based on department head role

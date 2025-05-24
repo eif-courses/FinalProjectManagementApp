@@ -70,7 +70,7 @@
                 <input type="text"
                        name="reviewer_personal_details"
                        value="{{ .Report.ReviewerPersonalDetails }}"
-                       placeholder="{{ .T 'report_fields.reviewer_details_placeholder' }}"
+                       placeholder="{{ .T "report_fields.reviewer_details_placeholder" }}"
                        required
                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
@@ -88,7 +88,7 @@
                 <textarea name="review_goals"
                           rows="3"
                           required
-                          placeholder="{{ .T 'report_fields.review_goals_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_goals_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewGoals }}</textarea>
             </div>
 
@@ -100,7 +100,7 @@
                 <textarea name="review_theory"
                           rows="3"
                           required
-                          placeholder="{{ .T 'report_fields.review_theory_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_theory_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewTheory }}</textarea>
             </div>
 
@@ -112,7 +112,7 @@
                 <textarea name="review_practical"
                           rows="3"
                           required
-                          placeholder="{{ .T 'report_fields.review_practical_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_practical_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewPractical }}</textarea>
             </div>
 
@@ -124,7 +124,7 @@
                 <textarea name="review_theory_practical_link"
                           rows="3"
                           required
-                          placeholder="{{ .T 'report_fields.review_theory_practical_link_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_theory_practical_link_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewTheoryPracticalLink }}</textarea>
             </div>
 
@@ -136,7 +136,7 @@
                 <textarea name="review_results"
                           rows="3"
                           required
-                          placeholder="{{ .T 'report_fields.review_results_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_results_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewResults }}</textarea>
             </div>
 
@@ -147,7 +147,7 @@
                 </label>
                 <textarea name="review_practical_significance"
                           rows="2"
-                          placeholder="{{ .T 'report_fields.review_practical_significance_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_practical_significance_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewPracticalSignificance }}</textarea>
             </div>
 
@@ -159,7 +159,7 @@
                 <textarea name="review_language"
                           rows="2"
                           required
-                          placeholder="{{ .T 'report_fields.review_language_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_language_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewLanguage }}</textarea>
             </div>
         </div>
@@ -175,7 +175,7 @@
                 <textarea name="review_pros"
                           rows="3"
                           required
-                          placeholder="{{ .T 'report_fields.review_pros_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_pros_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewPros }}</textarea>
             </div>
 
@@ -186,7 +186,7 @@
                 <textarea name="review_cons"
                           rows="3"
                           required
-                          placeholder="{{ .T 'report_fields.review_cons_placeholder' }}"
+                          placeholder="{{ .T "report_fields.review_cons_placeholder" }}"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewCons }}</textarea>
             </div>
         </div>
@@ -199,7 +199,7 @@
             <textarea name="review_questions"
                       rows="4"
                       required
-                      placeholder="{{ .T 'report_fields.review_questions_placeholder' }}"
+                      placeholder="{{ .T "report_fields.review_questions_placeholder" }}"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ .Report.ReviewQuestions }}</textarea>
         </div>
 
@@ -213,7 +213,7 @@
                     class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">{{ .T "grades.select_grade" }}</option>
                 {{ range $i := seq 5 10 }}
-                <option value="{{ $i }}" {{ if eq $.Report.Grade (float64 $i) }}selected{{ end }}>
+                <option value="{{ $i }}" {{ if eq (int $.Report.Grade) $i }}selected{{ end }}>
                     {{ $i }} - {{ $.T (printf "grades.%d" $i) }}
                 </option>
                 {{ end }}

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	_ "database/sql"
+	"database/sql"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -15,7 +15,7 @@ import (
 )
 
 type SupervisorHandler struct {
-	db        *sqlx.DB // Changed from *sql.DB to *sqlx.DB
+	db        *sqlx.DB
 	templates *template.Template
 	localizer *i18n.Localizer
 }
@@ -148,64 +148,235 @@ func (h *SupervisorHandler) TopicModalHandler(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// ReviewTopicHandler handles topic review submission
+func (h *SupervisorHandler) ReviewTopicHandler(w http.ResponseWriter, r *http.Request) {
+	studentID := chi.URLParam(r, "studentID")
+	user := auth.GetUserFromContext(r.Context())
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	action := r.FormValue("action")
+
+	// Handle the review action (approve/request revision)
+	switch action {
+	case "approve":
+		// Approve the topic
+		_, err := h.db.Exec(`
+			UPDATE project_topic_registrations 
+			SET status = 'approved', approved_by = ?, approved_at = UNIX_TIMESTAMP()
+			WHERE student_record_id = ?
+		`, user.Email, studentID)
+		if err != nil {
+			http.Error(w, "Failed to approve topic", http.StatusInternalServerError)
+			return
+		}
+	case "request_revision":
+		// Request revision
+		_, err := h.db.Exec(`
+			UPDATE project_topic_registrations 
+			SET status = 'revision', rejection_reason = ?
+			WHERE student_record_id = ?
+		`, r.FormValue("overall_comment"), studentID)
+		if err != nil {
+			http.Error(w, "Failed to request revision", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(`<div class="bg-green-50 border border-green-200 rounded p-4 mt-4">Operation completed successfully</div>`))
+}
+
+// DocumentsModalHandler shows documents for a student
+func (h *SupervisorHandler) DocumentsModalHandler(w http.ResponseWriter, r *http.Request) {
+	studentID := chi.URLParam(r, "studentID")
+	lang := i18n.GetLangFromContext(r.Context())
+
+	// Fetch student info
+	var student database.StudentRecord
+	err := h.db.Get(&student, "SELECT * FROM student_records WHERE id = ?", studentID)
+	if err != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	// Fetch documents
+	var documents []database.Document
+	err = h.db.Select(&documents,
+		"SELECT * FROM documents WHERE student_record_id = ? ORDER BY uploaded_date DESC",
+		studentID)
+
+	// Fetch video
+	var video database.Video
+	_ = h.db.Get(&video, "SELECT * FROM videos WHERE student_record_id = ?", studentID)
+
+	data := map[string]interface{}{
+		"Student": student,
+		"Documents": map[string]interface{}{
+			"Thesis":         getDocumentByType(documents, "thesis"),
+			"SourceCode":     getDocumentByType(documents, "code"),
+			"Recommendation": getDocumentByType(documents, "recommendation"),
+			"Video":          &video,
+		},
+		"T": func(key string, args ...interface{}) string {
+			return h.localizer.T(lang, key, args...)
+		},
+	}
+
+	if err := h.templates.ExecuteTemplate(w, "documents_modal.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// SaveReportHandler saves supervisor report
+func (h *SupervisorHandler) SaveReportHandler(w http.ResponseWriter, r *http.Request) {
+	studentID := chi.URLParam(r, "studentID")
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	studentRecordID, err := strconv.Atoi(studentID)
+	if err != nil {
+		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check if report exists
+	var existingID int
+	err = h.db.Get(&existingID,
+		"SELECT id FROM supervisor_reports WHERE student_record_id = ?",
+		studentRecordID)
+
+	action := r.FormValue("action")
+	isSigned := action == "sign"
+
+	if err == sql.ErrNoRows {
+		// Create new report
+		_, err = h.db.NamedExec(`
+			INSERT INTO supervisor_reports 
+			(student_record_id, supervisor_name, supervisor_position, supervisor_workplace,
+			 supervisor_comments, other_match, one_match, own_match, join_match,
+			 grade, is_pass_or_failed, final_comments, is_signed)
+			VALUES 
+			(:student_record_id, :supervisor_name, :supervisor_position, :supervisor_workplace,
+			 :supervisor_comments, :other_match, :one_match, :own_match, :join_match,
+			 :grade, :is_pass_or_failed, :final_comments, :is_signed)
+		`, map[string]interface{}{
+			"student_record_id":    studentRecordID,
+			"supervisor_name":      r.FormValue("supervisor_name"),
+			"supervisor_position":  r.FormValue("supervisor_position"),
+			"supervisor_workplace": r.FormValue("supervisor_workplace"),
+			"supervisor_comments":  r.FormValue("supervisor_comments"),
+			"other_match":          parseFloat(r.FormValue("other_match")),
+			"one_match":            parseFloat(r.FormValue("one_match")),
+			"own_match":            parseFloat(r.FormValue("own_match")),
+			"join_match":           parseFloat(r.FormValue("join_match")),
+			"grade":                parseIntPtr(r.FormValue("grade")),
+			"is_pass_or_failed":    r.FormValue("is_pass_or_failed") == "1",
+			"final_comments":       r.FormValue("final_comments"),
+			"is_signed":            isSigned,
+		})
+	} else {
+		// Update existing report
+		_, err = h.db.NamedExec(`
+			UPDATE supervisor_reports SET
+				supervisor_name = :supervisor_name,
+				supervisor_position = :supervisor_position,
+				supervisor_workplace = :supervisor_workplace,
+				supervisor_comments = :supervisor_comments,
+				other_match = :other_match,
+				one_match = :one_match,
+				own_match = :own_match,
+				join_match = :join_match,
+				grade = :grade,
+				is_pass_or_failed = :is_pass_or_failed,
+				final_comments = :final_comments,
+				is_signed = :is_signed
+			WHERE student_record_id = :student_record_id
+		`, map[string]interface{}{
+			"student_record_id":    studentRecordID,
+			"supervisor_name":      r.FormValue("supervisor_name"),
+			"supervisor_position":  r.FormValue("supervisor_position"),
+			"supervisor_workplace": r.FormValue("supervisor_workplace"),
+			"supervisor_comments":  r.FormValue("supervisor_comments"),
+			"other_match":          parseFloat(r.FormValue("other_match")),
+			"one_match":            parseFloat(r.FormValue("one_match")),
+			"own_match":            parseFloat(r.FormValue("own_match")),
+			"join_match":           parseFloat(r.FormValue("join_match")),
+			"grade":                parseIntPtr(r.FormValue("grade")),
+			"is_pass_or_failed":    r.FormValue("is_pass_or_failed") == "1",
+			"final_comments":       r.FormValue("final_comments"),
+			"is_signed":            isSigned,
+		})
+	}
+
+	if err != nil {
+		http.Error(w, "Failed to save report", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/supervisor/students", http.StatusFound)
+}
+
+// EditReportHandler shows edit form for existing report
+func (h *SupervisorHandler) EditReportHandler(w http.ResponseWriter, r *http.Request) {
+	h.CreateReportHandler(w, r)
+}
+
+// ViewReportHandler shows read-only view of report
+func (h *SupervisorHandler) ViewReportHandler(w http.ResponseWriter, r *http.Request) {
+	studentID := chi.URLParam(r, "studentID")
+	user := auth.GetUserFromContext(r.Context())
+	lang := i18n.GetLangFromContext(r.Context())
+
+	// Fetch student
+	var student database.StudentRecord
+	err := h.db.Get(&student, "SELECT * FROM student_records WHERE id = ?", studentID)
+	if err != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	// Fetch report
+	var report database.SupervisorReport
+	err = h.db.Get(&report,
+		"SELECT * FROM supervisor_reports WHERE student_record_id = ?",
+		studentID)
+	if err != nil {
+		http.Error(w, "Report not found", http.StatusNotFound)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":      h.localizer.T(lang, "reports.supervisor_report"),
+		"User":       user,
+		"Lang":       lang,
+		"Student":    student,
+		"Report":     report,
+		"Department": student.Department,
+		"T": func(key string, args ...interface{}) string {
+			return h.localizer.T(lang, key, args...)
+		},
+	}
+
+	if err := h.templates.ExecuteTemplate(w, "report_view.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (h *SupervisorHandler) CreateReportHandler(w http.ResponseWriter, r *http.Request) {
 	studentID := chi.URLParam(r, "studentID")
 	user := auth.GetUserFromContext(r.Context())
 	lang := i18n.GetLangFromContext(r.Context())
 
 	if r.Method == "POST" {
-		// Handle form submission
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Invalid form data", http.StatusBadRequest)
-			return
-		}
-
-		// Convert studentID string to int
-		studentRecordID, err := strconv.Atoi(studentID)
-		if err != nil {
-			http.Error(w, "Invalid student ID", http.StatusBadRequest)
-			return
-		}
-
-		// Create report
-		report := database.SupervisorReport{
-			StudentRecordID:     studentRecordID, // Now using int
-			SupervisorName:      r.FormValue("supervisor_name"),
-			SupervisorPosition:  r.FormValue("supervisor_position"),
-			SupervisorWorkplace: r.FormValue("supervisor_workplace"),
-			SupervisorComments:  r.FormValue("supervisor_comments"),
-			OtherMatch:          parseFloat(r.FormValue("other_match")),
-			OneMatch:            parseFloat(r.FormValue("one_match")),
-			OwnMatch:            parseFloat(r.FormValue("own_match")),
-			JoinMatch:           parseFloat(r.FormValue("join_match")),
-			Grade:               parseIntPtr(r.FormValue("grade")), // Using parseIntPtr for *int
-			IsPassOrFailed:      r.FormValue("is_pass_or_failed") == "1",
-			FinalComments:       r.FormValue("final_comments"),
-		}
-
-		action := r.FormValue("action")
-		if action == "sign" {
-			report.IsSigned = true
-		}
-
-		// Save to database
-		_, err = h.db.NamedExec(`
-            INSERT INTO supervisor_reports 
-            (student_record_id, supervisor_name, supervisor_position, supervisor_workplace,
-             supervisor_comments, other_match, one_match, own_match, join_match,
-             grade, is_pass_or_failed, final_comments, is_signed)
-            VALUES 
-            (:student_record_id, :supervisor_name, :supervisor_position, :supervisor_workplace,
-             :supervisor_comments, :other_match, :one_match, :own_match, :join_match,
-             :grade, :is_pass_or_failed, :final_comments, :is_signed)
-        `, report)
-
-		if err != nil {
-			http.Error(w, "Failed to save report", http.StatusInternalServerError)
-			return
-		}
-
-		http.Redirect(w, r, "/supervisor/students", http.StatusFound)
+		h.SaveReportHandler(w, r)
 		return
 	}
 
@@ -216,6 +387,12 @@ func (h *SupervisorHandler) CreateReportHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, "Student not found", http.StatusNotFound)
 		return
 	}
+
+	// Try to get existing report
+	var report database.SupervisorReport
+	_ = h.db.Get(&report,
+		"SELECT * FROM supervisor_reports WHERE student_record_id = ?",
+		studentID)
 
 	grades := []struct {
 		Value int
@@ -234,7 +411,7 @@ func (h *SupervisorHandler) CreateReportHandler(w http.ResponseWriter, r *http.R
 		"User":       user,
 		"Lang":       lang,
 		"Student":    student,
-		"Report":     database.SupervisorReport{}, // Empty for new report
+		"Report":     report,
 		"Grades":     grades,
 		"Department": student.Department,
 		"T": func(key string, args ...interface{}) string {
@@ -245,4 +422,14 @@ func (h *SupervisorHandler) CreateReportHandler(w http.ResponseWriter, r *http.R
 	if err := h.templates.ExecuteTemplate(w, "report_form.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// Helper function to get document by type
+func getDocumentByType(documents []database.Document, docType string) *database.Document {
+	for _, doc := range documents {
+		if doc.DocumentType == docType {
+			return &doc
+		}
+	}
+	return nil
 }

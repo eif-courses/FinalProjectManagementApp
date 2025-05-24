@@ -296,16 +296,24 @@ func MaintenanceMiddleware(next http.Handler) http.Handler {
 
 type responseWriter struct {
 	http.ResponseWriter
-	statusCode int
-	size       int
+	statusCode    int
+	size          int
+	headerWritten bool // Add this field
 }
 
 func (rw *responseWriter) WriteHeader(statusCode int) {
+	if rw.headerWritten {
+		return // Prevent duplicate calls
+	}
 	rw.statusCode = statusCode
+	rw.headerWritten = true
 	rw.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (rw *responseWriter) Write(b []byte) (int, error) {
+	if !rw.headerWritten {
+		rw.WriteHeader(http.StatusOK)
+	}
 	size, err := rw.ResponseWriter.Write(b)
 	rw.size += size
 	return size, err

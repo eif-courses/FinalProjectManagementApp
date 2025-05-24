@@ -1,9 +1,8 @@
-// main.go - Complete updated version with template integration
+// main.go - Fixed version with proper error handling for renderTemplate
 package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"html/template"
 	"log"
@@ -17,10 +16,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	_ "github.com/go-sql-driver/mysql" // MySQL database driver
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/mysql" // MySQL migrate driver
-	_ "github.com/golang-migrate/migrate/v4/source/file"    // File source driver
+	_ "github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 
 	"FinalProjectManagementApp/auth"
@@ -41,7 +41,7 @@ func main() {
 		log.Println("No .env file found, using system environment variables")
 	}
 
-	// Connect to MySQL database
+	// Connect to MySQL database - now returns *sqlx.DB
 	dbConfig := database.LoadConfig()
 	db, err := dbConfig.Connect()
 	if err != nil {
@@ -68,7 +68,7 @@ func main() {
 	}
 	globalTemplates = templates
 
-	// Initialize services
+	// Initialize services - db.DB is *sql.DB
 	authService, err := auth.NewAuthService(db.DB)
 	if err != nil {
 		log.Fatal("Failed to create auth service:", err)
@@ -82,11 +82,11 @@ func main() {
 	commissionService := auth.NewCommissionAccessService(db.DB)
 	baseURL := getEnv("BASE_URL", "http://localhost:8080")
 
-	// Initialize handlers
+	// Initialize handlers - pass db which is *sqlx.DB
 	commissionHandler := handlers.NewCommissionHandler(commissionService, authMiddleware, baseURL)
-	supervisorHandler := handlers.NewSupervisorHandler(db.DB, localizer)
-	reviewerHandler := handlers.NewReviewerHandler(db.DB, localizer)
-	adminHandler := handlers.NewAdminHandler(db.DB, localizer)
+	supervisorHandler := handlers.NewSupervisorHandler(db, localizer)
+	reviewerHandler := handlers.NewReviewerHandler(db, localizer)
+	adminHandler := handlers.NewAdminHandler(db, localizer)
 
 	// Set up Chi router
 	r := setupRouter(
@@ -97,7 +97,7 @@ func main() {
 		supervisorHandler,
 		reviewerHandler,
 		adminHandler,
-		db.DB,
+		db,
 	)
 
 	// Configure server
@@ -157,6 +157,13 @@ func initializeTemplates() (*template.Template, error) {
 		"formatDate": func(t time.Time, format string) string {
 			return t.Format(format)
 		},
+		// Add these conversion functions
+		"float64": func(i int) float64 {
+			return float64(i)
+		},
+		"int": func(f float64) int {
+			return int(f)
+		},
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, fmt.Errorf("dict requires even number of arguments")
@@ -189,7 +196,8 @@ func initializeTemplates() (*template.Template, error) {
 	for _, pattern := range patterns {
 		_, err := tmpl.ParseGlob(pattern)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", pattern, err)
+			// Log warning but continue - some directories might not exist yet
+			log.Printf("Warning: failed to parse %s: %v", pattern, err)
 		}
 	}
 
@@ -238,7 +246,7 @@ func setupRouter(
 	supervisorHandler *handlers.SupervisorHandler,
 	reviewerHandler *handlers.ReviewerHandler,
 	adminHandler *handlers.AdminHandler,
-	db *sql.DB,
+	db *sqlx.DB,
 ) chi.Router {
 	r := chi.NewRouter()
 
@@ -492,18 +500,23 @@ func authLoginHandler(w http.ResponseWriter, r *http.Request) {
 		"T": func(key string, args ...interface{}) string {
 			return globalLocalizer.T(lang, key, args...)
 		},
-		"Error": r.URL.Query().Get("error"),
+		"Error":       r.URL.Query().Get("error"),
+		"CurrentYear": time.Now().Year(), // Add this if your base template needs it
 	}
 
+	// Make sure we're calling the right template
 	renderTemplate(w, "login.html", data)
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
+		log.Println("No user in context, redirecting to login")
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
 		return
 	}
+
+	log.Printf("User %s with role %s accessing dashboard", user.Email, user.Role)
 
 	// Redirect based on user role
 	switch user.Role {
@@ -518,7 +531,10 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		// Show generic dashboard
 		templateData := getLocalizedTemplateData(r, "dashboard.title", user, nil)
-		renderTemplate(w, "dashboard.html", templateData)
+		if err := renderTemplate(w, "dashboard.html", templateData); err != nil {
+			log.Printf("Error rendering dashboard template: %v", err)
+			http.Error(w, "Template error", http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -526,7 +542,9 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 func studentDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	templateData := getLocalizedTemplateData(r, "student_management.title", user, nil)
-	renderTemplate(w, "student_dashboard.html", templateData)
+	if err := renderTemplate(w, "student_dashboard.html", templateData); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
 }
 
 func studentProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -544,7 +562,9 @@ func studentProfileHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := getLocalizedTemplateData(r, "navigation.profile", user, map[string]interface{}{
 		"Success": r.URL.Query().Get("success") == "1",
 	})
-	renderTemplate(w, "student_profile.html", templateData)
+	if err := renderTemplate(w, "student_profile.html", templateData); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
 }
 
 func studentTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -562,7 +582,9 @@ func studentTopicHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := getLocalizedTemplateData(r, "topic_management.title", user, map[string]interface{}{
 		"Success": r.URL.Query().Get("success") == "1",
 	})
-	renderTemplate(w, "student_topic.html", templateData)
+	if err := renderTemplate(w, "student_topic.html", templateData); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
 }
 
 func studentDocumentsHandler(w http.ResponseWriter, r *http.Request) {
@@ -580,7 +602,9 @@ func studentDocumentsHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := getLocalizedTemplateData(r, "documents.title", user, map[string]interface{}{
 		"Success": r.URL.Query().Get("success") == "1",
 	})
-	renderTemplate(w, "student_documents.html", templateData)
+	if err := renderTemplate(w, "student_documents.html", templateData); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
 }
 
 // System handlers (placeholders)
@@ -589,7 +613,9 @@ func systemUsersHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := getLocalizedTemplateData(r, "system.user_management", user, map[string]interface{}{
 		"Users": []interface{}{},
 	})
-	renderTemplate(w, "system_users.html", templateData)
+	if err := renderTemplate(w, "system_users.html", templateData); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
 }
 
 func systemUpdateUserRoleHandler(w http.ResponseWriter, r *http.Request) {
@@ -633,7 +659,9 @@ func systemDepartmentHeadsHandler(w http.ResponseWriter, r *http.Request) {
 		"DepartmentHeads": []interface{}{},
 		"Added":           r.URL.Query().Get("added"),
 	})
-	renderTemplate(w, "system_department_heads.html", templateData)
+	if err := renderTemplate(w, "system_department_heads.html", templateData); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
 }
 
 func systemAuditLogsHandler(w http.ResponseWriter, r *http.Request) {
@@ -641,7 +669,9 @@ func systemAuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 	templateData := getLocalizedTemplateData(r, "system.audit_logs", user, map[string]interface{}{
 		"AuditLogs": []interface{}{},
 	})
-	renderTemplate(w, "system_audit_logs.html", templateData)
+	if err := renderTemplate(w, "system_audit_logs.html", templateData); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+	}
 }
 
 // API handlers (placeholders)
@@ -712,18 +742,18 @@ func getLocalizedTemplateData(r *http.Request, titleKey string, user *auth.Authe
 	}
 }
 
-func renderTemplate(w http.ResponseWriter, templateName string, data interface{}) {
+func renderTemplate(w http.ResponseWriter, templateName string, data interface{}) error {
 	if globalTemplates == nil {
-		http.Error(w, "Templates not initialized", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("templates not initialized")
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if err := globalTemplates.ExecuteTemplate(w, templateName, data); err != nil {
 		log.Printf("Template execution error for %s: %v", templateName, err)
-		http.Error(w, "Template error", http.StatusInternalServerError)
+		return err
 	}
+	return nil
 }
 
 func getEnv(key, defaultValue string) string {
