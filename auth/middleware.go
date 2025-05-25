@@ -124,23 +124,47 @@ func (am *AuthMiddleware) RequirePermission(permission string) func(http.Handler
 }
 
 // LoginHandler handles the login initiation
+//func (am *AuthMiddleware) LoginHandler(w http.ResponseWriter, r *http.Request) {
+//	// Check if user is already logged in
+//	if user := am.GetUserFromSession(r); user != nil {
+//		// Redirect to dashboard or original URL
+//		redirectURL := am.getRedirectURL(r)
+//		http.Redirect(w, r, redirectURL, http.StatusFound)
+//		return
+//	}
+//
+//	loginURL, err := am.authService.GenerateLoginURL()
+//	if err != nil {
+//		log.Printf("Failed to generate login URL: %v", err)
+//		http.Error(w, "Failed to generate login URL", http.StatusInternalServerError)
+//		return
+//	}
+//
+//	log.Printf("Redirecting to login URL: %s", loginURL)
+//	http.Redirect(w, r, loginURL, http.StatusFound)
+//}
+
 func (am *AuthMiddleware) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("LoginHandler called")
+
 	// Check if user is already logged in
 	if user := am.GetUserFromSession(r); user != nil {
-		// Redirect to dashboard or original URL
-		redirectURL := am.getRedirectURL(r)
-		http.Redirect(w, r, redirectURL, http.StatusFound)
+		log.Printf("User already logged in: %s", user.Email)
+		// Redirect to dashboard instead of home page
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
 		return
 	}
 
+	log.Printf("Generating login URL...")
 	loginURL, err := am.authService.GenerateLoginURL()
 	if err != nil {
 		log.Printf("Failed to generate login URL: %v", err)
-		http.Error(w, "Failed to generate login URL", http.StatusInternalServerError)
+		http.Redirect(w, r, "/?error=Failed to generate login URL", http.StatusSeeOther)
 		return
 	}
 
-	log.Printf("Redirecting to login URL: %s", loginURL)
+	log.Printf("Generated login URL: %s", loginURL)
+	log.Printf("Redirecting to Microsoft OAuth...")
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
 
@@ -268,14 +292,14 @@ func (am *AuthMiddleware) UserInfoHandler(w http.ResponseWriter, r *http.Request
 func (am *AuthMiddleware) getRedirectURL(r *http.Request) string {
 	session, err := am.sessionStore.Get(r, SessionName)
 	if err != nil {
-		return "/"
+		return "/dashboard" // Default to dashboard instead of "/"
 	}
 
 	if redirectURL, ok := session.Values["redirect_url"].(string); ok && redirectURL != "" {
 		return redirectURL
 	}
 
-	return "/"
+	return "/dashboard" // Default to dashboard instead of "/"
 }
 
 func (am *AuthMiddleware) clearRedirectURL(w http.ResponseWriter, r *http.Request) {

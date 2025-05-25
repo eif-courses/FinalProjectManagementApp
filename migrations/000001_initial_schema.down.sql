@@ -1,11 +1,10 @@
--- migrations/mysql/000001_complete_initial_schema.down.sql
 
--- Drop views first (they depend on tables)
+
 DROP VIEW IF EXISTS commission_access_view;
 DROP VIEW IF EXISTS user_roles_view;
 DROP VIEW IF EXISTS student_summary_view;
 
--- Drop tables in reverse dependency order
+
 DROP TABLE IF EXISTS oauth_states;
 DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS role_permissions;

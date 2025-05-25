@@ -1,4 +1,4 @@
-// database/config.go - MySQL-only configuration
+// database/config.go - MySQL/MariaDB configuration
 package database
 
 import (
@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // Fix: Add underscore, remove asterisk
 	"github.com/jmoiron/sqlx"
 )
 
@@ -26,9 +26,9 @@ type Config struct {
 }
 
 // LoadConfig loads MySQL configuration from environment variables
-func LoadConfig() *Config {
+func LoadConfig() *Config { // Fix: Return *Config, not Config
 	return &Config{
-		Host:     getEnv("DB_HOST", "localhost"),
+		Host:     getEnv("DB_HOST", "localhost"), // Fix: Change "DBHOST" to "DB_HOST"
 		Port:     getEnv("DB_PORT", "3306"),
 		Database: getEnv("DB_NAME", "thesis_management"),
 		Username: getEnv("DB_USER", "root"),
