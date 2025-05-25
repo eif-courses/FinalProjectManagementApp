@@ -1,4 +1,4 @@
-// auth/middleware.go - Fixed version
+// auth/middleware.go - Fixed version with HTMX support
 package auth
 
 import (
@@ -52,8 +52,20 @@ func NewAuthMiddleware(authService *AuthService) (*AuthMiddleware, error) {
 // RequireAuth middleware that requires user to be authenticated
 func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("RequireAuth middleware called for: %s %s", r.Method, r.URL.Path)
+
 		user := am.GetUserFromSession(r)
 		if user == nil {
+			log.Printf("No user found in session for: %s", r.URL.Path)
+
+			// Handle HTMX requests differently
+			if r.Header.Get("HX-Request") == "true" {
+				log.Printf("HTMX request detected, sending HX-Redirect header")
+				w.Header().Set("HX-Redirect", "/auth/login")
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
 			// Store the original URL for redirect after login
 			if r.URL.Path != "/auth/login" {
 				session, _ := am.sessionStore.Get(r, SessionName)
@@ -65,6 +77,8 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}
+
+		log.Printf("User authenticated: %s (%s)", user.Email, user.Role)
 
 		// Add user to context
 		ctx := context.WithValue(r.Context(), UserContextKey, user)
@@ -78,6 +92,11 @@ func (am *AuthMiddleware) RequireRole(roles ...string) func(http.Handler) http.H
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user := am.GetUserFromSession(r)
 			if user == nil {
+				if r.Header.Get("HX-Request") == "true" {
+					w.Header().Set("HX-Redirect", "/auth/login")
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
 				http.Redirect(w, r, "/auth/login", http.StatusFound)
 				return
 			}
@@ -92,6 +111,12 @@ func (am *AuthMiddleware) RequireRole(roles ...string) func(http.Handler) http.H
 			}
 
 			if !hasRole {
+				log.Printf("User %s does not have required role. Has: %s, Required: %v", user.Email, user.Role, roles)
+				if r.Header.Get("HX-Request") == "true" {
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("Access denied: insufficient permissions"))
+					return
+				}
 				http.Error(w, "Access denied: insufficient permissions", http.StatusForbidden)
 				return
 			}
@@ -108,11 +133,21 @@ func (am *AuthMiddleware) RequirePermission(permission string) func(http.Handler
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user := am.GetUserFromSession(r)
 			if user == nil {
+				if r.Header.Get("HX-Request") == "true" {
+					w.Header().Set("HX-Redirect", "/auth/login")
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
 				http.Redirect(w, r, "/auth/login", http.StatusFound)
 				return
 			}
 
 			if !user.HasPermission(permission) {
+				if r.Header.Get("HX-Request") == "true" {
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("Access denied: insufficient permissions"))
+					return
+				}
 				http.Error(w, "Access denied: insufficient permissions", http.StatusForbidden)
 				return
 			}
@@ -123,27 +158,7 @@ func (am *AuthMiddleware) RequirePermission(permission string) func(http.Handler
 	}
 }
 
-// LoginHandler handles the login initiation
-//func (am *AuthMiddleware) LoginHandler(w http.ResponseWriter, r *http.Request) {
-//	// Check if user is already logged in
-//	if user := am.GetUserFromSession(r); user != nil {
-//		// Redirect to dashboard or original URL
-//		redirectURL := am.getRedirectURL(r)
-//		http.Redirect(w, r, redirectURL, http.StatusFound)
-//		return
-//	}
-//
-//	loginURL, err := am.authService.GenerateLoginURL()
-//	if err != nil {
-//		log.Printf("Failed to generate login URL: %v", err)
-//		http.Error(w, "Failed to generate login URL", http.StatusInternalServerError)
-//		return
-//	}
-//
-//	log.Printf("Redirecting to login URL: %s", loginURL)
-//	http.Redirect(w, r, loginURL, http.StatusFound)
-//}
-
+// Rest of your existing methods remain the same...
 func (am *AuthMiddleware) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("LoginHandler called")
 
@@ -247,16 +262,19 @@ func (am *AuthMiddleware) SaveUserToSession(w http.ResponseWriter, r *http.Reque
 func (am *AuthMiddleware) GetUserFromSession(r *http.Request) *AuthenticatedUser {
 	session, err := am.sessionStore.Get(r, SessionName)
 	if err != nil {
+		log.Printf("Failed to get session: %v", err)
 		return nil
 	}
 
 	userData, ok := session.Values["user"].([]byte)
 	if !ok {
+		log.Printf("No user data in session")
 		return nil
 	}
 
 	var user AuthenticatedUser
 	if err := json.Unmarshal(userData, &user); err != nil {
+		log.Printf("Failed to unmarshal user data: %v", err)
 		return nil
 	}
 
@@ -292,14 +310,14 @@ func (am *AuthMiddleware) UserInfoHandler(w http.ResponseWriter, r *http.Request
 func (am *AuthMiddleware) getRedirectURL(r *http.Request) string {
 	session, err := am.sessionStore.Get(r, SessionName)
 	if err != nil {
-		return "/dashboard" // Default to dashboard instead of "/"
+		return "/dashboard"
 	}
 
 	if redirectURL, ok := session.Values["redirect_url"].(string); ok && redirectURL != "" {
 		return redirectURL
 	}
 
-	return "/dashboard" // Default to dashboard instead of "/"
+	return "/dashboard"
 }
 
 func (am *AuthMiddleware) clearRedirectURL(w http.ResponseWriter, r *http.Request) {

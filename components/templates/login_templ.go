@@ -10,6 +10,7 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+// Reusable components first
 func BaseLayout(title string, content templ.Component) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -38,13 +39,13 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 10, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 11, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - Thesis Management System</title><script src=\"https://cdn.tailwindcss.com\"></script><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\"></head><body class=\"bg-gray-50 min-h-screen\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - Thesis Management System</title><script src=\"https://cdn.tailwindcss.com\"></script><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\"><script>\r\n            // Add loading state functionality\r\n            function showLoading(button) {\r\n                button.innerHTML = '<i class=\"fas fa-spinner fa-spin mr-2\"></i>Signing in...';\r\n                button.disabled = true;\r\n            }\r\n        </script></head><body class=\"bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -60,7 +61,8 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 	})
 }
 
-func LoginPage(errorMsg string) templ.Component {
+// Modular components
+func BrandHeader() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -79,6 +81,321 @@ func LoginPage(errorMsg string) templ.Component {
 		templ_7745c5c3_Var3 := templ.GetChildren(ctx)
 		if templ_7745c5c3_Var3 == nil {
 			templ_7745c5c3_Var3 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"flex items-center mb-8\"><div class=\"bg-white/20 rounded-full p-2 mr-3\"><i class=\"fas fa-graduation-cap text-3xl\"></i></div><div><h1 class=\"text-2xl font-bold\">VIKO</h1><p class=\"text-xs text-blue-200\">University</p></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func FeatureItem(icon, title, description string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var4 == nil {
+			templ_7745c5c3_Var4 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex items-start group\"><div class=\"bg-white/20 rounded-full p-3 mr-4 flex-shrink-0 group-hover:bg-white/30 transition-colors duration-200\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 = []any{"fas " + icon + " text-xl"}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var5...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<i class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var5).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></i></div><div><h3 class=\"font-semibold text-white\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(title)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 47, Col: 56}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</h3><p class=\"text-sm text-blue-100 leading-relaxed\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var8 string
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(description)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 48, Col: 74}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func InfoPanel() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-8 lg:p-12 text-white relative overflow-hidden\"><div class=\"absolute inset-0 opacity-10\"><div class=\"absolute top-10 left-10 w-20 h-20 border border-white/20 rounded-full\"></div><div class=\"absolute top-32 right-20 w-16 h-16 border border-white/20 rounded-full\"></div><div class=\"absolute bottom-20 left-1/4 w-12 h-12 border border-white/20 rounded-full\"></div></div><div class=\"h-full flex flex-col justify-between relative z-10\"><div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = BrandHeader().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"mb-8\"><h2 class=\"text-3xl lg:text-4xl font-bold mb-4 leading-tight\">Thesis Management <span class=\"block text-blue-200\">System</span></h2><p class=\"text-blue-100 text-lg leading-relaxed\">Streamline your academic journey from research proposal to final defense.</p></div><div class=\"space-y-6\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = FeatureItem("fa-file-alt", "Submit & Track Topics", "Submit thesis topics and monitor approval status in real-time").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = FeatureItem("fa-users", "Collaborate Seamlessly", "Connect with supervisors, reviewers, and peers effortlessly").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = FeatureItem("fa-chart-line", "Monitor Progress", "Track milestones, deadlines, and achievement metrics").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div><div class=\"mt-8 pt-8 border-t border-white/20\"><div class=\"flex items-center justify-between\"><p class=\"text-sm text-blue-200\">Powered by VIKO IT Department</p><div class=\"flex space-x-2\"><div class=\"w-2 h-2 bg-white/40 rounded-full\"></div><div class=\"w-2 h-2 bg-white/60 rounded-full\"></div><div class=\"w-2 h-2 bg-white/80 rounded-full\"></div></div></div></div></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func MicrosoftIcon() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var10 == nil {
+			templ_7745c5c3_Var10 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<svg class=\"w-5 h-5 mr-3 inline-block\" viewBox=\"0 0 21 21\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"1\" y=\"1\" width=\"9\" height=\"9\" fill=\"#f25022\" rx=\"1\"></rect> <rect x=\"1\" y=\"11\" width=\"9\" height=\"9\" fill=\"#00a4ef\" rx=\"1\"></rect> <rect x=\"11\" y=\"1\" width=\"9\" height=\"9\" fill=\"#7fba00\" rx=\"1\"></rect> <rect x=\"11\" y=\"11\" width=\"9\" height=\"9\" fill=\"#ffb900\" rx=\"1\"></rect></svg>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func ErrorAlert(errorMsg string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var11 == nil {
+			templ_7745c5c3_Var11 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if errorMsg != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-r-lg mb-6 shadow-sm animate-pulse\" role=\"alert\"><div class=\"flex items-start\"><i class=\"fas fa-exclamation-triangle mr-3 mt-0.5 text-red-500\"></i><div><p class=\"font-medium\">Authentication Error</p><p class=\"text-sm\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(errorMsg)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 113, Col: 49}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</p></div></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		return nil
+	})
+}
+
+func AccessInfoCard() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var13 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var13 == nil {
+			templ_7745c5c3_Var13 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"mt-8\"><div class=\"relative\"><div class=\"absolute inset-0 flex items-center\"><div class=\"w-full border-t border-gray-200\"></div></div><div class=\"relative flex justify-center text-sm\"><span class=\"px-4 bg-white text-gray-500 font-medium\">Access Information</span></div></div><div class=\"mt-6 bg-gray-50 rounded-lg p-4\"><div class=\"space-y-3 text-sm\"><div class=\"flex items-start\"><i class=\"fas fa-user-graduate text-blue-500 mr-3 mt-0.5\"></i><div><span class=\"font-medium text-gray-700\">Students:</span> <span class=\"text-gray-600 ml-1\">Use your @stud.viko.lt account</span></div></div><div class=\"flex items-start\"><i class=\"fas fa-user-tie text-green-500 mr-3 mt-0.5\"></i><div><span class=\"font-medium text-gray-700\">Staff:</span> <span class=\"text-gray-600 ml-1\">Use your @viko.lt account</span></div></div><div class=\"flex items-start\"><i class=\"fas fa-life-ring text-orange-500 mr-3 mt-0.5\"></i><div><span class=\"font-medium text-gray-700\">Need Help?</span> <span class=\"text-gray-600 ml-1\">Contact IT Support for access issues</span></div></div></div></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func LoginForm(errorMsg string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var14 == nil {
+			templ_7745c5c3_Var14 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"lg:w-1/2 p-8 lg:p-12 flex items-center bg-white\"><div class=\"w-full max-w-sm mx-auto\"><div class=\"text-center mb-8\"><div class=\"mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mb-4 shadow-lg\"><i class=\"fas fa-user text-2xl text-white\"></i></div><h2 class=\"text-2xl font-bold text-gray-800\">Welcome Back</h2><p class=\"text-gray-600 mt-2\">Sign in with your VIKO account</p></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = ErrorAlert(errorMsg).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"space-y-4\"><a href=\"/auth/login\" onclick=\"showLoading(this)\" class=\"group block w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3.5 px-4 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-xl text-center\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = MicrosoftIcon().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<span class=\"group-hover:tracking-wide transition-all duration-200\">Sign in with Microsoft</span></a><div class=\"text-center\"><p class=\"text-xs text-gray-500 flex items-center justify-center\"><i class=\"fas fa-shield-alt mr-1 text-green-500\"></i> Secure authentication powered by Microsoft</p></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = AccessInfoCard().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"mt-8 text-center\"><p class=\"text-xs text-gray-500 leading-relaxed\">By signing in, you agree to our <a href=\"#\" class=\"text-blue-600 hover:text-blue-800 underline\">Terms of Service</a> and <a href=\"#\" class=\"text-blue-600 hover:text-blue-800 underline\">Privacy Policy</a></p></div></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// Main login page
+func LoginPage(errorMsg string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var15 == nil {
+			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = BaseLayout("Login", LoginPageContent(errorMsg)).Render(ctx, templ_7745c5c3_Buffer)
@@ -105,35 +422,24 @@ func LoginPageContent(errorMsg string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var4 == nil {
-			templ_7745c5c3_Var4 = templ.NopComponent
+		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var16 == nil {
+			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"min-h-screen flex items-center justify-center px-4\"><div class=\"w-full max-w-4xl\"><div class=\"flex flex-col lg:flex-row bg-white shadow-xl rounded-xl overflow-hidden\"><div class=\"lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-8 lg:p-12 text-white\"><div class=\"h-full flex flex-col justify-between\"><div><div class=\"flex items-center mb-8\"><i class=\"fas fa-graduation-cap text-4xl mr-3\"></i><h1 class=\"text-2xl font-bold\">VIKO</h1></div><h2 class=\"text-3xl font-bold mb-4\">Thesis Management System</h2><p class=\"text-blue-100 mb-8\">Manage your thesis journey from topic submission to final defense.</p><div class=\"space-y-4\"><div class=\"flex items-start\"><div class=\"bg-white/20 rounded-full p-3 mr-4 flex-shrink-0\"><i class=\"fas fa-file-alt text-xl\"></i></div><div><h3 class=\"font-semibold\">Submit & Track Topics</h3><p class=\"text-sm text-blue-100\">Submit thesis topics and track approval status</p></div></div><div class=\"flex items-start\"><div class=\"bg-white/20 rounded-full p-3 mr-4 flex-shrink-0\"><i class=\"fas fa-users text-xl\"></i></div><div><h3 class=\"font-semibold\">Collaborate</h3><p class=\"text-sm text-blue-100\">Work with supervisors and reviewers</p></div></div><div class=\"flex items-start\"><div class=\"bg-white/20 rounded-full p-3 mr-4 flex-shrink-0\"><i class=\"fas fa-chart-line text-xl\"></i></div><div><h3 class=\"font-semibold\">Monitor Progress</h3><p class=\"text-sm text-blue-100\">Track milestones and deadlines</p></div></div></div></div><div class=\"mt-8\"><p class=\"text-sm text-blue-200\">Powered by VIKO IT Department</p></div></div></div><div class=\"lg:w-1/2 p-8 lg:p-12 flex items-center\"><div class=\"w-full max-w-sm mx-auto\"><div class=\"text-center mb-8\"><i class=\"fas fa-user-circle text-5xl text-gray-400 mb-4\"></i><h2 class=\"text-2xl font-bold text-gray-800\">Welcome Back</h2><p class=\"text-gray-600 mt-2\">Sign in with your VIKO account</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"min-h-screen flex items-center justify-center px-4 py-8\"><div class=\"w-full max-w-6xl\"><div class=\"flex flex-col lg:flex-row bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if errorMsg != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm\" role=\"alert\"><div class=\"flex items-center\"><i class=\"fas fa-exclamation-triangle mr-2\"></i> <span>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(errorMsg)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 92, Col: 52}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span></div></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		templ_7745c5c3_Err = InfoPanel().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<a href=\"/auth/login\" class=\"block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 text-center shadow-lg\"><svg class=\"w-5 h-5 mr-3 inline-block\" viewBox=\"0 0 21 21\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"1\" y=\"1\" width=\"9\" height=\"9\" fill=\"#f25022\"></rect> <rect x=\"1\" y=\"11\" width=\"9\" height=\"9\" fill=\"#00a4ef\"></rect> <rect x=\"11\" y=\"1\" width=\"9\" height=\"9\" fill=\"#7fba00\"></rect> <rect x=\"11\" y=\"11\" width=\"9\" height=\"9\" fill=\"#ffb900\"></rect></svg> Sign in with Microsoft</a><div class=\"mt-8\"><div class=\"relative\"><div class=\"absolute inset-0 flex items-center\"><div class=\"w-full border-t border-gray-300\"></div></div><div class=\"relative flex justify-center text-sm\"><span class=\"px-2 bg-white text-gray-500\">Access Information</span></div></div><div class=\"mt-6 space-y-3 text-sm text-gray-600\"><div class=\"flex items-start\"><i class=\"fas fa-check-circle text-green-500 mr-2 mt-0.5\"></i> <span>Students: Use your @stud.viko.lt account</span></div><div class=\"flex items-start\"><i class=\"fas fa-check-circle text-green-500 mr-2 mt-0.5\"></i> <span>Staff: Use your @viko.lt account</span></div><div class=\"flex items-start\"><i class=\"fas fa-info-circle text-blue-500 mr-2 mt-0.5\"></i> <span>Contact IT Support for access issues</span></div></div></div><div class=\"mt-8 text-center\"><p class=\"text-xs text-gray-500\">By signing in, you agree to our Terms of Service and Privacy Policy</p></div></div></div></div></div></div>")
+		templ_7745c5c3_Err = LoginForm(errorMsg).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -141,6 +447,7 @@ func LoginPageContent(errorMsg string) templ.Component {
 	})
 }
 
+// Enhanced Access Denied Page
 func AccessDeniedPage(message string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -157,9 +464,9 @@ func AccessDeniedPage(message string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var6 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var6 == nil {
-			templ_7745c5c3_Var6 = templ.NopComponent
+		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var17 == nil {
+			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = BaseLayout("Access Denied", AccessDeniedContent(message)).Render(ctx, templ_7745c5c3_Buffer)
@@ -186,25 +493,25 @@ func AccessDeniedContent(message string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var7 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var7 == nil {
-			templ_7745c5c3_Var7 = templ.NopComponent
+		templ_7745c5c3_Var18 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var18 == nil {
+			templ_7745c5c3_Var18 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"min-h-screen flex items-center justify-center px-4\"><div class=\"w-full max-w-md\"><div class=\"bg-white shadow-lg rounded-lg px-8 pt-6 pb-8\"><div class=\"text-center\"><i class=\"fas fa-exclamation-triangle text-5xl text-red-500 mb-4\"></i><h1 class=\"text-2xl font-bold text-gray-800 mb-2\">Access Denied</h1><p class=\"text-gray-600 mb-6\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"min-h-screen flex items-center justify-center px-4\"><div class=\"w-full max-w-md\"><div class=\"bg-white shadow-xl rounded-xl px-8 pt-8 pb-8 border border-gray-100\"><div class=\"text-center\"><div class=\"mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4\"><i class=\"fas fa-exclamation-triangle text-2xl text-red-500\"></i></div><h1 class=\"text-2xl font-bold text-gray-800 mb-2\">Access Denied</h1><p class=\"text-gray-600 mb-8 leading-relaxed\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(message)
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 156, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/login.templ`, Line: 232, Col: 75}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><div class=\"space-y-3\"><a href=\"/\" class=\"block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150\"><i class=\"fas fa-home mr-2\"></i> Return to Home</a> <a href=\"/auth/logout\" class=\"block w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150\"><i class=\"fas fa-sign-out-alt mr-2\"></i> Sign Out</a></div></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p><div class=\"space-y-3\"><a href=\"/\" class=\"block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-150 hover:shadow-lg\"><i class=\"fas fa-home mr-2\"></i> Return to Home</a> <a href=\"/auth/logout\" class=\"block w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-150 hover:shadow-lg\"><i class=\"fas fa-sign-out-alt mr-2\"></i> Sign Out</a></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -212,6 +519,7 @@ func AccessDeniedContent(message string) templ.Component {
 	})
 }
 
+// Enhanced Logout Confirmation
 func LogoutConfirmationPage() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -228,9 +536,9 @@ func LogoutConfirmationPage() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var9 == nil {
-			templ_7745c5c3_Var9 = templ.NopComponent
+		templ_7745c5c3_Var20 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var20 == nil {
+			templ_7745c5c3_Var20 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = BaseLayout("Logout", LogoutConfirmationContent()).Render(ctx, templ_7745c5c3_Buffer)
@@ -257,12 +565,12 @@ func LogoutConfirmationContent() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var10 == nil {
-			templ_7745c5c3_Var10 = templ.NopComponent
+		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var21 == nil {
+			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"min-h-screen flex items-center justify-center px-4\"><div class=\"w-full max-w-md\"><div class=\"bg-white shadow-lg rounded-lg px-8 pt-6 pb-8\"><div class=\"text-center\"><i class=\"fas fa-sign-out-alt text-5xl text-blue-500 mb-4\"></i><h1 class=\"text-2xl font-bold text-gray-800 mb-2\">Sign Out</h1><p class=\"text-gray-600 mb-6\">Are you sure you want to sign out?</p><div class=\"space-y-3\"><form method=\"POST\" action=\"/auth/logout\"><button type=\"submit\" class=\"w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150\"><i class=\"fas fa-check mr-2\"></i> Yes, Sign Out</button></form><a href=\"/\" class=\"block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150\"><i class=\"fas fa-times mr-2\"></i> Cancel</a></div></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<div class=\"min-h-screen flex items-center justify-center px-4\"><div class=\"w-full max-w-md\"><div class=\"bg-white shadow-xl rounded-xl px-8 pt-8 pb-8 border border-gray-100\"><div class=\"text-center\"><div class=\"mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4\"><i class=\"fas fa-sign-out-alt text-2xl text-blue-500\"></i></div><h1 class=\"text-2xl font-bold text-gray-800 mb-2\">Sign Out</h1><p class=\"text-gray-600 mb-8\">Are you sure you want to sign out of your session?</p><div class=\"space-y-3\"><form method=\"POST\" action=\"/auth/logout\"><button type=\"submit\" class=\"w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-150 hover:shadow-lg\"><i class=\"fas fa-check mr-2\"></i> Yes, Sign Out</button></form><a href=\"/\" class=\"block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-150 hover:shadow-lg\"><i class=\"fas fa-times mr-2\"></i> Cancel</a></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

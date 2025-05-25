@@ -5,156 +5,229 @@ import (
     "FinalProjectManagementApp/database"
     "FinalProjectManagementApp/components/card"
     "FinalProjectManagementApp/components/button"
+     "FinalProjectManagementApp/components/icon"
     "strconv"
 )
 
-templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo) {
+// Main StudentList function
+templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo, searchValue string) {
     @Layout(user, currentLocale, "Studentų sąrašas") {
         <div class="space-y-6">
             <!-- Header Section -->
-            @StudentListHeader(user)
+            @StudentListHeader(user, searchValue)
 
             <!-- Filters -->
             @StudentListFilters(pagination)
 
-            <!-- Table Card -->
-            @card.Card() {
-                @StudentListTable(user, students, currentLocale)
-            }
-
-            <!-- Pagination -->
-            if pagination != nil {
-                @PaginationComponent(pagination)
-            }
+            <!-- Table Container for HTMX updates -->
+            <div id="student-table-container">
+                @StudentTableWithPagination(user, students, currentLocale, pagination)
+            </div>
         </div>
-        <script src="/static/js/student-list.js"></script>
+
+        <!-- Add HTMX CSS for indicators -->
+        <style>
+            .htmx-indicator {
+                opacity: 0;
+                transition: opacity 200ms ease-in;
+            }
+            .htmx-request .htmx-indicator {
+                opacity: 1;
+            }
+            .htmx-request.htmx-indicator {
+                opacity: 1;
+            }
+        </style>
+
+        <script>
+            // Clear all filters function
+            function clearAllFilters() {
+                document.getElementById('search').value = '';
+                document.querySelectorAll('select').forEach(select => {
+                    select.selectedIndex = 0;
+                });
+            }
+        </script>
     }
 }
 
-templ StudentListHeader(user *auth.AuthenticatedUser) {
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight text-foreground">Studentų sąrašas</h1>
-            <p class="text-muted-foreground">Valdyti ir peržiūrėti studentų informaciją</p>
+// Update the search input in StudentListHeader
+templ StudentListHeader(user *auth.AuthenticatedUser, searchValue string) {
+    <div class="space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-foreground">Studentų sąrašas</h1>
+                <p class="text-muted-foreground">Valdyti ir peržiūrėti studentų informaciją</p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                if canExportData(user.Role) {
+                    @button.Button(button.Props{
+                        Variant: button.VariantDefault,
+                        Class: "flex items-center gap-2",
+                        Attributes: templ.Attributes{
+                            "onclick": "exportData()",
+                        },
+                    }) {
+                        @icon.Download(icon.Props{Size: 16})
+                        Eksportuoti
+                    }
+                }
+            </div>
         </div>
 
-        <div class="flex items-center gap-3">
-            <!-- Search -->
-            <div class="flex max-w-sm">
+        <!-- HTMX-powered Search Bar -->
+        <div class="w-full">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                    @icon.Search(icon.Props{Size: 20, Class: "text-gray-400"})
+                </div>
                 <input
                     type="text"
                     id="search"
-                    placeholder="Ieškoti studentų..."
-                    class="flex h-10 w-full rounded-l-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    name="search"
+                    name="search"
+                    placeholder="Ieškoti studentų pagal vardą, pavardę, temą arba el. paštą..."
+                    class="block w-full pl-10 pr-4 py-3 text-sm border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-500 transition-all duration-200"
+                    autocomplete="off"
+                    value={ searchValue }
+                    hx-get="/students-list"
+                    hx-trigger="input changed delay:300ms, search"
+                    hx-target="#student-table-container"
+                    hx-include="[name='limit'],[name='group'],[name='study_program'],[name='topic_status']"
+                    hx-indicator="#search-indicator"
                 />
-                @button.Button(button.Props{
-                    Variant: button.VariantOutline,
-                    Class: "rounded-l-none border-l-0",
-                }) {
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                }
+                <!-- Loading indicator -->
+                <div id="search-indicator" class="htmx-indicator absolute inset-y-0 right-0 pr-3 flex items-center">
+                    @icon.LoaderCircle(icon.Props{Size: 16, Class: "animate-spin text-blue-500"})
+                </div>
             </div>
-
-            <!-- Filter Button -->
-            @button.Button(button.Props{
-                Variant: button.VariantOutline,
-                Attributes: templ.Attributes{
-                    "onclick": "toggleFilters()",
-                },
-            }) {
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
-                Filtrai
-            }
-
-            if canExportData(user.Role) {
-                @button.Button(button.Props{
-                    Variant: button.VariantDefault,
-                }) {
-                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Eksportuoti
-                }
-            }
         </div>
     </div>
 }
 
+// Update filters to work with HTMX
 templ StudentListFilters(pagination *database.PaginationInfo) {
-    <div id="filters" class="hidden">
-        @card.Card() {
-            @card.Header() {
-                @card.Title() {
-                    Filtrai
+    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+        <div class="flex items-center gap-4 flex-wrap">
+            <!-- Records per page -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Kiek rodyti:</label>
+                <select
+                    name="limit"
+                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-16"
+                    hx-get="/students-list"
+                    hx-trigger="change"
+                    hx-target="#student-table-container"
+                    hx-include="[name='search'],[name='group'],[name='study_program'],[name='topic_status']"
+                >
+                    if pagination != nil && pagination.Limit == 10 {
+                        <option value="10" selected>10</option>
+                    } else {
+                        <option value="10">10</option>
+                    }
+                    if pagination != nil && pagination.Limit == 25 {
+                        <option value="25" selected>25</option>
+                    } else {
+                        <option value="25">25</option>
+                    }
+                    if pagination != nil && pagination.Limit == 50 {
+                        <option value="50" selected>50</option>
+                    } else {
+                        <option value="50">50</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Group filter -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Grupė:</label>
+                <select
+                    name="group"
+                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-24"
+                    hx-get="/students-list"
+                    hx-trigger="change"
+                    hx-target="#student-table-container"
+                    hx-include="[name='search'],[name='limit'],[name='study_program'],[name='topic_status']"
+                >
+                    <option value="">Visos</option>
+                    <option value="PI22B">PI22B</option>
+                    <option value="PI22S">PI22S</option>
+                    <option value="PIT22">PIT22</option>
+                </select>
+            </div>
+
+            <!-- Study program filter -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Programa:</label>
+                <select
+                    name="study_program"
+                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-32"
+                    hx-get="/students-list"
+                    hx-trigger="change"
+                    hx-target="#student-table-container"
+                    hx-include="[name='search'],[name='limit'],[name='group'],[name='topic_status']"
+                >
+                    <option value="">Visos</option>
+                    <option value="Informatikos inžinerija">Informatikos inž.</option>
+                    <option value="Programų sistemų inžinerija">Programų sist. inž.</option>
+                </select>
+            </div>
+
+            <!-- Topic status filter -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Temos būsena:</label>
+                <select
+                    name="topic_status"
+                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-28"
+                    hx-get="/students-list"
+                    hx-trigger="change"
+                    hx-target="#student-table-container"
+                    hx-include="[name='search'],[name='limit'],[name='group'],[name='study_program']"
+                >
+                    <option value="">Visos</option>
+                    <option value="">Nepradėta</option>
+                    <option value="draft">Juodraštis</option>
+                    <option value="submitted">Pateikta</option>
+                    <option value="approved">Patvirtinta</option>
+                    <option value="rejected">Atmesta</option>
+                </select>
+            </div>
+
+            <!-- Clear filters -->
+            <div class="ml-auto">
+                @button.Button(button.Props{
+                    Type: button.TypeButton,
+                    Variant: button.VariantOutline,
+                    Class: "h-9 px-3 text-sm flex items-center gap-1",
+                    Attributes: templ.Attributes{
+                        "hx-get": "/students-list",
+                        "hx-target": "#student-table-container",
+                        "onclick": "clearAllFilters()",
+                    },
+                }) {
+                    @icon.X(icon.Props{Size: 16})
+                    Išvalyti
                 }
-                @card.Description() {
-                    Filtruoti studentų sąrašą pagal įvairius kriterijus
-                }
-            }
-            @card.Content() {
-                <form method="GET" id="filterForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-foreground">Įrašų skaičius</label>
-                        <select name="limit" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" onchange="submitForm()">
-                            if pagination.Limit == 10 {
-                                <option value="10" selected>10 įrašų</option>
-                            } else {
-                                <option value="10">10 įrašų</option>
-                            }
-                            if pagination.Limit == 25 {
-                                <option value="25" selected>25 įrašai</option>
-                            } else {
-                                <option value="25">25 įrašai</option>
-                            }
-                            if pagination.Limit == 50 {
-                                <option value="50" selected>50 įrašų</option>
-                            } else {
-                                <option value="50">50 įrašų</option>
-                            }
-                        </select>
-                    </div>
-
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-foreground">Grupė</label>
-                        <select name="group" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" onchange="submitForm()">
-                            <option value="">Visos grupės</option>
-                            <option value="PI22B">PI22B</option>
-                            <option value="PI22S">PI22S</option>
-                            <option value="PIT22">PIT22</option>
-                        </select>
-                    </div>
-
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-foreground">Studijų programa</label>
-                        <select name="study_program" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" onchange="submitForm()">
-                            <option value="">Visos programos</option>
-                            <option value="Informatikos inžinerija">Informatikos inžinerija</option>
-                            <option value="Programų sistemų inžinerija">Programų sistemų inžinerija</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-end">
-                        @button.Button(button.Props{
-                            Type: button.TypeButton,
-                            Variant: button.VariantOutline,
-                            FullWidth: true,
-                            Attributes: templ.Attributes{
-                                "onclick": "clearFilters()",
-                            },
-                        }) {
-                            Išvalyti
-                        }
-                    </div>
-                </form>
-            }
-        }
+            </div>
+        </div>
     </div>
 }
 
+// Separate component for table and pagination that can be updated
+templ StudentTableWithPagination(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo) {
+    <!-- Table Card -->
+    @card.Card() {
+        @StudentListTable(user, students, currentLocale)
+    }
+
+    <!-- Pagination -->
+    if pagination != nil {
+        @PaginationComponent(pagination)
+    }
+}
+
+// Main Table
 templ StudentListTable(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string) {
     <div class="relative w-full overflow-auto">
         <table class="w-full caption-bottom text-sm">
@@ -172,7 +245,7 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
                         </th>
                     }
                     if canViewDocuments(user.Role) {
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-64">
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-32">
                             Dokumentai
                         </th>
                     }
@@ -186,11 +259,6 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
                             Vadovas
                         </th>
                     }
-                    if canPerformActions(user.Role) {
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-12">
-                            Veiksmai
-                        </th>
-                    }
                 </tr>
             </thead>
             <tbody class="[&_tr:last-child]:border-0">
@@ -198,9 +266,7 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
                     <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                         <!-- Group -->
                         <td class="p-4 align-middle">
-                            <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/80">
-                                { student.StudentGroup }
-                            </span>
+                            @CompactBadge(student.StudentGroup, "primary")
                         </td>
 
                         <!-- Student Info -->
@@ -243,12 +309,6 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
                                 @SupervisorStatus(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned, student.ID)
                             </td>
                         }
-
-                        if canPerformActions(user.Role) {
-                            <td class="p-4 align-middle">
-                                @ActionsCell(user, student)
-                            </td>
-                        }
                     </tr>
                 }
             </tbody>
@@ -256,298 +316,151 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
     </div>
 }
 
+// Enhanced registration status with proper view buttons
 templ RegistrationStatus(user *auth.AuthenticatedUser, status string, approved bool, studentID int) {
-    <div class="space-y-1">
+    <div class="space-y-2">
         if approved {
-            <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-500 text-green-50 hover:bg-green-500/80">
-                Patvirtinta
+            <div class="space-y-2">
+                <div class="text-sm font-medium text-green-700">Patvirtinta katedros vedėjo</div>
+                <div class="flex flex-col gap-1">
+                    @IconButton("eye", "viewRegistration(" + strconv.Itoa(studentID) + ")", "Žiūrėti registraciją", "outline")
+                    if user.Role == "department_head" || user.Role == "admin" {
+                        @IconButton("file-text", "viewTopicRegistrationForm(" + strconv.Itoa(studentID) + ")", "Temos registravimo lapas", "primary")
+                    }
+                </div>
             </div>
-            if canViewRegistration(user.Role) {
-                @button.Button(button.Props{
-                    Variant: button.VariantOutline,
-                    Class: "h-6 px-2 text-xs w-full",
-                    Attributes: templ.Attributes{
-                        "onclick": "viewRegistration(" + strconv.Itoa(studentID) + ")",
-                    },
-                }) {
-                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Žiūrėti
-                }
-            }
         } else if status == "submitted" {
-            <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-yellow-500 text-yellow-50 hover:bg-yellow-500/80">
-                Pateikta
-            </div>
-            <div class="flex gap-1">
+            @CompactBadge("Pateikta", "warning")
+            <div class="flex items-center gap-1">
                 if canEditRegistration(user.Role, status) {
-                    @button.Button(button.Props{
-                        Variant: button.VariantOutline,
-                        Class: "h-6 px-1 text-xs",
-                        Attributes: templ.Attributes{
-                            "onclick": "editRegistration(" + strconv.Itoa(studentID) + ")",
-                        },
-                    }) {
-                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                    }
+                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Redaguoti", "outline")
                 }
-                if canApproveRegistration(user.Role) {
-                    @button.Button(button.Props{
-                        Variant: button.VariantOutline,
-                        Class: "h-6 px-1 text-xs text-green-600 hover:text-green-700",
-                        Attributes: templ.Attributes{
-                            "onclick": "approveRegistration(" + strconv.Itoa(studentID) + ")",
-                        },
-                    }) {
-                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                    }
-                    @button.Button(button.Props{
-                        Variant: button.VariantOutline,
-                        Class: "h-6 px-1 text-xs text-red-600 hover:text-red-700",
-                        Attributes: templ.Attributes{
-                            "onclick": "rejectRegistration(" + strconv.Itoa(studentID) + ")",
-                        },
-                    }) {
-                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    }
+                if user.Role == "department_head" || user.Role == "admin" {
+                    @IconButton("check", "approveRegistration(" + strconv.Itoa(studentID) + ")", "Patvirtinti", "success")
+                    @IconButton("edit-3", "requestChanges(" + strconv.Itoa(studentID) + ")", "Prašyti pakeitimų", "warning")
                 }
             </div>
         } else if status == "draft" {
-            <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-gray-500 text-gray-50 hover:bg-gray-500/80">
-                Juodraštis
-            </div>
+            @CompactBadge("Juodraštis", "secondary")
             if canEditRegistration(user.Role, status) {
-                @button.Button(button.Props{
-                    Variant: button.VariantOutline,
-                    Class: "h-6 px-2 text-xs w-full",
-                    Attributes: templ.Attributes{
-                        "onclick": "editRegistration(" + strconv.Itoa(studentID) + ")",
-                    },
-                }) {
-                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                    Redaguoti
-                }
+                <div class="flex">
+                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Redaguoti", "outline")
+                </div>
+            }
+        } else if status == "needs_revision" {
+            @CompactBadge("Reikia pataisymų", "warning")
+            if canEditRegistration(user.Role, status) {
+                <div class="flex">
+                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Pataisyti", "primary")
+                </div>
+            }
+        } else if status == "rejected" {
+            @CompactBadge("Atmesta", "error")
+            if canEditRegistration(user.Role, status) {
+                <div class="flex">
+                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Redaguoti", "outline")
+                </div>
             }
         } else {
-            <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-red-500 text-red-50 hover:bg-red-500/80">
-                Nepradėta
-            </div>
+            @CompactBadge("Nepradėta", "error")
             if canCreateRegistration(user.Role) {
-                @button.Button(button.Props{
-                    Variant: button.VariantDefault,
-                    Class: "h-6 px-2 text-xs w-full",
-                    Attributes: templ.Attributes{
-                        "onclick": "editRegistration(" + strconv.Itoa(studentID) + ")",
-                    },
-                }) {
-                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Pradėti
-                }
+                <div class="flex">
+                    @IconButton("plus", "editRegistration(" + strconv.Itoa(studentID) + ")", "Pradėti", "primary")
+                </div>
             }
         }
     </div>
 }
 
 templ DocumentsCell(user *auth.AuthenticatedUser, studentID int) {
-    <div class="space-y-1">
-        <div id={ "docs-" + strconv.Itoa(studentID) } class="space-y-1">
+    <div class="space-y-2">
+        <div
+            id={ "docs-" + strconv.Itoa(studentID) }
+            class="space-y-1"
+            data-student-id={ strconv.Itoa(studentID) }
+            data-user-role={ user.Role }
+            data-load-documents="true"
+        >
             <div class="text-xs text-muted-foreground italic">Kraunama...</div>
         </div>
         if canUploadDocuments(user.Role) {
-            @button.Button(button.Props{
-                Variant: button.VariantOutline,
-                Class: "h-6 px-2 text-xs w-full",
-                Attributes: templ.Attributes{
-                    "onclick": "uploadDocument(" + strconv.Itoa(studentID) + ")",
-                },
-            }) {
-                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                </svg>
-                Įkelti
-            }
-        }
-    </div>
-    <script>
-        loadDocuments({ strconv.Itoa(studentID) }, { strconv.Quote(user.Role) });
-    </script>
-}
-
-templ ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasReport bool, isSigned bool, studentID int) {
-    <div class="space-y-1">
-        if reviewerName != "" {
-            <div class="text-sm font-medium text-foreground truncate">{ reviewerName }</div>
-            if hasReport {
-                if isSigned {
-                    <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-500 text-green-50 hover:bg-green-500/80">
-                        Pasirašyta
-                    </div>
-                } else {
-                    <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-500 text-blue-50 hover:bg-blue-500/80">
-                        Užpildyta
-                    </div>
-                }
-                if canViewReview(user.Role) {
-                    @button.Button(button.Props{
-                        Variant: button.VariantOutline,
-                        Class: "h-6 px-2 text-xs w-full",
-                        Attributes: templ.Attributes{
-                            "onclick": "viewReview(" + strconv.Itoa(studentID) + ")",
-                        },
-                    }) {
-                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                        Žiūrėti
-                    }
-                }
-            } else {
-                <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-gray-500 text-gray-50 hover:bg-gray-500/80">
-                    Neužpildyta
-                </div>
-                if canEditReview(user.Role, reviewerName, user.Email) {
-                    @button.Button(button.Props{
-                        Variant: button.VariantDefault,
-                        Class: "h-6 px-2 text-xs w-full",
-                        Attributes: templ.Attributes{
-                            "onclick": "editReview(" + strconv.Itoa(studentID) + ")",
-                        },
-                    }) {
-                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                        Pildyti
-                    }
-                }
-            }
-        } else {
-            <span class="text-sm text-muted-foreground">Nepaskirtas</span>
-            if canAssignReviewer(user.Role) {
-                @button.Button(button.Props{
-                    Variant: button.VariantOutline,
-                    Class: "h-6 px-2 text-xs w-full",
-                    Attributes: templ.Attributes{
-                        "onclick": "assignReviewer(" + strconv.Itoa(studentID) + ")",
-                    },
-                }) {
-                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                    Paskirti
-                }
-            }
-        }
-    </div>
-}
-
-templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasReport bool, isSigned bool, studentID int) {
-    <div class="space-y-1">
-        <div class="text-sm text-muted-foreground truncate">{ supervisorEmail }</div>
-        if hasReport {
-            if isSigned {
-                <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-500 text-green-50 hover:bg-green-500/80">
-                    Pasirašyta
-                </div>
-            } else {
-                <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-500 text-blue-50 hover:bg-blue-500/80">
-                    Užpildyta
-                </div>
-            }
-            if canViewSupervisorReport(user.Role) {
-                @button.Button(button.Props{
-                    Variant: button.VariantOutline,
-                    Class: "h-6 px-2 text-xs w-full",
-                    Attributes: templ.Attributes{
-                        "onclick": "viewSupervisorReport(" + strconv.Itoa(studentID) + ")",
-                    },
-                }) {
-                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Žiūrėti
-                }
-            }
-        } else {
-            <div class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-gray-500 text-gray-50 hover:bg-gray-500/80">
-                Neužpildyta
+            <div class="flex">
+                @IconButton("upload", "uploadDocument(" + strconv.Itoa(studentID) + ")", "Įkelti dokumentą", "outline")
             </div>
-            if canEditSupervisorReport(user.Role, supervisorEmail, user.Email) {
-                @button.Button(button.Props{
-                    Variant: button.VariantDefault,
-                    Class: "h-6 px-2 text-xs w-full",
-                    Attributes: templ.Attributes{
-                        "onclick": "editSupervisorReport(" + strconv.Itoa(studentID) + ")",
-                    },
-                }) {
-                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                    Pildyti
+        }
+    </div>
+}
+
+// Enhanced reviewer status with view button when signed
+templ ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasReport bool, isSigned bool, studentID int) {
+    <div class="space-y-2">
+        if reviewerName != "" {
+            <div class="text-xs font-medium text-foreground truncate max-w-32" title={ reviewerName }>
+                { reviewerName }
+            </div>
+            if hasReport {
+                <div class="flex items-center gap-1">
+                    if isSigned {
+                        @CompactBadge("Pasirašyta", "success")
+                        @IconButton("eye", "viewReviewerReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti recenzento atsiliepimą", "outline")
+                    } else {
+                        @CompactBadge("Užpildyta", "info")
+                        if canViewReview(user.Role) {
+                            @IconButton("eye", "viewReview(" + strconv.Itoa(studentID) + ")", "Žiūrėti", "outline")
+                        }
+                    }
+                </div>
+            } else {
+                <div class="flex items-center gap-1">
+                    @CompactBadge("Neužpildyta", "secondary")
+                    if canEditReview(user.Role, reviewerName, user.Email) {
+                        @IconButton("edit", "editReview(" + strconv.Itoa(studentID) + ")", "Pildyti", "primary")
+                    }
+                </div>
+            }
+        } else {
+            <div class="space-y-1">
+                <span class="text-xs text-muted-foreground">Nepaskirtas</span>
+                if canAssignReviewer(user.Role) {
+                    <div class="flex">
+                        @IconButton("user-plus", "assignReviewer(" + strconv.Itoa(studentID) + ")", "Paskirti", "outline")
+                    </div>
                 }
-            }
+            </div>
         }
     </div>
 }
 
-templ ActionsCell(user *auth.AuthenticatedUser, student database.StudentSummaryView) {
-    <div class="relative">
-        @button.Button(button.Props{
-            Variant: button.VariantGhost,
-            Class: "h-6 w-6 p-0",
-            Attributes: templ.Attributes{
-                "onclick": "toggleActions(" + strconv.Itoa(student.ID) + ")",
-            },
-        }) {
-            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-            </svg>
-        }
-        <div id={ "actions-" + strconv.Itoa(student.ID) } class="hidden absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-10 min-w-48">
-            if canEditStudent(user.Role) {
-                <a href={ templ.SafeURL("/students/edit/" + strconv.Itoa(student.ID)) } class="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">
-                    <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                    Redaguoti
-                </a>
-            }
-            if canViewStudentHistory(user.Role) {
-                <a href={ templ.SafeURL("/students/" + strconv.Itoa(student.ID) + "/history") } class="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground">
-                    <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    Istorija
-                </a>
-            }
-            if canDeleteStudent(user.Role) {
-                <button
-                    onclick={ templ.ComponentScript{ Call: "deleteStudent(" + strconv.Itoa(student.ID) + ")" } }
-                    class="block w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
-                >
-                    <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                    Šalinti
-                </button>
-            }
+// Enhanced supervisor status with view button when signed
+templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasReport bool, isSigned bool, studentID int) {
+    <div class="space-y-2">
+        <div class="text-xs text-muted-foreground truncate max-w-32" title={ supervisorEmail }>
+            { supervisorEmail }
         </div>
+        if hasReport {
+            <div class="flex items-center gap-1">
+                if isSigned {
+                    @CompactBadge("Pasirašyta", "success")
+                    @IconButton("eye", "viewSupervisorReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti vadovo ataskaitą", "outline")
+                } else {
+                    @CompactBadge("Užpildyta", "info")
+                    if canViewSupervisorReport(user.Role) {
+                        @IconButton("eye", "viewSupervisorReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti", "outline")
+                    }
+                }
+            </div>
+        } else {
+            <div class="flex items-center gap-1">
+                @CompactBadge("Neužpildyta", "secondary")
+                if canEditSupervisorReport(user.Role, supervisorEmail, user.Email) {
+                    @IconButton("edit", "editSupervisorReport(" + strconv.Itoa(studentID) + ")", "Pildyti", "primary")
+                }
+            </div>
+        }
     </div>
 }
 
+// Pagination Component
 templ PaginationComponent(pagination *database.PaginationInfo) {
     <div class="flex items-center justify-between">
         <div class="text-sm text-muted-foreground">
@@ -559,26 +472,27 @@ templ PaginationComponent(pagination *database.PaginationInfo) {
                 Variant: button.VariantOutline,
                 Size: button.SizeIcon,
                 Attributes: templ.Attributes{
-                    "onclick": "window.location.reload()",
+                    "hx-get": "/students-list",
+                    "hx-target": "#student-table-container",
+                    "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
                 },
             }) {
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
+                @icon.RotateCcw(icon.Props{Size: 16})
             }
 
             <div class="flex">
                 if pagination.HasPrev {
-                    <a href={ templ.SafeURL("?page=" + strconv.Itoa(pagination.PrevPage)) }>
-                        @button.Button(button.Props{
-                            Variant: button.VariantOutline,
-                            Class: "rounded-r-none",
-                        }) {
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                            </svg>
-                        }
-                    </a>
+                    @button.Button(button.Props{
+                        Variant: button.VariantOutline,
+                        Class: "rounded-r-none",
+                        Attributes: templ.Attributes{
+                            "hx-get": "/students-list?page=" + strconv.Itoa(pagination.PrevPage),
+                            "hx-target": "#student-table-container",
+                            "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
+                        },
+                    }) {
+                        @icon.ChevronLeft(icon.Props{Size: 16})
+                    }
                 }
 
                 for i := maxInt(1, pagination.Page-2); i <= minInt(pagination.TotalPages, pagination.Page+2); i++ {
@@ -590,30 +504,166 @@ templ PaginationComponent(pagination *database.PaginationInfo) {
                             { strconv.Itoa(i) }
                         }
                     } else {
-                        <a href={ templ.SafeURL("?page=" + strconv.Itoa(i)) }>
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Class: "rounded-none",
-                            }) {
-                                { strconv.Itoa(i) }
-                            }
-                        </a>
+                        @button.Button(button.Props{
+                            Variant: button.VariantOutline,
+                            Class: "rounded-none",
+                            Attributes: templ.Attributes{
+                                "hx-get": "/students-list?page=" + strconv.Itoa(i),
+                                "hx-target": "#student-table-container",
+                                "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
+                            },
+                        }) {
+                            { strconv.Itoa(i) }
+                        }
                     }
                 }
 
                 if pagination.HasNext {
-                    <a href={ templ.SafeURL("?page=" + strconv.Itoa(pagination.NextPage)) }>
-                        @button.Button(button.Props{
-                            Variant: button.VariantOutline,
-                            Class: "rounded-l-none",
-                        }) {
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        }
-                    </a>
+                    @button.Button(button.Props{
+                        Variant: button.VariantOutline,
+                        Class: "rounded-l-none",
+                        Attributes: templ.Attributes{
+                            "hx-get": "/students-list?page=" + strconv.Itoa(pagination.NextPage),
+                            "hx-target": "#student-table-container",
+                            "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
+                        },
+                    }) {
+                        @icon.ChevronRight(icon.Props{Size: 16})
+                    }
                 }
             </div>
         </div>
     </div>
+}
+
+// Enhanced icon button with templui icons
+templ IconButton(iconName, action, tooltip string, variant string) {
+    @button.Button(button.Props{
+        Variant: getButtonVariant(variant),
+        Class: "h-8 w-full px-2 text-xs flex items-center justify-center gap-1",
+        Attributes: templ.Attributes{
+            "onclick": action,
+            "title": tooltip,
+        },
+    }) {
+        @renderTemplUIIcon(iconName)
+        <span class="truncate">{ getButtonText(iconName, tooltip) }</span>
+    }
+}
+
+// Render templui icons with correct icon names from your available icons
+templ renderTemplUIIcon(iconName string) {
+    switch iconName {
+    case "eye":
+        @icon.Eye(icon.Props{Size: 14})
+    case "file-text":
+        @icon.FileText(icon.Props{Size: 14})
+    case "edit":
+        @icon.PencilLine(icon.Props{Size: 14})
+    case "edit-3":
+        @icon.Pencil(icon.Props{Size: 14})
+    case "check":
+        @icon.Check(icon.Props{Size: 14})
+    case "x":
+        @icon.X(icon.Props{Size: 14})
+    case "plus":
+        @icon.Plus(icon.Props{Size: 14})
+    case "upload":
+        @icon.Upload(icon.Props{Size: 14})
+    case "user-plus":
+        @icon.UserPlus(icon.Props{Size: 14})
+    case "more-vertical":
+        @icon.EllipsisVertical(icon.Props{Size: 14})
+    default:
+        @icon.CircleHelp(icon.Props{Size: 14})
+    }
+}
+
+// Utility Components
+templ CompactBadge(text, variant string) {
+    <span class={
+        "inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-md " +
+        getBadgeClasses(variant)
+    }>
+        { text }
+    </span>
+}
+
+// Badge classes
+func getBadgeClasses(variant string) string {
+    switch variant {
+    case "success":
+        return "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+    case "warning":
+        return "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
+    case "error":
+        return "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+    case "info":
+        return "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20"
+    case "primary":
+        return "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20"
+    case "secondary":
+        return "bg-gray-50 text-gray-700 ring-1 ring-gray-600/20"
+    default:
+        return "bg-gray-50 text-gray-700 ring-1 ring-gray-600/20"
+    }
+}
+
+// Helper function to get button text
+func getButtonText(iconName, tooltip string) string {
+    switch iconName {
+    case "eye":
+        return "Žiūrėti"
+    case "file-text":
+        return "Lapas"
+    case "edit":
+        return "Redaguoti"
+    case "edit-3":
+        return "Pakeitimai"
+    case "check":
+        return "Patvirtinti"
+    case "x":
+        return "Atmesti"
+    case "plus":
+        return "Pradėti"
+    case "upload":
+        return "Įkelti"
+    case "user-plus":
+        return "Paskirti"
+    default:
+        return tooltip
+    }
+}
+
+// Button variant mapping
+func getButtonVariant(variant string) button.Variant {
+    switch variant {
+    case "success":
+        return button.VariantDefault
+    case "error":
+        return button.VariantDestructive
+    case "warning":
+        return button.VariantOutline
+    case "primary":
+        return button.VariantDefault
+    case "ghost":
+        return button.VariantGhost
+    default:
+        return button.VariantOutline
+    }
+}
+
+// Utility functions
+func minInt(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+func maxInt(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
 }

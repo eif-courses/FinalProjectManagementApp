@@ -72,7 +72,7 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 
 		// Student routes
 		r.Route("/students", func(r chi.Router) {
-			r.Use(authMiddleware.RequireRole(auth.RoleStudent))
+			r.Use(authMiddleware.RequireAuth)
 			r.Get("/profile", handlers.StudentProfileHandler)
 			r.Get("/topic", handlers.StudentTopicHandler)
 			r.Post("/topic/submit", handlers.SubmitTopicHandler)

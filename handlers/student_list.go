@@ -44,9 +44,23 @@ func StudentListHandler(w http.ResponseWriter, r *http.Request) {
 		locale = "lt"
 	}
 
+	// Get search value for template
+	searchValue := ""
+	if filter.Search != nil {
+		searchValue = *filter.Search
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	err = templates.StudentList(user, students, locale, pagination).Render(r.Context(), w)
+	// Check if this is an HTMX request
+	if r.Header.Get("HX-Request") == "true" {
+		// Return only the table and pagination part for HTMX updates
+		err = templates.StudentTableWithPagination(user, students, locale, pagination).Render(r.Context(), w)
+	} else {
+		// Return full page for regular requests
+		err = templates.StudentList(user, students, locale, pagination, searchValue).Render(r.Context(), w)
+	}
+
 	if err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		return
@@ -163,7 +177,7 @@ func applyFilters(students []database.StudentSummaryView, filter *database.Stude
 		// Apply search filter
 		if filter.Search != nil && *filter.Search != "" {
 			searchTerm := strings.ToLower(*filter.Search)
-			studentText := strings.ToLower(student.StudentName + " " + student.StudentLastname + " " + student.FinalProjectTitle)
+			studentText := strings.ToLower(student.StudentName + " " + student.StudentLastname + " " + student.FinalProjectTitle + " " + student.StudentEmail)
 			if !strings.Contains(studentText, searchTerm) {
 				continue
 			}
@@ -212,17 +226,39 @@ func getStudentDocuments(studentID int) ([]database.Document, error) {
 
 func getMockStudents() []database.StudentSummaryView {
 	return []database.StudentSummaryView{
+		// 1. Topic not started (Nepradėta)
 		{
 			StudentRecord: database.StudentRecord{
 				ID:                1,
 				StudentGroup:      "PI22B",
 				StudentName:       "Studentas",
-				StudentLastname:   "Studentauskas",
-				FinalProjectTitle: "Gyvūnų internetinė parduotuvė",
-				StudentEmail:      "student@example.com",
+				StudentLastname:   "Nepradėjęs",
+				FinalProjectTitle: "",
+				StudentEmail:      "student1@stud.viko.lt",
 				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
 				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
+				ReviewerName:      "",
+				CurrentYear:       2024,
+			},
+			TopicApproved:          false,
+			TopicStatus:            "",
+			HasSupervisorReport:    false,
+			HasReviewerReport:      false,
+			SupervisorReportSigned: false,
+			ReviewerReportSigned:   false,
+		},
+		// 2. Topic in draft (Juodraštis)
+		{
+			StudentRecord: database.StudentRecord{
+				ID:                2,
+				StudentGroup:      "PI22B",
+				StudentName:       "Studentas",
+				StudentLastname:   "Juodraštis",
+				FinalProjectTitle: "Gyvūnų internetinė parduotuvė",
+				StudentEmail:      "student2@stud.viko.lt",
+				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
+				StudyProgram:      "Informatikos inžinerija",
+				ReviewerName:      "",
 				CurrentYear:       2024,
 			},
 			TopicApproved:          false,
@@ -232,14 +268,78 @@ func getMockStudents() []database.StudentSummaryView {
 			SupervisorReportSigned: false,
 			ReviewerReportSigned:   false,
 		},
+		// 3. Topic submitted (Pateikta)
 		{
 			StudentRecord: database.StudentRecord{
-				ID:                2,
+				ID:                3,
 				StudentGroup:      "PIT22",
-				StudentName:       "TestVardas",
-				StudentLastname:   "StudentasPavarde",
-				FinalProjectTitle: "Baigiamųjų darbų talpykla automatiniai testai",
-				StudentEmail:      "test@example.com",
+				StudentName:       "Studentas",
+				StudentLastname:   "Pateikta",
+				FinalProjectTitle: "Automatinių testų sistema",
+				StudentEmail:      "student3@stud.viko.lt",
+				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
+				StudyProgram:      "Programų sistemų inžinerija",
+				ReviewerName:      "",
+				CurrentYear:       2024,
+			},
+			TopicApproved:          false,
+			TopicStatus:            "submitted",
+			HasSupervisorReport:    false,
+			HasReviewerReport:      false,
+			SupervisorReportSigned: false,
+			ReviewerReportSigned:   false,
+		},
+		// 4. Topic approved, no reviewer assigned
+		{
+			StudentRecord: database.StudentRecord{
+				ID:                4,
+				StudentGroup:      "PI22S",
+				StudentName:       "Studentas",
+				StudentLastname:   "Patvirtinta",
+				FinalProjectTitle: "Automobilių interneto svetainė",
+				StudentEmail:      "student4@stud.viko.lt",
+				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
+				StudyProgram:      "Informatikos inžinerija",
+				ReviewerName:      "",
+				CurrentYear:       2024,
+			},
+			TopicApproved:          true,
+			TopicStatus:            "approved",
+			HasSupervisorReport:    false,
+			HasReviewerReport:      false,
+			SupervisorReportSigned: false,
+			ReviewerReportSigned:   false,
+		},
+		// 5. Topic approved, reviewer assigned, no reports
+		{
+			StudentRecord: database.StudentRecord{
+				ID:                5,
+				StudentGroup:      "PI22S",
+				StudentName:       "Studentas",
+				StudentLastname:   "Su_Recenzentu",
+				FinalProjectTitle: "CRM sistema",
+				StudentEmail:      "student5@stud.viko.lt",
+				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
+				StudyProgram:      "Informatikos inžinerija",
+				ReviewerName:      "Petras Petraitis",
+				CurrentYear:       2024,
+			},
+			TopicApproved:          true,
+			TopicStatus:            "approved",
+			HasSupervisorReport:    false,
+			HasReviewerReport:      false,
+			SupervisorReportSigned: false,
+			ReviewerReportSigned:   false,
+		},
+		// 6. Supervisor report filled, not signed
+		{
+			StudentRecord: database.StudentRecord{
+				ID:                6,
+				StudentGroup:      "PIT22",
+				StudentName:       "Studentas",
+				StudentLastname:   "Vadovo_Ataskaita",
+				FinalProjectTitle: "Baigiamųjų darbų sistema",
+				StudentEmail:      "student6@stud.viko.lt",
 				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
 				StudyProgram:      "Programų sistemų inžinerija",
 				ReviewerName:      "Bronius Bronislovas",
@@ -252,161 +352,85 @@ func getMockStudents() []database.StudentSummaryView {
 			SupervisorReportSigned: false,
 			ReviewerReportSigned:   false,
 		},
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                3,
-				StudentGroup:      "PI22S",
-				StudentName:       "Aleksandr",
-				StudentLastname:   "Michalovsrij",
-				FinalProjectTitle: "Automobilių interneto svetainė",
-				StudentEmail:      "aleksandr@example.com",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "draft",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                4,
-				StudentGroup:      "PI22S",
-				StudentName:       "Raimondas",
-				StudentLastname:   "Kalinovskis",
-				FinalProjectTitle: "nepradėtas pildyti",
-				StudentEmail:      "raimondas@example.com",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                5,
-				StudentGroup:      "PI22S",
-				StudentName:       "Vitalius",
-				StudentLastname:   "Kunigiskis",
-				FinalProjectTitle: "CRM sistema",
-				StudentEmail:      "vitalius@example.com",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "draft",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                6,
-				StudentGroup:      "PI22B",
-				StudentName:       "Karolis",
-				StudentLastname:   "Pakalnis",
-				FinalProjectTitle: "nepradėtas pildyti",
-				StudentEmail:      "karolis@example.com",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
+		// 7. Supervisor report signed
 		{
 			StudentRecord: database.StudentRecord{
 				ID:                7,
+				StudentGroup:      "PI22B",
+				StudentName:       "Studentas",
+				StudentLastname:   "Vadovas_Pasirašė",
+				FinalProjectTitle: "Internetinė parduotuvė",
+				StudentEmail:      "student7@stud.viko.lt",
+				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
+				StudyProgram:      "Informatikos inžinerija",
+				ReviewerName:      "Petras Petraitis",
+				CurrentYear:       2024,
+			},
+			TopicApproved:          true,
+			TopicStatus:            "approved",
+			HasSupervisorReport:    true,
+			HasReviewerReport:      false,
+			SupervisorReportSigned: true,
+			ReviewerReportSigned:   false,
+		},
+		// 8. Reviewer report filled, not signed
+		{
+			StudentRecord: database.StudentRecord{
+				ID:                8,
 				StudentGroup:      "PIT22",
-				StudentName:       "Satvijas",
-				StudentLastname:   "Motiejūnas",
-				FinalProjectTitle: "Interneto svetainės Baigiamųjų darbų talpykla automatiniai testai",
-				StudentEmail:      "satvijas@example.com",
+				StudentName:       "Studentas",
+				StudentLastname:   "Recenzento_Ataskaita",
+				FinalProjectTitle: "Testų automatizavimas",
+				StudentEmail:      "student8@stud.viko.lt",
 				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
 				StudyProgram:      "Programų sistemų inžinerija",
 				ReviewerName:      "Ona Onaitienė",
 				CurrentYear:       2024,
 			},
-			TopicApproved:          false,
-			TopicStatus:            "draft",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
+			TopicApproved:          true,
+			TopicStatus:            "approved",
+			HasSupervisorReport:    true,
+			HasReviewerReport:      true,
+			SupervisorReportSigned: true,
 			ReviewerReportSigned:   false,
 		},
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                8,
-				StudentGroup:      "PI22S",
-				StudentName:       "Tauras",
-				StudentLastname:   "Petrauskas",
-				FinalProjectTitle: "nepradėtas pildyti",
-				StudentEmail:      "tauras@example.com",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
+		// 9. Everything completed and signed
 		{
 			StudentRecord: database.StudentRecord{
 				ID:                9,
 				StudentGroup:      "PI22S",
-				StudentName:       "Augustinas",
-				StudentLastname:   "Jarmolavičius",
-				FinalProjectTitle: "nepradėtas pildyti",
-				StudentEmail:      "augustinas@example.com",
+				StudentName:       "Studentas",
+				StudentLastname:   "Viskas_Baigta",
+				FinalProjectTitle: "Pilnai užbaigtas projektas",
+				StudentEmail:      "student9@stud.viko.lt",
 				SupervisorEmail:   "penworld@eif.viko.lt",
 				StudyProgram:      "Informatikos inžinerija",
 				ReviewerName:      "Petras Petraitis",
 				CurrentYear:       2024,
 			},
-			TopicApproved:          false,
-			TopicStatus:            "",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
+			TopicApproved:          true,
+			TopicStatus:            "approved",
+			HasSupervisorReport:    true,
+			HasReviewerReport:      true,
+			SupervisorReportSigned: true,
+			ReviewerReportSigned:   true,
 		},
+		// 10. Rejected topic
 		{
 			StudentRecord: database.StudentRecord{
 				ID:                10,
 				StudentGroup:      "PI22B",
-				StudentName:       "Arnoldas",
-				StudentLastname:   "Gaigalas",
-				FinalProjectTitle: "nepradėtas pildyti",
-				StudentEmail:      "arnoldas@example.com",
+				StudentName:       "Studentas",
+				StudentLastname:   "Atmesta_Tema",
+				FinalProjectTitle: "Atmesta tema",
+				StudentEmail:      "student10@stud.viko.lt",
 				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
 				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
+				ReviewerName:      "",
 				CurrentYear:       2024,
 			},
 			TopicApproved:          false,
-			TopicStatus:            "",
+			TopicStatus:            "rejected",
 			HasSupervisorReport:    false,
 			HasReviewerReport:      false,
 			SupervisorReportSigned: false,

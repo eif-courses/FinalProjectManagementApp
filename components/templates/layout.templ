@@ -16,6 +16,9 @@ templ Layout(user *auth.AuthenticatedUser, currentLocale string, title string) {
         <main class="container mx-auto px-4 py-6">
             { children... }
         </main>
+
+        <!-- Add HTMX -->
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
         <script src="/static/js/navbar.js"></script>
     </body>
     </html>
@@ -47,6 +50,9 @@ templ LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, titl
                 </main>
             }
         </div>
+
+        <!-- Add HTMX -->
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
         <script src="/static/js/navbar.js"></script>
     </body>
     </html>
@@ -67,8 +73,7 @@ templ Sidebar(user *auth.AuthenticatedUser) {
 }
 
 templ SidebarLink(href string, text string, icon string) {
-
-        <a href={ templ.SafeURL(href) }
+    <a href={ templ.SafeURL(href) }
         class="flex items-center space-x-3 text-sm font-medium rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground transition-colors"
     >
         <span class="text-lg">{ icon }</span>
