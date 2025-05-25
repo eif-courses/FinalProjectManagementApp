@@ -1,0 +1,469 @@
+package templates
+
+import (
+    "FinalProjectManagementApp/auth"
+    "FinalProjectManagementApp/database"
+    "strconv"
+)
+
+templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo) {
+    <!DOCTYPE html>
+    <html lang={ currentLocale }>
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Studentų sąrašas - Baigiamųjų darbų talpykla</title>
+
+        <!-- Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'system-ui', 'sans-serif'],
+                        }
+                    }
+                }
+            }
+        </script>
+
+        <style>
+            /* Custom styles for specific elements */
+            .table-fixed { table-layout: fixed; }
+        </style>
+    </head>
+    <body class="bg-gray-50 text-gray-900 antialiased">
+        @Navbar(user, currentLocale)
+
+        <main class="max-w-7xl mx-auto px-4 py-6">
+            <!-- Header Section -->
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-semibold text-gray-900">Studentų sąrašas</h1>
+
+                <div class="flex items-center gap-3">
+                    <!-- Search -->
+                    <div class="flex">
+                        <input
+                            type="text"
+                            id="search"
+                            placeholder="Ieškoti..."
+                            class="px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                        />
+                        <button class="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md text-gray-600 hover:bg-gray-200 transition-colors">
+                            🔍
+                        </button>
+                    </div>
+
+                    <!-- Filter Button -->
+                    <button
+                        onclick="toggleFilters()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                        📊 Filtrai
+                    </button>
+
+                    if canExportData(user.Role) {
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                            📊 Eksportuoti
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div id="filters" class="hidden mb-6 p-4 bg-white rounded-lg border border-gray-200">
+                <form method="GET" id="filterForm" class="flex flex-wrap gap-4">
+                    <select name="limit" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500" onchange="submitForm()">
+                        if pagination.Limit == 10 {
+                            <option value="10" selected>10 įrašų</option>
+                        } else {
+                            <option value="10">10 įrašų</option>
+                        }
+                        if pagination.Limit == 25 {
+                            <option value="25" selected>25 įrašai</option>
+                        } else {
+                            <option value="25">25 įrašai</option>
+                        }
+                        if pagination.Limit == 50 {
+                            <option value="50" selected>50 įrašų</option>
+                        } else {
+                            <option value="50">50 įrašų</option>
+                        }
+                    </select>
+
+                    <select name="group" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500" onchange="submitForm()">
+                        <option value="">Visos grupės</option>
+                        <option value="PI22B">PI22B</option>
+                        <option value="PI22S">PI22S</option>
+                        <option value="PIT22">PIT22</option>
+                    </select>
+
+                    <select name="study_program" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500" onchange="submitForm()">
+                        <option value="">Visos programos</option>
+                        <option value="Informatikos inžinerija">Informatikos inžinerija</option>
+                        <option value="Programų sistemų inžinerija">Programų sistemų inžinerija</option>
+                    </select>
+                </form>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-fixed">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="w-20 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Grupė
+                                </th>
+                                <th class="w-64 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Studentas
+                                </th>
+                                if canViewTopicRegistration(user.Role) {
+                                    <th class="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Tema
+                                    </th>
+                                }
+                                if canViewDocuments(user.Role) {
+                                    <th class="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Dokumentai
+                                    </th>
+                                }
+                                if canViewReviewer(user.Role) {
+                                    <th class="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Recenzentas
+                                    </th>
+                                }
+                                if canViewSupervisor(user.Role) {
+                                    <th class="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Vadovas
+                                    </th>
+                                }
+                                if canPerformActions(user.Role) {
+                                    <th class="w-12 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                                    </th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            for _, student := range students {
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <!-- Group -->
+                                    <td class="px-3 py-3">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                            { student.StudentGroup }
+                                        </span>
+                                    </td>
+
+                                    <!-- Student Info -->
+                                    <td class="px-3 py-3">
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900">
+                                                { student.GetDisplayName(currentLocale) }
+                                            </div>
+                                            <div class="text-sm text-gray-500 truncate">
+                                                { student.GetLocalizedTitle(currentLocale) }
+                                            </div>
+                                            if canViewStudentDetails(user.Role) {
+                                                <div class="text-xs text-gray-400 mt-1">
+                                                    { student.StudentEmail }
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+
+                                    if canViewTopicRegistration(user.Role) {
+                                        <td class="px-3 py-3">
+                                            @RegistrationStatusTailwind(user, student.TopicStatus, student.TopicApproved, student.ID)
+                                        </td>
+                                    }
+
+                                    if canViewDocuments(user.Role) {
+                                        <td class="px-3 py-3">
+                                            @DocumentsCellTailwind(user, student.ID)
+                                        </td>
+                                    }
+
+                                    if canViewReviewer(user.Role) {
+                                        <td class="px-3 py-3">
+                                            @ReviewerStatusTailwind(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned, student.ID)
+                                        </td>
+                                    }
+
+                                    if canViewSupervisor(user.Role) {
+                                        <td class="px-3 py-3">
+                                            @SupervisorStatusTailwind(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned, student.ID)
+                                        </td>
+                                    }
+
+                                    if canPerformActions(user.Role) {
+                                        <td class="px-3 py-3">
+                                            @ActionsCellTailwind(user, student)
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            if pagination != nil {
+                @PaginationComponentTailwind(pagination)
+            }
+        </main>
+
+        <script src="/static/js/student-list.js"></script>
+    </body>
+    </html>
+}
+
+templ RegistrationStatusTailwind(user *auth.AuthenticatedUser, status string, approved bool, studentID int) {
+    <div class="space-y-2">
+        if approved {
+            <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                Patvirtinta
+            </span>
+            if canViewRegistration(user.Role) {
+                <button
+                    onclick={ templ.ComponentScript{ Call: "viewRegistration(" + strconv.Itoa(studentID) + ")" } }
+                    class="block w-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                >
+                    👁️ Žiūrėti
+                </button>
+            }
+        } else if status == "submitted" {
+            <span class="inline-flex px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                Pateikta
+            </span>
+            <div class="flex gap-1">
+                if canEditRegistration(user.Role, status) {
+                    <button
+                        onclick={ templ.ComponentScript{ Call: "editRegistration(" + strconv.Itoa(studentID) + ")" } }
+                        class="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                    >
+                        ✏️ Derinti
+                    </button>
+                }
+                if canApproveRegistration(user.Role) {
+                    <button
+                        onclick={ templ.ComponentScript{ Call: "approveRegistration(" + strconv.Itoa(studentID) + ")" } }
+                        class="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 transition-colors"
+                    >
+                        ✅
+                    </button>
+                    <button
+                        onclick={ templ.ComponentScript{ Call: "rejectRegistration(" + strconv.Itoa(studentID) + ")" } }
+                        class="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                    >
+                        ❌
+                    </button>
+                }
+            </div>
+        } else if status == "draft" {
+            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                Juodraštis
+            </span>
+            if canEditRegistration(user.Role, status) {
+                <button
+                    onclick={ templ.ComponentScript{ Call: "editRegistration(" + strconv.Itoa(studentID) + ")" } }
+                    class="block w-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                >
+                    ✏️ Derinti
+                </button>
+            }
+        } else {
+            <span class="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                Nepradėta
+            </span>
+            if canCreateRegistration(user.Role) {
+                <button
+                    onclick={ templ.ComponentScript{ Call: "editRegistration(" + strconv.Itoa(studentID) + ")" } }
+                    class="block w-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                >
+                    ✏️ Pradėti
+                </button>
+            }
+        }
+    </div>
+}
+
+templ DocumentsCellTailwind(user *auth.AuthenticatedUser, studentID int) {
+    <div class="space-y-1">
+        <div id={ "docs-" + strconv.Itoa(studentID) } class="space-y-1">
+            <div class="text-xs text-gray-400 italic">Kraunama...</div>
+        </div>
+        if canUploadDocuments(user.Role) {
+            <button
+                onclick={ templ.ComponentScript{ Call: "uploadDocument(" + strconv.Itoa(studentID) + ")" } }
+                class="w-full px-2 py-1 text-xs font-medium text-gray-700 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+            >
+                📎 Įkelti
+            </button>
+        }
+    </div>
+    <script>
+        loadDocuments({ strconv.Itoa(studentID) }, { strconv.Quote(user.Role) });
+    </script>
+}
+
+templ ReviewerStatusTailwind(user *auth.AuthenticatedUser, reviewerName string, hasReport bool, isSigned bool, studentID int) {
+    <div class="space-y-1">
+        if reviewerName != "" {
+            <div class="text-sm font-medium text-gray-900 truncate">{ reviewerName }</div>
+            if hasReport {
+                if isSigned {
+                    <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                        Pasirašyta
+                    </span>
+                } else {
+                    <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        Užpildyta
+                    </span>
+                }
+                if canViewReview(user.Role) {
+                    <button
+                        onclick={ templ.ComponentScript{ Call: "viewReview(" + strconv.Itoa(studentID) + ")" } }
+                        class="block w-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                    >
+                        👁️ Žiūrėti
+                    </button>
+                }
+            } else {
+                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                    Neužpildyta
+                </span>
+                if canEditReview(user.Role, reviewerName, user.Email) {
+                    <button
+                        onclick={ templ.ComponentScript{ Call: "editReview(" + strconv.Itoa(studentID) + ")" } }
+                        class="block w-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                    >
+                        ✏️ Pildyti
+                    </button>
+                }
+            }
+        } else {
+            <span class="text-sm text-gray-400">Nepaskirtas</span>
+            if canAssignReviewer(user.Role) {
+                <button
+                    onclick={ templ.ComponentScript{ Call: "assignReviewer(" + strconv.Itoa(studentID) + ")" } }
+                    class="block w-full px-2 py-1 text-xs font-medium text-gray-700 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                >
+                    👤 Paskirti
+                </button>
+            }
+        }
+    </div>
+}
+
+templ SupervisorStatusTailwind(user *auth.AuthenticatedUser, supervisorEmail string, hasReport bool, isSigned bool, studentID int) {
+    <div class="space-y-1">
+        <div class="text-sm text-gray-600 truncate">{ supervisorEmail }</div>
+        if hasReport {
+            if isSigned {
+                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                    Pasirašyta
+                </span>
+            } else {
+                <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                    Užpildyta
+                </span>
+            }
+            if canViewSupervisorReport(user.Role) {
+                <button
+                    onclick={ templ.ComponentScript{ Call: "viewSupervisorReport(" + strconv.Itoa(studentID) + ")" } }
+                    class="block w-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                >
+                    👁️ Žiūrėti
+                </button>
+            }
+        } else {
+            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                Neužpildyta
+            </span>
+            if canEditSupervisorReport(user.Role, supervisorEmail, user.Email) {
+                <button
+                    onclick={ templ.ComponentScript{ Call: "editSupervisorReport(" + strconv.Itoa(studentID) + ")" } }
+                    class="block w-full px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                >
+                    ✏️ Pildyti
+                </button>
+            }
+        }
+    </div>
+}
+
+templ ActionsCellTailwind(user *auth.AuthenticatedUser, student database.StudentSummaryView) {
+    <div class="relative">
+        <button
+            onclick={ templ.ComponentScript{ Call: "toggleActions(" + strconv.Itoa(student.ID) + ")" } }
+            class="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+        >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+            </svg>
+        </button>
+        <div id={ "actions-" + strconv.Itoa(student.ID) } class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-48">
+            if canEditStudent(user.Role) {
+                <a href={ templ.URL("/students/edit/" + strconv.Itoa(student.ID)) } class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    ✏️ Redaguoti
+                </a>
+            }
+            if canViewStudentHistory(user.Role) {
+                <a href={ templ.URL("/students/" + strconv.Itoa(student.ID) + "/history") } class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    📋 Istorija
+                </a>
+            }
+            if canDeleteStudent(user.Role) {
+                <button
+                    onclick={ templ.ComponentScript{ Call: "deleteStudent(" + strconv.Itoa(student.ID) + ")" } }
+                    class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                    🗑️ Šalinti
+                </button>
+            }
+        </div>
+    </div>
+}
+
+templ PaginationComponentTailwind(pagination *database.PaginationInfo) {
+    <div class="flex items-center justify-between mt-6">
+        <div class="text-sm text-gray-700">
+            Rodoma { strconv.Itoa((pagination.Page-1)*pagination.Limit + 1) } - { strconv.Itoa(minInt(pagination.Page*pagination.Limit, pagination.Total)) } iš { strconv.Itoa(pagination.Total) }
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="window.location.reload()" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                🔄 Atnaujinti
+            </button>
+
+            <div class="flex">
+                if pagination.HasPrev {
+                    <a href={ templ.URL("?page=" + strconv.Itoa(pagination.PrevPage)) } class="px-3 py-1 text-sm border border-gray-300 rounded-l-md hover:bg-gray-50 transition-colors">
+                        ‹
+                    </a>
+                }
+
+                for i := maxInt(1, pagination.Page-2); i <= minInt(pagination.TotalPages, pagination.Page+2); i++ {
+                    if i == pagination.Page {
+                        <span class="px-3 py-1 text-sm bg-blue-600 text-white border border-blue-600">
+                            { strconv.Itoa(i) }
+                        </span>
+                    } else {
+                        <a href={ templ.URL("?page=" + strconv.Itoa(i)) } class="px-3 py-1 text-sm border border-gray-300 hover:bg-gray-50 transition-colors">
+                            { strconv.Itoa(i) }
+                        </a>
+                    }
+                }
+
+                if pagination.HasNext {
+                    <a href={ templ.URL("?page=" + strconv.Itoa(pagination.NextPage)) } class="px-3 py-1 text-sm border border-gray-300 rounded-r-md hover:bg-gray-50 transition-colors">
+                        ›
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+}

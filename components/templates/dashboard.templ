@@ -1,0 +1,33 @@
+package templates
+import "FinalProjectManagementApp/auth"
+
+templ Dashboard(user *auth.AuthenticatedUser, currentLocale string) {
+	@Layout(user, currentLocale, "Dashboard") {
+		<div class="dashboard-content">
+			<div class="header">
+				<h1>Dashboard</h1>
+			</div>
+
+			<div class="user-info">
+				<h2>Welcome, { user.Name }!</h2>
+				<p><strong>Email:</strong> { user.Email }</p>
+				<p><strong>Department:</strong> { user.Department }</p>
+				<p><strong>Job Title:</strong> { user.JobTitle }</p>
+				<p><strong>Role:</strong> <span class="role">{ user.Role }</span></p>
+				<p><strong>Login Time:</strong> { user.LoginTime.Format("2006-01-02 15:04:05") }</p>
+			</div>
+
+			<div class="permissions">
+				<h3>Your Permissions:</h3>
+				for _, perm := range user.Permissions {
+					<span class="permission">{ perm }</span>
+				}
+			</div>
+
+			<div>
+				<h3>Available Actions:</h3>
+				<p>Based on your role ({ user.Role }), you can access different parts of the system.</p>
+			</div>
+		</div>
+	}
+}

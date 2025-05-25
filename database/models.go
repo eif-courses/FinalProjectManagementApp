@@ -1294,3 +1294,11 @@ func GetGradeText(grade int) string {
 		return "Unknown"
 	}
 }
+
+// Add this function to your database/models.go file
+func NullableInt64(i int64) *int64 {
+	if i == 0 {
+		return nil
+	}
+	return &i
+}

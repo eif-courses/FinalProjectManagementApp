@@ -1,0 +1,233 @@
+package templates
+
+import "FinalProjectManagementApp/auth"
+
+templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
+    <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo and Title -->
+                <div class="flex items-center space-x-3">
+                    <img src="/static/images/viko-logo.png" alt="VIK Logo" class="h-8 w-auto"/>
+                    <span class="hidden md:block text-lg font-semibold text-gray-900">
+                        Baigiamųjų darbų talpykla
+                    </span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-1">
+                    <!-- Role-based navigation -->
+                    if user.Role == "admin" {
+                        <a href="/admin" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                            <span class="mr-2">⚙️</span>
+                            <span>Administratoriui</span>
+                        </a>
+                    }
+
+                    if user.Role == "department_head" || user.Role == "admin" {
+                        <a href="/department" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                            <span class="mr-2">🏢</span>
+                            <span>Vedėjui</span>
+                        </a>
+                    }
+
+                    <a href="/reviews" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                        <span class="mr-2">📝</span>
+                        <span>Recenzentui</span>
+                    </a>
+
+                    <a href="/manage" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                        <span class="mr-2">👥</span>
+                        <span>Vadovui</span>
+                    </a>
+
+                    <!-- Student List Link -->
+                    if user.Role == "admin" || user.Role == "department_head" || user.Role == "supervisor" {
+                        <a href="/students-list" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                            <span class="mr-2">👥</span>
+                            <span>Studentų sąrašas</span>
+                        </a>
+                    }
+
+                    <!-- Language Selector -->
+                    <div class="relative">
+                        <button
+                            onclick="toggleDropdown('language-dropdown')"
+                            class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                        >
+                            <span class="mr-2">🌐</span>
+                            <span>{ getLanguageName(currentLocale) }</span>
+                            <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <div id="language-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                            <a href="?locale=lt" class={ getLocaleClassTailwind(currentLocale, "lt") }>
+                                Lietuvių
+                            </a>
+                            <a href="?locale=en" class={ getLocaleClassTailwind(currentLocale, "en") }>
+                                English
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="relative ml-3">
+                        <button
+                            onclick="toggleDropdown('user-dropdown')"
+                            class="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                        >
+                            <div class="flex flex-col items-end mr-3">
+                                <span class="text-sm font-medium text-gray-900">{ user.Email }</span>
+                                <span class="text-xs text-gray-500">{ user.JobTitle }</span>
+                            </div>
+                            <div class="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                <span class="text-sm font-medium text-gray-600">
+                                    { string(user.Name[0]) }
+                                </span>
+                            </div>
+                            <svg class="ml-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                            <a href="/profile" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                <span class="mr-3">👤</span>
+                                <span>Profile</span>
+                            </a>
+                            <a href="/settings" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                <span class="mr-3">⚙️</span>
+                                <span>Settings</span>
+                            </a>
+                            <div class="border-t border-gray-100 my-1"></div>
+                            <a href="/auth/logout" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                <span class="mr-3">🚪</span>
+                                <span>Atsijungti</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button
+                        onclick="toggleMobileMenu()"
+                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                        aria-label="Toggle menu"
+                    >
+                        <svg id="menu-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                        <svg id="close-icon" class="hidden h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation Menu -->
+            <div id="mobile-menu" class="hidden md:hidden border-t border-gray-200 py-3">
+                <div class="space-y-1">
+                    if user.Role == "admin" {
+                        <a href="/admin" class="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                            <span class="mr-3">⚙️</span>
+                            <span>Administratoriui</span>
+                        </a>
+                    }
+
+                    if user.Role == "department_head" || user.Role == "admin" {
+                        <a href="/department" class="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                            <span class="mr-3">🏢</span>
+                            <span>Vedėjui</span>
+                        </a>
+                    }
+
+                    <a href="/reviews" class="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                        <span class="mr-3">📝</span>
+                        <span>Recenzentui</span>
+                    </a>
+
+                    <a href="/manage" class="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                        <span class="mr-3">👥</span>
+                        <span>Vadovui</span>
+                    </a>
+
+                    if user.Role == "admin" || user.Role == "department_head" || user.Role == "supervisor" {
+                        <a href="/students-list" class="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                            <span class="mr-3">👥</span>
+                            <span>Studentų sąrašas</span>
+                        </a>
+                    }
+
+                    <!-- Mobile Language Selector -->
+                    <div class="px-3 py-2">
+                        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Kalba</div>
+                        <div class="space-y-1">
+                            <a href="?locale=lt" class={ getMobileLocaleClass(currentLocale, "lt") }>
+                                🇱🇹 Lietuvių
+                            </a>
+                            <a href="?locale=en" class={ getMobileLocaleClass(currentLocale, "en") }>
+                                🇺🇸 English
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Mobile User Info -->
+                    <div class="px-3 py-2 border-t border-gray-200 mt-3">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="h-10 w-10 bg-gray-300 rounded-full flex items-center justify-center">
+                                <span class="text-sm font-medium text-gray-600">
+                                    { string(user.Name[0]) }
+                                </span>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">{ user.Email }</div>
+                                <div class="text-xs text-gray-500">{ user.JobTitle }</div>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <a href="/profile" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors">
+                                <span class="mr-3">👤</span>
+                                <span>Profile</span>
+                            </a>
+                            <a href="/settings" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors">
+                                <span class="mr-3">⚙️</span>
+                                <span>Settings</span>
+                            </a>
+                            <a href="/auth/logout" class="flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                                <span class="mr-3">🚪</span>
+                                <span>Atsijungti</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+}
+
+// Helper functions
+func getLanguageName(locale string) string {
+    switch locale {
+    case "en":
+        return "English"
+    default:
+        return "Lietuvių"
+    }
+}
+
+func getLocaleClassTailwind(currentLocale, targetLocale string) string {
+    baseClass := "block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+    if currentLocale == targetLocale {
+        return baseClass + " text-blue-600 bg-blue-50"
+    }
+    return baseClass + " text-gray-700"
+}
+
+func getMobileLocaleClass(currentLocale, targetLocale string) string {
+    baseClass := "block px-3 py-1 text-sm rounded-md transition-colors"
+    if currentLocale == targetLocale {
+        return baseClass + " text-blue-600 bg-blue-50"
+    }
+    return baseClass + " text-gray-600 hover:bg-gray-50"
+}

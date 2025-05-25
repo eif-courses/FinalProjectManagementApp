@@ -1,0 +1,23 @@
+package templates
+
+import "FinalProjectManagementApp/auth"
+
+templ Layout(user *auth.AuthenticatedUser, currentLocale string, title string) {
+	<!DOCTYPE html>
+	<html lang={ currentLocale }>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title } - Baigiamųjų darbų talpykla</title>
+		<link rel="stylesheet" href="/static/css/navbar.css"/>
+		<link rel="stylesheet" href="/static/css/main.css"/>
+	</head>
+	<body>
+		@Navbar(user, currentLocale)
+		<main class="main-content">
+			{ children... }
+		</main>
+		<script src="/static/js/navbar.js"></script>
+	</body>
+	</html>
+}

@@ -1,8 +1,8 @@
-// routes/routes.go
 package routes
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -24,9 +24,15 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 	// Initialize handlers
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
 
-	// Static files
-	fileServer := http.FileServer(http.Dir("./static"))
-	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+	// Static files - More comprehensive setup
+	workDir, _ := filepath.Abs("./")
+	filesDir := http.Dir(filepath.Join(workDir, "static"))
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(filesDir)))
+
+	// Also serve favicon if you have one
+	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/favicon.ico")
+	})
 
 	// Public routes
 	r.Group(func(r chi.Router) {
@@ -51,6 +57,12 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 
 		// Dashboard
 		r.Get("/dashboard", handlers.DashboardHandler)
+
+		// Student List
+		r.Get("/students-list", handlers.StudentListHandler)
+
+		// API endpoints for student data
+		r.Get("/api/students/{id}/documents", handlers.DocumentsAPIHandler)
 
 		// Student routes
 		r.Route("/students", func(r chi.Router) {
@@ -87,5 +99,28 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 		})
 	})
 
+	// Add this temporary debug route in your SetupRoutes function
+	r.Get("/debug/css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>CSS Debug</title>
+        <link rel="stylesheet" href="/static/css/student-list.css">
+        <style>
+        .test { background: red; color: white; padding: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="test">This should have red background (inline CSS)</div>
+        <div class="container">This should be styled if CSS loads</div>
+        <button class="btn-view">This should be a styled button</button>
+    </body>
+    </html>
+    `))
+	})
+
 	return r
+
 }

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"FinalProjectManagementApp/auth"
-	authComponents "FinalProjectManagementApp/components/auth" // Import your templ components
+	"FinalProjectManagementApp/components/templates" // Import your templ components
 )
 
 type AuthHandlers struct {
@@ -30,7 +30,7 @@ func (h *AuthHandlers) ShowLoginPage(w http.ResponseWriter, r *http.Request) {
 	errorMsg := r.URL.Query().Get("error")
 
 	// Use the Templ component
-	component := authComponents.LoginPage(errorMsg)
+	component := templates.LoginPage(errorMsg)
 	component.Render(r.Context(), w)
 }
 
@@ -40,11 +40,11 @@ func (h *AuthHandlers) ShowAccessDeniedPage(w http.ResponseWriter, r *http.Reque
 		message = "You don't have permission to access this resource."
 	}
 
-	component := authComponents.AccessDeniedPage(message)
+	component := templates.AccessDeniedPage(message)
 	component.Render(r.Context(), w)
 }
 
 func (h *AuthHandlers) ShowLogoutPage(w http.ResponseWriter, r *http.Request) {
-	component := authComponents.LogoutConfirmationPage()
+	component := templates.LogoutConfirmationPage()
 	component.Render(r.Context(), w)
 }

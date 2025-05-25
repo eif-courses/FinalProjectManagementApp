@@ -1,69 +1,61 @@
 package handlers
 
 import (
+	"FinalProjectManagementApp/components/templates"
 	"net/http"
 
 	"FinalProjectManagementApp/auth"
 )
 
 func DashboardHandler(w http.ResponseWriter, r *http.Request) {
-	// Get user from context (set by auth middleware)
 	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
-	html := `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard - Project Management</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .header { background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
-        .user-info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .permissions { background: #f3e5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .btn { background: #d13438; color: white; padding: 8px 16px; text-decoration: none; border-radius: 3px; }
-        .role { font-weight: bold; color: #1976d2; }
-        .permission { display: inline-block; background: #4caf50; color: white; padding: 4px 8px; margin: 2px; border-radius: 3px; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Dashboard</h1>
-        <a href="/auth/logout" class="btn">Logout</a>
-    </div>
-    
-    <div class="user-info">
-        <h2>Welcome, ` + user.Name + `!</h2>
-        <p><strong>Email:</strong> ` + user.Email + `</p>
-        <p><strong>Department:</strong> ` + user.Department + `</p>
-        <p><strong>Job Title:</strong> ` + user.JobTitle + `</p>
-        <p><strong>Role:</strong> <span class="role">` + user.Role + `</span></p>
-        <p><strong>Login Time:</strong> ` + user.LoginTime.Format("2006-01-02 15:04:05") + `</p>
-    </div>
-    
-    <div class="permissions">
-        <h3>Your Permissions:</h3>`
-
-	for _, perm := range user.Permissions {
-		html += `<span class="permission">` + perm + `</span>`
+	// Get locale from query parameter or cookie
+	locale := r.URL.Query().Get("locale")
+	if locale == "" {
+		locale = getLocaleFromCookie(r)
+	}
+	if locale == "" {
+		locale = "lt" // default
 	}
 
-	html += `
-    </div>
-    
-    <div>
-        <h3>Available Actions:</h3>
-        <p>Based on your role (` + user.Role + `), you can access different parts of the system.</p>
-    </div>
-</body>
-</html>`
+	// Set locale cookie if changed
+	if r.URL.Query().Get("locale") != "" {
+		setLocaleCookie(w, locale)
+	}
 
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(html))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	err := templates.Layout(user, locale, "Dashboard").Render(r.Context(), w)
+	if err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		return
+	}
+}
+
+func getLocaleFromCookie(r *http.Request) string {
+	cookie, err := r.Cookie("locale")
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
+}
+
+func setLocaleCookie(w http.ResponseWriter, locale string) {
+	cookie := &http.Cookie{
+		Name:     "locale",
+		Value:    locale,
+		Path:     "/",
+		MaxAge:   86400 * 30, // 30 days
+		HttpOnly: false,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
+	}
+	http.SetCookie(w, cookie)
 }
 
 // Placeholder handlers for other routes

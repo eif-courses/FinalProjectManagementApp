@@ -1,0 +1,203 @@
+// components/auth/login.templ
+package templates
+
+templ BaseLayout(title string, content templ.Component) {
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>{ title } - Thesis Management System</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        @content
+    </body>
+    </html>
+}
+
+templ LoginPage(errorMsg string) {
+    @BaseLayout("Login", LoginPageContent(errorMsg))
+}
+
+templ LoginPageContent(errorMsg string) {
+    <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="w-full max-w-4xl">
+            <div class="flex flex-col lg:flex-row bg-white shadow-xl rounded-xl overflow-hidden">
+                // Left side - Info panel
+                <div class="lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-8 lg:p-12 text-white">
+                    <div class="h-full flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center mb-8">
+                                <i class="fas fa-graduation-cap text-4xl mr-3"></i>
+                                <h1 class="text-2xl font-bold">VIKO</h1>
+                            </div>
+
+                            <h2 class="text-3xl font-bold mb-4">Thesis Management System</h2>
+                            <p class="text-blue-100 mb-8">Manage your thesis journey from topic submission to final defense.</p>
+
+                            <div class="space-y-4">
+                                <div class="flex items-start">
+                                    <div class="bg-white/20 rounded-full p-3 mr-4 flex-shrink-0">
+                                        <i class="fas fa-file-alt text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold">Submit & Track Topics</h3>
+                                        <p class="text-sm text-blue-100">Submit thesis topics and track approval status</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start">
+                                    <div class="bg-white/20 rounded-full p-3 mr-4 flex-shrink-0">
+                                        <i class="fas fa-users text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold">Collaborate</h3>
+                                        <p class="text-sm text-blue-100">Work with supervisors and reviewers</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start">
+                                    <div class="bg-white/20 rounded-full p-3 mr-4 flex-shrink-0">
+                                        <i class="fas fa-chart-line text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold">Monitor Progress</h3>
+                                        <p class="text-sm text-blue-100">Track milestones and deadlines</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8">
+                            <p class="text-sm text-blue-200">Powered by VIKO IT Department</p>
+                        </div>
+                    </div>
+                </div>
+
+                // Right side - Login form
+                <div class="lg:w-1/2 p-8 lg:p-12 flex items-center">
+                    <div class="w-full max-w-sm mx-auto">
+                        <div class="text-center mb-8">
+                            <i class="fas fa-user-circle text-5xl text-gray-400 mb-4"></i>
+                            <h2 class="text-2xl font-bold text-gray-800">Welcome Back</h2>
+                            <p class="text-gray-600 mt-2">Sign in with your VIKO account</p>
+                        </div>
+
+                        if errorMsg != "" {
+                            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm" role="alert">
+                                <div class="flex items-center">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                    <span>{ errorMsg }</span>
+                                </div>
+                            </div>
+                        }
+
+                        <a href="/auth/login" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 text-center shadow-lg">
+                            <svg class="w-5 h-5 mr-3 inline-block" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                                <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                                <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                                <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                            </svg>
+                            Sign in with Microsoft
+                        </a>
+
+                        <div class="mt-8">
+                            <div class="relative">
+                                <div class="absolute inset-0 flex items-center">
+                                    <div class="w-full border-t border-gray-300"></div>
+                                </div>
+                                <div class="relative flex justify-center text-sm">
+                                    <span class="px-2 bg-white text-gray-500">Access Information</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 space-y-3 text-sm text-gray-600">
+                                <div class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-0.5"></i>
+                                    <span>Students: Use your @stud.viko.lt account</span>
+                                </div>
+                                <div class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-0.5"></i>
+                                    <span>Staff: Use your @viko.lt account</span>
+                                </div>
+                                <div class="flex items-start">
+                                    <i class="fas fa-info-circle text-blue-500 mr-2 mt-0.5"></i>
+                                    <span>Contact IT Support for access issues</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 text-center">
+                            <p class="text-xs text-gray-500">
+                                By signing in, you agree to our Terms of Service and Privacy Policy
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+templ AccessDeniedPage(message string) {
+    @BaseLayout("Access Denied", AccessDeniedContent(message))
+}
+
+templ AccessDeniedContent(message string) {
+    <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="w-full max-w-md">
+            <div class="bg-white shadow-lg rounded-lg px-8 pt-6 pb-8">
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">Access Denied</h1>
+                    <p class="text-gray-600 mb-6">{ message }</p>
+
+                    <div class="space-y-3">
+                        <a href="/" class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150">
+                            <i class="fas fa-home mr-2"></i>
+                            Return to Home
+                        </a>
+                        <a href="/auth/logout" class="block w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            Sign Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+templ LogoutConfirmationPage() {
+    @BaseLayout("Logout", LogoutConfirmationContent())
+}
+
+templ LogoutConfirmationContent() {
+    <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="w-full max-w-md">
+            <div class="bg-white shadow-lg rounded-lg px-8 pt-6 pb-8">
+                <div class="text-center">
+                    <i class="fas fa-sign-out-alt text-5xl text-blue-500 mb-4"></i>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">Sign Out</h1>
+                    <p class="text-gray-600 mb-6">Are you sure you want to sign out?</p>
+
+                    <div class="space-y-3">
+                        <form method="POST" action="/auth/logout">
+                            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150">
+                                <i class="fas fa-check mr-2"></i>
+                                Yes, Sign Out
+                            </button>
+                        </form>
+                        <a href="/" class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150">
+                            <i class="fas fa-times mr-2"></i>
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
