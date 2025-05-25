@@ -1,33 +1,209 @@
 package templates
-import "FinalProjectManagementApp/auth"
+
+import (
+    "FinalProjectManagementApp/auth"
+    "FinalProjectManagementApp/components/card"
+)
 
 templ Dashboard(user *auth.AuthenticatedUser, currentLocale string) {
-	@Layout(user, currentLocale, "Dashboard") {
-		<div class="dashboard-content">
-			<div class="header">
-				<h1>Dashboard</h1>
-			</div>
+    @Layout(user, currentLocale, "Dashboard") {
+        <div class="space-y-6">
+            <!-- Page Header -->
+            <div class="space-y-1 pb-6">
+                <h1 class="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+                <p class="text-muted-foreground">Welcome back! Here's an overview of your account and permissions.</p>
+            </div>
 
-			<div class="user-info">
-				<h2>Welcome, { user.Name }!</h2>
-				<p><strong>Email:</strong> { user.Email }</p>
-				<p><strong>Department:</strong> { user.Department }</p>
-				<p><strong>Job Title:</strong> { user.JobTitle }</p>
-				<p><strong>Role:</strong> <span class="role">{ user.Role }</span></p>
-				<p><strong>Login Time:</strong> { user.LoginTime.Format("2006-01-02 15:04:05") }</p>
-			</div>
+            <!-- Welcome Card -->
+            @card.Card() {
+                @card.Header() {
+                    @card.Title() {
+                        Welcome, { user.Name }!
+                    }
+                    @card.Description() {
+                        Here's your account information and current session details.
+                    }
+                }
+                @card.Content() {
+                    <div class="grid gap-4 md:grid-cols-2">
+                        @InfoItem("Email", user.Email, "📧")
+                        @InfoItem("Department", user.Department, "🏢")
+                        @InfoItem("Job Title", user.JobTitle, "💼")
+                        @InfoItem("Role", user.Role, "👤")
+                        @InfoItem("Login Time", user.LoginTime.Format("2006-01-02 15:04:05"), "🕒")
+                    </div>
+                }
+            }
 
-			<div class="permissions">
-				<h3>Your Permissions:</h3>
-				for _, perm := range user.Permissions {
-					<span class="permission">{ perm }</span>
-				}
-			</div>
+            <!-- Permissions Card -->
+            @card.Card() {
+                @card.Header() {
+                    @card.Title() {
+                        Your Permissions
+                    }
+                    @card.Description() {
+                        Based on your role, you have access to the following features.
+                    }
+                }
+                @card.Content() {
+                    <div class="flex flex-wrap gap-2">
+                        for _, perm := range user.Permissions {
+                            @PermissionBadge(perm)
+                        }
+                    </div>
+                }
+            }
 
-			<div>
-				<h3>Available Actions:</h3>
-				<p>Based on your role ({ user.Role }), you can access different parts of the system.</p>
-			</div>
-		</div>
-	}
+            <!-- Quick Actions -->
+            @QuickActions(user)
+
+            <!-- Role-based Information -->
+            @RoleBasedInfo(user)
+        </div>
+    }
+}
+
+templ InfoItem(label string, value string, icon string) {
+    <div class="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+        <span class="text-lg">{ icon }</span>
+        <div class="flex-1">
+            <p class="text-sm font-medium text-muted-foreground">{ label }</p>
+            <p class="text-sm font-semibold text-foreground">{ value }</p>
+        </div>
+    </div>
+}
+
+templ PermissionBadge(permission string) {
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+        { permission }
+    </span>
+}
+
+templ QuickActions(user *auth.AuthenticatedUser) {
+    @card.Card() {
+        @card.Header() {
+            @card.Title() {
+                Quick Actions
+            }
+            @card.Description() {
+                Common tasks based on your role and permissions.
+            }
+        }
+        @card.Content() {
+            <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                if user.Role == "admin" {
+                    @ActionButton("/admin", "⚙️", "Admin Panel", "Manage system settings")
+                }
+                if user.Role == "department_head" || user.Role == "admin" {
+                    @ActionButton("/department", "🏢", "Department", "Manage department")
+                }
+                @ActionButton("/reviews", "📝", "Reviews", "Review submissions")
+                @ActionButton("/manage", "👥", "Manage", "Supervise projects")
+                if user.Role == "admin" || user.Role == "department_head" || user.Role == "supervisor" {
+                    @ActionButton("/students-list", "👥", "Students", "View student list")
+                }
+                @ActionButton("/profile", "👤", "Profile", "Edit your profile")
+                @ActionButton("/settings", "⚙️", "Settings", "Account settings")
+            </div>
+        }
+    }
+}
+
+templ ActionButton(href string, icon string, title string, description string) {
+    <a href={ templ.SafeURL(href) } class="block">
+        <div class="p-4 border border-border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors group cursor-pointer">
+            <div class="flex items-start space-x-3">
+                <span class="text-xl group-hover:scale-110 transition-transform">{ icon }</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-foreground">{ title }</p>
+                    <p class="text-xs text-muted-foreground">{ description }</p>
+                </div>
+            </div>
+        </div>
+    </a>
+}
+templ RoleBasedInfo(user *auth.AuthenticatedUser) {
+    @card.Card() {
+        @card.Header() {
+            @card.Title() {
+                Role Information
+            }
+            @card.Description() {
+                Information specific to your role: { user.Role }
+            }
+        }
+        @card.Content() {
+            switch user.Role {
+                case "admin":
+                    @AdminInfo()
+                case "department_head":
+                    @DepartmentHeadInfo()
+                case "supervisor":
+                    @SupervisorInfo()
+                case "reviewer":
+                    @ReviewerInfo()
+                default:
+                    @DefaultRoleInfo(user.Role)
+            }
+        }
+    }
+}
+
+templ AdminInfo() {
+    <div class="space-y-3">
+        <p class="text-sm text-muted-foreground">
+            As an administrator, you have full access to all system features including:
+        </p>
+        <ul class="text-sm space-y-1 text-muted-foreground">
+            <li>• System-wide settings and configuration</li>
+            <li>• User management and role assignments</li>
+            <li>• All department and project oversight</li>
+            <li>• System analytics and reporting</li>
+        </ul>
+    </div>
+}
+
+templ DepartmentHeadInfo() {
+    <div class="space-y-3">
+        <p class="text-sm text-muted-foreground">
+            As a department head, you can manage your department's activities:
+        </p>
+        <ul class="text-sm space-y-1 text-muted-foreground">
+            <li>• Department project oversight</li>
+            <li>• Student and supervisor management</li>
+            <li>• Department reporting and analytics</li>
+        </ul>
+    </div>
+}
+
+templ SupervisorInfo() {
+    <div class="space-y-3">
+        <p class="text-sm text-muted-foreground">
+            As a supervisor, you can guide and manage student projects:
+        </p>
+        <ul class="text-sm space-y-1 text-muted-foreground">
+            <li>• Supervise assigned student projects</li>
+            <li>• Review and provide feedback</li>
+            <li>• Track project progress</li>
+        </ul>
+    </div>
+}
+
+templ ReviewerInfo() {
+    <div class="space-y-3">
+        <p class="text-sm text-muted-foreground">
+            As a reviewer, you can evaluate and provide feedback on submissions:
+        </p>
+        <ul class="text-sm space-y-1 text-muted-foreground">
+            <li>• Review assigned project submissions</li>
+            <li>• Provide detailed feedback and scoring</li>
+            <li>• Participate in evaluation processes</li>
+        </ul>
+    </div>
+}
+
+templ DefaultRoleInfo(role string) {
+    <p class="text-sm text-muted-foreground">
+        Your role ({ role }) provides access to specific features based on your responsibilities in the system.
+    </p>
 }

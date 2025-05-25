@@ -3,21 +3,75 @@ package templates
 import "FinalProjectManagementApp/auth"
 
 templ Layout(user *auth.AuthenticatedUser, currentLocale string, title string) {
-	<!DOCTYPE html>
-	<html lang={ currentLocale }>
-	<head>
-		<meta charset="UTF-8"/>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<title>{ title } - Baigiamųjų darbų talpykla</title>
-		<link rel="stylesheet" href="/static/css/navbar.css"/>
-		<link rel="stylesheet" href="/static/css/main.css"/>
-	</head>
-	<body>
-		@Navbar(user, currentLocale)
-		<main class="main-content">
-			{ children... }
-		</main>
-		<script src="/static/js/navbar.js"></script>
-	</body>
-	</html>
+    <!DOCTYPE html>
+    <html lang={ currentLocale }>
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>{ title } - Baigiamųjų darbų talpykla</title>
+        <link rel="stylesheet" href="/assets/css/output.css"/>
+    </head>
+    <body class="bg-background text-foreground min-h-screen">
+        @Navbar(user, currentLocale)
+        <main class="container mx-auto px-4 py-6">
+            { children... }
+        </main>
+        <script src="/static/js/navbar.js"></script>
+    </body>
+    </html>
+}
+
+templ LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, title string, showSidebar bool) {
+    <!DOCTYPE html>
+    <html lang={ currentLocale }>
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>{ title } - Baigiamųjų darbų talpykla</title>
+        <link rel="stylesheet" href="/assets/css/output.css"/>
+    </head>
+    <body class="bg-background text-foreground">
+        <div class="min-h-screen flex flex-col">
+            @Navbar(user, currentLocale)
+
+            if showSidebar && user != nil {
+                <div class="flex flex-1">
+                    @Sidebar(user)
+                    <main class="flex-1 p-6">
+                        { children... }
+                    </main>
+                </div>
+            } else {
+                <main class="flex-1 container mx-auto px-4 py-6">
+                    { children... }
+                </main>
+            }
+        </div>
+        <script src="/static/js/navbar.js"></script>
+    </body>
+    </html>
+}
+
+templ Sidebar(user *auth.AuthenticatedUser) {
+    <aside class="w-64 border-r bg-card text-card-foreground">
+        <div class="p-6">
+            <h2 class="text-lg font-semibold mb-4">Navigation</h2>
+            <nav class="space-y-2">
+                @SidebarLink("/dashboard", "Dashboard", "🏠")
+                @SidebarLink("/projects", "Projects", "📁")
+                @SidebarLink("/submissions", "Submissions", "📄")
+                @SidebarLink("/settings", "Settings", "⚙️")
+            </nav>
+        </div>
+    </aside>
+}
+
+templ SidebarLink(href string, text string, icon string) {
+
+        <a href={ templ.SafeURL(href) }
+        class="flex items-center space-x-3 text-sm font-medium rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+    >
+        <span class="text-lg">{ icon }</span>
+        <span>{ text }</span>
+    </a>
 }

@@ -1,5 +1,5 @@
 {
-  "componentsDir": "components/templates",
+  "componentsDir": "components",
   "utilsDir": "components/utils",
   "moduleName": "FinalProjectManagementApp"
 }

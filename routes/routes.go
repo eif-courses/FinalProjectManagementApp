@@ -24,12 +24,18 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 	// Initialize handlers
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
 
-	// Static files - More comprehensive setup
+	// Static files - serve both assets and static directories
 	workDir, _ := filepath.Abs("./")
-	filesDir := http.Dir(filepath.Join(workDir, "static"))
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(filesDir)))
 
-	// Also serve favicon if you have one
+	// Serve /assets/ directory (for CSS, etc.)
+	assetsDir := http.Dir(filepath.Join(workDir, "assets"))
+	r.Handle("/assets/*", http.StripPrefix("/assets/", http.FileServer(assetsDir)))
+
+	// Serve /static/ directory (for images, JS, etc.)
+	staticDir := http.Dir(filepath.Join(workDir, "static"))
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(staticDir)))
+
+	// Favicon
 	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./static/favicon.ico")
 	})
@@ -99,28 +105,27 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 		})
 	})
 
-	// Add this temporary debug route in your SetupRoutes function
+	// Debug route for testing CSS
 	r.Get("/debug/css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>CSS Debug</title>
-        <link rel="stylesheet" href="/static/css/student-list.css">
-        <style>
-        .test { background: red; color: white; padding: 10px; }
-        </style>
-    </head>
-    <body>
-        <div class="test">This should have red background (inline CSS)</div>
-        <div class="container">This should be styled if CSS loads</div>
-        <button class="btn-view">This should be a styled button</button>
-    </body>
-    </html>
-    `))
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS Debug</title>
+    <link rel="stylesheet" href="/assets/css/output.css">
+    <style>
+    .test { background: red; color: white; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="test">This should have red background (inline CSS)</div>
+    <div class="bg-primary text-primary-foreground p-4">This should be styled if templUI CSS loads</div>
+    <button class="bg-blue-500 text-white px-4 py-2 rounded">Tailwind button test</button>
+</body>
+</html>
+`))
 	})
 
 	return r
-
 }
