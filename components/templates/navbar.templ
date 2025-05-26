@@ -3,237 +3,428 @@ package templates
 import (
     "FinalProjectManagementApp/auth"
     "FinalProjectManagementApp/components/button"
+    "FinalProjectManagementApp/components/icon"
+    "strings"
 )
 
 templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
     <nav class="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
-                <!-- Logo and Title -->
+                <!-- Logo and Brand -->
                 <div class="flex items-center space-x-3">
                     <img src="/static/images/viko-logo.png" alt="VIK Logo" class="h-8 w-auto"/>
-                    <span class="hidden md:block text-lg font-semibold text-foreground">
-                        Baigiamųjų darbų talpykla
-                    </span>
+                    <div class="hidden sm:block">
+                        <span class="text-lg font-semibold text-foreground">
+                            Baigiamųjų darbų talpykla
+                        </span>
+                        <p class="text-xs text-muted-foreground">VIKO Elektronikos ir informatikos fakultetas</p>
+                    </div>
                 </div>
 
-                <!-- Desktop Navigation -->
-                <div class="hidden md:flex items-center space-x-1">
-                    @RoleBasedNavigation(user)
+                <!-- Desktop Navigation - Only show if user has multiple links -->
+                if hasMultipleNavLinks(user.Role) {
+                    <div class="hidden md:flex items-center space-x-1">
+                        @RoleBasedNavigation(user)
+                    </div>
+                }
+
+                <!-- Right Side Actions -->
+                <div class="flex items-center space-x-3">
+                    <!-- Notifications -->
+                    @NotificationButton()
+
+                    <!-- Language Switcher -->
                     @LanguageDropdown(currentLocale)
-                    @UserDropdown(user)
-                </div>
 
-                <!-- Mobile menu button -->
-                <div class="md:hidden">
-                    @button.Button(button.Props{
-                        Variant: button.VariantGhost,
-                        Size: button.SizeIcon,
-                        Class: "p-2",
-                        Attributes: templ.Attributes{
-                            "onclick": "toggleMobileMenu()",
-                            "aria-label": "Toggle menu",
-                        },
-                    }) {
-                        <svg id="menu-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                        </svg>
-                        <svg id="close-icon" class="hidden h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
+                    <!-- User Menu -->
+                    @UserDropdown(user)
+
+                    <!-- Mobile Menu Button - Only show if user has links -->
+                    if hasNavLinks(user.Role) {
+                        <div class="md:hidden">
+                            @MobileMenuButton()
+                        </div>
                     }
                 </div>
             </div>
 
-            <!-- Mobile Navigation Menu -->
-            @MobileNavigation(user, currentLocale)
+            <!-- Mobile Navigation -->
+            if hasNavLinks(user.Role) {
+                @MobileNavigation(user, currentLocale)
+            }
         </div>
     </nav>
+
+    <!-- Overlay for mobile menu -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden hidden transition-opacity duration-300"></div>
+
+    <script>
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const overlay = document.getElementById('mobile-overlay');
+            const menuIcon = document.getElementById('menu-icon');
+            const closeIcon = document.getElementById('close-icon');
+
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                overlay.classList.remove('hidden');
+                menuIcon.classList.add('hidden');
+                closeIcon.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } else {
+                menu.classList.add('hidden');
+                overlay.classList.add('hidden');
+                menuIcon.classList.remove('hidden');
+                closeIcon.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Dropdown functionality
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            const isHidden = dropdown.classList.contains('hidden');
+
+            // Close all dropdowns first
+            document.querySelectorAll('[id$="-dropdown"]').forEach(d => d.classList.add('hidden'));
+
+            if (isHidden) {
+                dropdown.classList.remove('hidden');
+            }
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('[onclick*="toggleDropdown"]') && !event.target.closest('[id$="-dropdown"]')) {
+                document.querySelectorAll('[id$="-dropdown"]').forEach(d => d.classList.add('hidden'));
+            }
+        });
+
+        // Close mobile menu when clicking overlay
+        document.getElementById('mobile-overlay')?.addEventListener('click', toggleMobileMenu);
+    </script>
 }
 
 templ RoleBasedNavigation(user *auth.AuthenticatedUser) {
-    if user.Role == "admin" {
-        @NavLink("/admin", "⚙️", "Administratoriui")
-    }
-
-    if user.Role == "department_head" || user.Role == "admin" {
-        @NavLink("/department", "🏢", "Vedėjui")
-    }
-
-    @NavLink("/reviews", "📝", "Recenzentui")
-    @NavLink("/manage", "👥", "Vadovui")
-
-    if user.Role == "admin" || user.Role == "department_head" || user.Role == "supervisor" {
-        @NavLink("/students-list", "👥", "Studentų sąrašas")
-    }
+    <div class="flex items-center space-x-2">
+        if user.Role == "admin" {
+            @NavLink("/admin", "shield-check", "Administravimas", getCurrentPath() == "/admin")
+            @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
+            @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
+        } else if user.Role == "department_head" {
+            @NavLink("/department", "building", "Katedra", getCurrentPath() == "/department")
+            @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
+        } else if user.Role == "supervisor" {
+            @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
+            @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
+        } else if user.Role == "reviewer" {
+            @NavLink("/reviews", "file-text", "Recenzijos", getCurrentPath() == "/reviews")
+        }
+    </div>
 }
 
-templ NavLink(href string, icon string, text string) {
-    <a href={ templ.SafeURL(href) } class="inline-flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors">
-        <span class="mr-2">{ icon }</span>
-        <span>{ text }</span>
+templ NavLink(href string, iconName string, text string, isActive bool) {
+    <a href={ templ.SafeURL(href) }
+       class={
+           "group relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+           templ.KV("bg-primary text-primary-foreground", isActive),
+           templ.KV("text-muted-foreground hover:text-foreground hover:bg-accent", !isActive),
+       }>
+        <div class="flex items-center space-x-2">
+            @renderNavIcon(iconName, isActive)
+            <span>{ text }</span>
+        </div>
+        if isActive {
+            <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary-foreground rounded-full"></div>
+        }
     </a>
+}
+
+templ NotificationButton() {
+    <div class="relative">
+        @button.Button(button.Props{
+            Variant: button.VariantGhost,
+            Size: button.SizeIcon,
+            Class: "relative",
+            Attributes: templ.Attributes{
+                "onclick": "toggleDropdown('notifications-dropdown')",
+                "aria-label": "Notifications",
+            },
+        }) {
+            @icon.Bell(icon.Props{Size: 18})
+            <!-- Notification badge -->
+            <div class="absolute -top-1 -right-1 h-3 w-3 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                3
+            </div>
+        }
+
+        <!-- Notifications Dropdown -->
+        <div id="notifications-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-popover text-popover-foreground rounded-lg shadow-lg border py-1 z-50 max-h-96 overflow-y-auto">
+            <div class="px-4 py-3 border-b">
+                <h3 class="font-semibold text-sm">Pranešimai</h3>
+            </div>
+            <div class="py-1">
+                @NotificationItem("Naujas dokumentas", "Studentas pateikė baigiamąjį darbą", "5 min", true)
+                @NotificationItem("Recenzija", "Reikia parašyti recenziją", "2 val", false)
+                @NotificationItem("Sistema", "Sistemos atnaujinimas", "1 d", false)
+            </div>
+            <div class="border-t px-4 py-2">
+                <a href="/notifications" class="text-xs text-primary hover:underline">Žiūrėti visus pranešimus</a>
+            </div>
+        </div>
+    </div>
+}
+
+templ NotificationItem(title, description, time string, isNew bool) {
+    <div class={
+        "px-4 py-3 hover:bg-accent transition-colors cursor-pointer",
+        templ.KV("bg-accent/50", isNew),
+    }>
+        <div class="flex items-start space-x-3">
+            if isNew {
+                <div class="h-2 w-2 bg-primary rounded-full mt-2"></div>
+            } else {
+                <div class="h-2 w-2 bg-muted rounded-full mt-2"></div>
+            }
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-foreground truncate">{ title }</p>
+                <p class="text-xs text-muted-foreground">{ description }</p>
+                <p class="text-xs text-muted-foreground mt-1">{ time }</p>
+            </div>
+        </div>
+    </div>
 }
 
 templ LanguageDropdown(currentLocale string) {
     <div class="relative">
         @button.Button(button.Props{
             Variant: button.VariantGhost,
-            Class: "inline-flex items-center",
+            Class: "inline-flex items-center space-x-1",
             Attributes: templ.Attributes{
                 "onclick": "toggleDropdown('language-dropdown')",
             },
         }) {
-            <span class="mr-2">🌐</span>
-            <span>{ getLanguageName(currentLocale) }</span>
-            <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-            </svg>
+            @icon.Globe(icon.Props{Size: 16})
+            <span class="text-sm">{ getLanguageCode(currentLocale) }</span>
+            @icon.ChevronDown(icon.Props{Size: 12})
         }
 
-        <div id="language-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-popover text-popover-foreground rounded-md shadow-lg border py-1 z-50">
+        <div id="language-dropdown" class="hidden absolute right-0 mt-2 w-40 bg-popover text-popover-foreground rounded-lg shadow-lg border py-1 z-50">
             <a href="?locale=lt" class={ getLocaleClass(currentLocale, "lt") }>
-                Lietuvių
+                <div class="flex items-center space-x-2">
+                    <span>🇱🇹</span>
+                    <span>Lietuvių</span>
+                    if currentLocale == "lt" {
+                        @icon.Check(icon.Props{Size: 14, Class: "ml-auto text-primary"})
+                    }
+                </div>
             </a>
             <a href="?locale=en" class={ getLocaleClass(currentLocale, "en") }>
-                English
+                <div class="flex items-center space-x-2">
+                    <span>🇺🇸</span>
+                    <span>English</span>
+                    if currentLocale == "en" {
+                        @icon.Check(icon.Props{Size: 14, Class: "ml-auto text-primary"})
+                    }
+                </div>
             </a>
         </div>
     </div>
 }
 
 templ UserDropdown(user *auth.AuthenticatedUser) {
-    <div class="relative ml-3">
+    <div class="relative">
         @button.Button(button.Props{
             Variant: button.VariantGhost,
-            Class: "flex items-center",
+            Class: "flex items-center space-x-2",
             Attributes: templ.Attributes{
                 "onclick": "toggleDropdown('user-dropdown')",
             },
         }) {
-            <div class="flex flex-col items-end mr-3">
-                <span class="text-sm font-medium text-foreground">{ user.Email }</span>
-                <span class="text-xs text-muted-foreground">{ user.JobTitle }</span>
+            <div class="hidden sm:flex flex-col items-end">
+                <span class="text-sm font-medium text-foreground">{ user.Name }</span>
+                <span class="text-xs text-muted-foreground">{ getRoleDisplayName(user.Role) }</span>
             </div>
-            <div class="h-8 w-8 bg-muted rounded-full flex items-center justify-center">
-                <span class="text-sm font-medium text-muted-foreground">
-                    { string(user.Name[0]) }
-                </span>
+            <div class="relative">
+                <div class="h-8 w-8 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
+                    <span class="text-xs font-semibold text-primary-foreground">
+                        { getInitials(user.Name) }
+                    </span>
+                </div>
+                <div class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-green-500 rounded-full border border-background"></div>
             </div>
-            <svg class="ml-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-            </svg>
+            @icon.ChevronDown(icon.Props{Size: 12, Class: "hidden sm:block"})
         }
 
-        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-popover text-popover-foreground rounded-md shadow-lg border py-1 z-50">
-            <a href="/profile" class="flex items-center px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors">
-                <span class="mr-3">👤</span>
-                <span>Profile</span>
-            </a>
-            <a href="/settings" class="flex items-center px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors">
-                <span class="mr-3">⚙️</span>
-                <span>Settings</span>
-            </a>
-            <div class="border-t border-border my-1"></div>
-            <a href="/auth/logout" class="flex items-center px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors">
-                <span class="mr-3">🚪</span>
-                <span>Atsijungti</span>
-            </a>
+        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-popover text-popover-foreground rounded-lg shadow-lg border py-1 z-50">
+            <!-- User Info Header -->
+            <div class="px-4 py-3 border-b">
+                <div class="flex items-center space-x-3">
+                    <div class="h-10 w-10 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
+                        <span class="text-sm font-semibold text-primary-foreground">
+                            { getInitials(user.Name) }
+                        </span>
+                    </div>
+                    <div>
+                        <p class="font-medium text-foreground">{ user.Name }</p>
+                        <p class="text-sm text-muted-foreground">{ user.Email }</p>
+                        <p class="text-xs text-muted-foreground">{ user.JobTitle }</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menu Items -->
+            <div class="py-1">
+                @UserDropdownItem("/profile", "user", "Profilis")
+                @UserDropdownItem("/settings", "settings", "Nustatymai")
+                @UserDropdownItem("/help", "help-circle", "Pagalba")
+            </div>
+
+            <!-- Logout -->
+            <div class="border-t pt-1">
+                <a href="/auth/logout" class="flex items-center space-x-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors">
+                    @icon.LogOut(icon.Props{Size: 16})
+                    <span>Atsijungti</span>
+                </a>
+            </div>
         </div>
     </div>
 }
 
+templ UserDropdownItem(href, iconName, text string) {
+    <a href={ templ.SafeURL(href) } class="flex items-center space-x-3 px-4 py-2 text-sm hover:bg-accent transition-colors">
+        @renderMenuIcon(iconName)
+        <span>{ text }</span>
+    </a>
+}
+
+templ MobileMenuButton() {
+    @button.Button(button.Props{
+        Variant: button.VariantGhost,
+        Size: button.SizeIcon,
+        Class: "p-2",
+        Attributes: templ.Attributes{
+            "onclick": "toggleMobileMenu()",
+            "aria-label": "Toggle menu",
+        },
+    }) {
+        <svg id="menu-icon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        <svg id="close-icon" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    }
+}
+
 templ MobileNavigation(user *auth.AuthenticatedUser, currentLocale string) {
-    <div id="mobile-menu" class="hidden md:hidden border-t border-border py-3">
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden md:hidden border-t py-3">
         <div class="space-y-1">
             @MobileRoleBasedNav(user)
-            @MobileLanguageSelector(currentLocale)
-            @MobileUserInfo(user)
+
+            <!-- Language selector for mobile -->
+            <div class="px-3 py-2 border-t mt-3">
+                <div class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Kalba</div>
+                <div class="space-y-1">
+                    <a href="?locale=lt" class={ getMobileLocaleClass(currentLocale, "lt") }>
+                        🇱🇹 Lietuvių
+                    </a>
+                    <a href="?locale=en" class={ getMobileLocaleClass(currentLocale, "en") }>
+                        🇺🇸 English
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 }
 
 templ MobileRoleBasedNav(user *auth.AuthenticatedUser) {
     if user.Role == "admin" {
-        @MobileNavLink("/admin", "⚙️", "Administratoriui")
-    }
-    if user.Role == "department_head" || user.Role == "admin" {
-        @MobileNavLink("/department", "🏢", "Vedėjui")
-    }
-    @MobileNavLink("/reviews", "📝", "Recenzentui")
-    @MobileNavLink("/manage", "👥", "Vadovui")
-    if user.Role == "admin" || user.Role == "department_head" || user.Role == "supervisor" {
-        @MobileNavLink("/students-list", "👥", "Studentų sąrašas")
+        @MobileNavLink("/admin", "shield-check", "Administravimas")
+        @MobileNavLink("/students-list", "graduation-cap", "Studentai")
+        @MobileNavLink("/manage", "users", "Vadovavimas")
+    } else if user.Role == "department_head" {
+        @MobileNavLink("/department", "building", "Katedra")
+        @MobileNavLink("/students-list", "graduation-cap", "Studentai")
+    } else if user.Role == "supervisor" {
+        @MobileNavLink("/manage", "users", "Vadovavimas")
+        @MobileNavLink("/students-list", "graduation-cap", "Studentai")
+    } else if user.Role == "reviewer" {
+        @MobileNavLink("/reviews", "file-text", "Recenzijos")
     }
 }
 
-templ MobileNavLink(href string, icon string, text string) {
-    <a href={ templ.SafeURL(href) } class="flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors">
-        <span class="mr-3">{ icon }</span>
+templ MobileNavLink(href, iconName, text string) {
+    <a href={ templ.SafeURL(href) } class="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors">
+        @renderMobileIcon(iconName)
         <span>{ text }</span>
     </a>
 }
 
-templ MobileLanguageSelector(currentLocale string) {
-    <div class="px-3 py-2">
-        <div class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Kalba</div>
-        <div class="space-y-1">
-            <a href="?locale=lt" class={ getMobileLocaleClass(currentLocale, "lt") }>
-                🇱🇹 Lietuvių
-            </a>
-            <a href="?locale=en" class={ getMobileLocaleClass(currentLocale, "en") }>
-                🇺🇸 English
-            </a>
-        </div>
-    </div>
-}
-
-templ MobileUserInfo(user *auth.AuthenticatedUser) {
-    <div class="px-3 py-2 border-t border-border mt-3">
-        <div class="flex items-center space-x-3 mb-3">
-            <div class="h-10 w-10 bg-muted rounded-full flex items-center justify-center">
-                <span class="text-sm font-medium text-muted-foreground">
-                    { string(user.Name[0]) }
-                </span>
-            </div>
-            <div>
-                <div class="text-sm font-medium text-foreground">{ user.Email }</div>
-                <div class="text-xs text-muted-foreground">{ user.JobTitle }</div>
-            </div>
-        </div>
-        <div class="space-y-1">
-            <a href="/profile" class="flex items-center px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md transition-colors">
-                <span class="mr-3">👤</span>
-                <span>Profile</span>
-            </a>
-            <a href="/settings" class="flex items-center px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md transition-colors">
-                <span class="mr-3">⚙️</span>
-                <span>Settings</span>
-            </a>
-            <a href="/auth/logout" class="flex items-center px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors">
-                <span class="mr-3">🚪</span>
-                <span>Atsijungti</span>
-            </a>
-        </div>
-    </div>
-}
-
 // Helper functions
-func getLanguageName(locale string) string {
+func hasNavLinks(role string) bool {
+    return role == "admin" || role == "department_head" || role == "supervisor" || role == "reviewer"
+}
+
+func hasMultipleNavLinks(role string) bool {
+    return role == "admin" || role == "department_head" || role == "supervisor"
+}
+
+func getCurrentPath() string {
+    // This should be implemented to return the current request path
+    // For now, returning empty string - you'll need to pass this from your handler
+    return ""
+}
+
+func getLanguageCode(locale string) string {
     switch locale {
     case "en":
-        return "English"
+        return "EN"
     default:
-        return "Lietuvių"
+        return "LT"
+    }
+}
+
+func getInitials(name string) string {
+    if len(name) == 0 {
+        return "U"
+    }
+    if len(name) == 1 {
+        return string(name[0])
+    }
+    parts := strings.Fields(name)
+    if len(parts) >= 2 {
+        return string(parts[0][0]) + string(parts[len(parts)-1][0])
+    }
+    return string(name[0])
+}
+
+func getRoleDisplayName(role string) string {
+    switch role {
+    case "admin":
+        return "Administratorius"
+    case "department_head":
+        return "Katedros vedėjas"
+    case "supervisor":
+        return "Vadovas"
+    case "reviewer":
+        return "Recenzentas"
+    case "student":
+        return "Studentas"
+    default:
+        return "Vartotojas"
     }
 }
 
 func getLocaleClass(currentLocale, targetLocale string) string {
-    baseClass := "block px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+    baseClass := "flex items-center px-3 py-2 text-sm hover:bg-accent rounded-md transition-colors"
     if currentLocale == targetLocale {
         return baseClass + " text-primary bg-accent"
     }
-    return baseClass + " text-popover-foreground"
+    return baseClass
 }
 
 func getMobileLocaleClass(currentLocale, targetLocale string) string {
@@ -242,4 +433,58 @@ func getMobileLocaleClass(currentLocale, targetLocale string) string {
         return baseClass + " text-primary bg-accent"
     }
     return baseClass + " text-muted-foreground hover:bg-accent"
+}
+
+// Icon rendering functions
+func renderNavIcon(iconName string, isActive bool) templ.Component {
+    size := 16
+    class := ""
+    if isActive {
+        class = "text-primary-foreground"
+    }
+
+    switch iconName {
+    case "shield-check":
+        return icon.ShieldCheck(icon.Props{Size: size, Class: class})
+    case "building":
+        return icon.Building(icon.Props{Size: size, Class: class})
+    case "file-text":
+        return icon.FileText(icon.Props{Size: size, Class: class})
+    case "users":
+        return icon.Users(icon.Props{Size: size, Class: class})
+    case "graduation-cap":
+        return icon.GraduationCap(icon.Props{Size: size, Class: class})
+    default:
+        return icon.Circle(icon.Props{Size: size, Class: class})
+    }
+}
+
+func renderMenuIcon(iconName string) templ.Component {
+    switch iconName {
+    case "user":
+        return icon.User(icon.Props{Size: 16})
+    case "settings":
+        return icon.Settings(icon.Props{Size: 16})
+    case "help-circle":
+        return icon.CircleHelp(icon.Props{Size: 16})
+    default:
+        return icon.Circle(icon.Props{Size: 16})
+    }
+}
+
+func renderMobileIcon(iconName string) templ.Component {
+    switch iconName {
+    case "shield-check":
+        return icon.ShieldCheck(icon.Props{Size: 18})
+    case "building":
+        return icon.Building(icon.Props{Size: 18})
+    case "file-text":
+        return icon.FileText(icon.Props{Size: 18})
+    case "users":
+        return icon.Users(icon.Props{Size: 18})
+    case "graduation-cap":
+        return icon.GraduationCap(icon.Props{Size: 18})
+    default:
+        return icon.Circle(icon.Props{Size: 18})
+    }
 }
