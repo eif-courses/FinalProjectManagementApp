@@ -9,19 +9,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/microsoft"
 )
 
 type AuthService struct {
-	config       *EntraIDConfig
-	oauth2Config *oauth2.Config
-	db           *sql.DB
+	config         *EntraIDConfig
+	oauth2Config   *oauth2.Config
+	appGraphClient *msgraphsdk.GraphServiceClient
+	db             *sql.DB
 }
 
 // NewAuthService creates a new authentication service with database
@@ -57,17 +61,48 @@ func NewAuthService(db *sql.DB) (*AuthService, error) {
 			"profile",
 			"email",
 			"https://graph.microsoft.com/User.Read",
-			//"https://graph.microsoft.com/Files.ReadWrite.All", // For file operations
-			//"https://graph.microsoft.com/Sites.ReadWrite.All", // For SharePoint sites
+			// Add delegated email permissions if you want user-initiated emails
+			// "https://graph.microsoft.com/Mail.Send",
 		},
 		Endpoint: microsoft.AzureADEndpoint(config.TenantID),
 	}
 
+	// NEW: Create application credentials for system notifications
+	var appGraphClient *msgraphsdk.GraphServiceClient
+	appCred, err := azidentity.NewClientSecretCredential(
+		config.TenantID,
+		config.ClientID,
+		config.ClientSecret,
+		nil,
+	)
+	if err != nil {
+		log.Printf("Warning: Failed to create app credentials for notifications: %v", err)
+		log.Println("Notification service will be disabled")
+		appGraphClient = nil
+	} else {
+		// Create Graph client with application permissions
+		appGraphClient, err = msgraphsdk.NewGraphServiceClientWithCredentials(
+			appCred, []string{"https://graph.microsoft.com/.default"})
+		if err != nil {
+			log.Printf("Warning: Failed to create app graph client: %v", err)
+			log.Println("Notification service will be disabled")
+			appGraphClient = nil
+		} else {
+			log.Println("Application Graph client initialized successfully")
+		}
+	}
+
 	return &AuthService{
-		config:       config,
-		oauth2Config: oauth2Config,
-		db:           db,
+		config:         config,
+		oauth2Config:   oauth2Config,
+		appGraphClient: appGraphClient,
+		db:             db,
 	}, nil
+}
+
+// GetAppGraphClient returns the application Graph client for system operations
+func (a *AuthService) GetAppGraphClient() *msgraphsdk.GraphServiceClient {
+	return a.appGraphClient
 }
 
 // GenerateLoginURL generates the login URL for Microsoft authentication

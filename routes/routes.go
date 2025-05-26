@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"path/filepath"
 
@@ -9,9 +11,11 @@ import (
 
 	"FinalProjectManagementApp/auth"
 	"FinalProjectManagementApp/handlers"
+	"FinalProjectManagementApp/notifications" // Add this import
 )
 
-func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddleware) *chi.Mux {
+// Update the function signature to accept notification service
+func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddleware, notificationService *notifications.NotificationService) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -74,6 +78,53 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 		// API endpoints for student data
 		r.Get("/api/students/{id}/documents", handlers.DocumentsAPIHandler)
 
+		// NEW: Notification test route (admin only)
+		if notificationService != nil {
+			r.Route("/admin/notifications", func(r chi.Router) {
+				r.Use(authMiddleware.RequireRole(auth.RoleAdmin))
+
+				// Test notification endpoint
+				// In your routes/routes.go, update the test notification handler:
+				r.Post("/test", func(w http.ResponseWriter, r *http.Request) {
+					email := r.FormValue("email")
+					if email == "" {
+						http.Error(w, "Email is required", http.StatusBadRequest)
+						return
+					}
+
+					log.Printf("DEBUG: Starting notification test to email: %s", email)
+					log.Printf("DEBUG: Notification service enabled: %v", notificationService.IsEnabled())
+					log.Printf("DEBUG: System email: %s", notificationService.GetSystemEmail())
+
+					//err := notificationService.SendTestNotification(r.Context(), email)
+
+					err := notificationService.SendTestNotificationWithDebug(r.Context(), email)
+
+					if err != nil {
+						log.Printf("ERROR: Failed to send notification: %v", err)
+						http.Error(w, fmt.Sprintf("Failed to send notification: %v", err), http.StatusInternalServerError)
+						return
+					}
+
+					log.Printf("SUCCESS: Test notification sent to %s", email)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte(`{"status":"success","message":"Test notification sent successfully"}`))
+				})
+
+				// Notification status endpoint
+				r.Get("/status", func(w http.ResponseWriter, r *http.Request) {
+					status := "disabled"
+					if notificationService.IsEnabled() {
+						status = "enabled"
+					}
+
+					w.Header().Set("Content-Type", "application/json")
+					w.Write([]byte(fmt.Sprintf(`{"status":"%s"}`, status)))
+				})
+			})
+		}
+
 		// Student routes
 		r.Route("/students", func(r chi.Router) {
 			r.Use(authMiddleware.RequireAuth)
@@ -96,8 +147,29 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 			r.Get("/", handlers.DepartmentDashboardHandler)
 			r.Get("/students", handlers.DepartmentStudentsHandler)
 			r.Get("/topics/pending", handlers.PendingTopicsHandler)
-			r.Post("/topics/{id}/approve", handlers.ApproveTopicHandler)
-			r.Post("/topics/{id}/reject", handlers.RejectTopicHandler)
+
+			// Update these handlers to use notification service
+			r.Post("/topics/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
+				// Call your existing approve handler
+				handlers.ApproveTopicHandler(w, r)
+
+				// TODO: Add notification logic here after successful approval
+				// Example:
+				// topicID := chi.URLParam(r, "id")
+				// if notificationService != nil {
+				//     // Send approval notification to student
+				//     student := getStudentByTopicID(topicID) // You'll need to implement this
+				//     notificationService.SendTopicApprovalNotification(r.Context(), student.Email, student.Name, student.TopicTitle, true)
+				// }
+			})
+
+			r.Post("/topics/{id}/reject", func(w http.ResponseWriter, r *http.Request) {
+				// Call your existing reject handler
+				handlers.RejectTopicHandler(w, r)
+
+				// TODO: Add notification logic here after successful rejection
+				// Similar to approval but with approved=false
+			})
 		})
 
 		// Admin routes
@@ -126,6 +198,43 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
     <div class="test">This should have red background (inline CSS)</div>
     <div class="bg-primary text-primary-foreground p-4">This should be styled if templUI CSS loads</div>
     <button class="bg-blue-500 text-white px-4 py-2 rounded">Tailwind button test</button>
+    
+    <!-- Add notification test form for admins -->
+    <div style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+        <h3>Notification Test (Admin Only)</h3>
+        <form id="notificationTest">
+            <input type="email" id="testEmail" placeholder="Enter email to test" required style="padding: 5px; margin-right: 10px;">
+            <button type="submit" style="padding: 5px 10px;">Send Test Notification</button>
+        </form>
+        <div id="notificationResult" style="margin-top: 10px;"></div>
+    </div>
+    
+    <script>
+    document.getElementById('notificationTest').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const email = document.getElementById('testEmail').value;
+        const resultDiv = document.getElementById('notificationResult');
+        
+        try {
+            const response = await fetch('/admin/notifications/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'email=' + encodeURIComponent(email)
+            });
+            
+            if (response.ok) {
+                resultDiv.innerHTML = '<p style="color: green;">Test notification sent successfully!</p>';
+            } else {
+                const text = await response.text();
+                resultDiv.innerHTML = '<p style="color: red;">Error: ' + text + '</p>';
+            }
+        } catch (error) {
+            resultDiv.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    });
+    </script>
 </body>
 </html>
 `))

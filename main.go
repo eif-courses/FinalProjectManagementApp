@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FinalProjectManagementApp/notifications"
 	"github.com/joho/godotenv"
 	"log"
 	"mime"
@@ -70,8 +71,19 @@ func main() {
 		log.Fatal("Failed to initialize auth middleware:", err)
 	}
 
-	// Setup routes (this will handle static files)
-	r := routes.SetupRoutes(authService, authMiddleware)
+	// NEW: Initialize notification service
+	var notificationService *notifications.NotificationService
+	if authService.GetAppGraphClient() != nil {
+		notificationService = notifications.NewNotificationService(authService.GetAppGraphClient())
+		log.Println("Notification service initialized successfully")
+	} else {
+		log.Println("Warning: App Graph client not available")
+		log.Println("Email notifications will be disabled")
+		notificationService = nil
+	}
+
+	// Setup routes (pass notification service to routes)
+	r := routes.SetupRoutes(authService, authMiddleware, notificationService)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")

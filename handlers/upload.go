@@ -1,4 +1,4 @@
-// handlers/upload.go
+// handlers/upload.go - Fixed file upload handler
 package handlers
 
 import (
@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"FinalProjectManagementApp/auth"
@@ -15,12 +16,10 @@ import (
 	msgraph "github.com/microsoftgraph/msgraph-sdk-go"
 )
 
-// UploadFileHandler handles file uploads to SharePoint with HTMX support
+// UploadFileHandler handles file uploads to SharePoint with enhanced error handling
 func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(`<div class="alert alert-error">Method not allowed</div>`))
+		renderError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -33,10 +32,21 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		renderError(w, "Failed to get file", http.StatusBadRequest)
+		renderError(w, "Failed to get file from form", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
+
+	// Validate file
+	if header.Size == 0 {
+		renderError(w, "File is empty", http.StatusBadRequest)
+		return
+	}
+
+	if header.Size > 250*1024*1024 { // 250MB limit
+		renderError(w, "File too large (max 250MB)", http.StatusBadRequest)
+		return
+	}
 
 	// Get authenticated user
 	user := auth.GetUserFromContext(r.Context())
@@ -45,11 +55,17 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate file type (basic security)
+	if !isAllowedFileType(header.Filename) {
+		renderError(w, "File type not allowed", http.StatusBadRequest)
+		return
+	}
+
 	// Render initial upload progress
 	renderProgress(w, "Initializing upload...", 10)
 	w.(http.Flusher).Flush()
 
-	// Create Graph client
+	// Create Graph client with enhanced error handling
 	graphClient, err := createGraphClient()
 	if err != nil {
 		renderError(w, fmt.Sprintf("Failed to create Graph client: %v", err), http.StatusInternalServerError)
@@ -59,7 +75,7 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	renderProgress(w, "Connecting to SharePoint...", 25)
 	w.(http.Flusher).Flush()
 
-	// SharePoint site configuration
+	// SharePoint site configuration - make these configurable
 	siteURL := os.Getenv("SHAREPOINT_SITE_URL")
 	if siteURL == "" {
 		siteURL = "https://vikolt.sharepoint.com/sites/thesis_management-O365G"
@@ -68,7 +84,7 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	// Get SharePoint site ID
 	siteID, err := files.GetSiteID(r.Context(), graphClient, siteURL)
 	if err != nil {
-		renderError(w, fmt.Sprintf("Failed to get site ID: %v", err), http.StatusInternalServerError)
+		renderError(w, fmt.Sprintf("Failed to get SharePoint site: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -78,19 +94,20 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	// Get default drive ID (Documents library)
 	driveID, err := files.GetDocumentLibraryDriveID(r.Context(), graphClient, siteID)
 	if err != nil {
-		renderError(w, fmt.Sprintf("Failed to get drive ID: %v", err), http.StatusInternalServerError)
+		renderError(w, fmt.Sprintf("Failed to get document library: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Create SharePoint service
 	spService := files.NewSharePointService(graphClient, siteID, driveID)
 
-	// Create folder structure based on user
-	department := user.Department
+	// Create safe folder structure based on user
+	department := sanitizeFolderName(user.Department)
 	if department == "" {
 		department = "General"
 	}
-	targetFolder := fmt.Sprintf("uploads/%s/%s", department, user.Email)
+	userEmail := sanitizeFolderName(user.Email)
+	targetFolder := fmt.Sprintf("uploads/%s/%s", department, userEmail)
 
 	renderProgress(w, "Creating folder structure...", 60)
 	w.(http.Flusher).Flush()
@@ -98,26 +115,33 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	// Create folder if it doesn't exist
 	err = spService.CreateFolderPath(r.Context(), targetFolder)
 	if err != nil {
-		fmt.Printf("Note: Could not create folder (might already exist): %v\n", err)
+		fmt.Printf("Warning: Could not create folder structure '%s': %v\n", targetFolder, err)
+		// Continue anyway - folder might already exist
 	}
 
 	renderProgress(w, "Preparing file for upload...", 75)
 	w.(http.Flusher).Flush()
 
-	// Save file temporarily
-	tempFile := filepath.Join(os.TempDir(), fmt.Sprintf("%d_%s", time.Now().Unix(), header.Filename))
-	defer os.Remove(tempFile)
+	// Create temporary file with safe filename
+	safeFilename := sanitizeFilename(header.Filename)
+	tempFile := filepath.Join(os.TempDir(), fmt.Sprintf("%d_%s", time.Now().Unix(), safeFilename))
+	defer func() {
+		if err := os.Remove(tempFile); err != nil {
+			fmt.Printf("Warning: Failed to remove temp file %s: %v\n", tempFile, err)
+		}
+	}()
 
+	// Save uploaded file to temp location
 	outFile, err := os.Create(tempFile)
 	if err != nil {
-		renderError(w, "Failed to create temp file", http.StatusInternalServerError)
+		renderError(w, "Failed to create temporary file", http.StatusInternalServerError)
 		return
 	}
 	defer outFile.Close()
 
 	_, err = io.Copy(outFile, file)
 	if err != nil {
-		renderError(w, "Failed to save file", http.StatusInternalServerError)
+		renderError(w, "Failed to save uploaded file", http.StatusInternalServerError)
 		return
 	}
 
@@ -132,21 +156,22 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Success response
-	renderSuccess(w, header.Filename, fmt.Sprintf("%s/%s", targetFolder, header.Filename))
+	sharePointPath := fmt.Sprintf("%s/%s", targetFolder, safeFilename)
+	renderSuccess(w, safeFilename, sharePointPath)
 }
 
 // Helper functions for HTMX responses
 func renderProgress(w http.ResponseWriter, message string, percentage int) {
 	html := fmt.Sprintf(`
 	<div id="upload-status" class="space-y-4">
-		<div class="text-blue-600 text-sm">%s</div>
-		<div class="w-full bg-gray-200 rounded-full h-2">
-			<div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: %d%%"></div>
+		<div class="text-blue-600 text-sm font-medium">%s</div>
+		<div class="w-full bg-gray-200 rounded-full h-3">
+			<div class="bg-blue-600 h-3 rounded-full transition-all duration-500 ease-out" style="width: %d%%"></div>
 		</div>
 		<div class="text-xs text-gray-500">%d%% complete</div>
 	</div>`, message, percentage, percentage)
 
-	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
 }
 
@@ -154,16 +179,22 @@ func renderError(w http.ResponseWriter, message string, statusCode int) {
 	html := fmt.Sprintf(`
 	<div id="upload-status" class="space-y-4">
 		<div class="p-4 bg-red-50 border border-red-200 rounded-lg">
-			<div class="text-red-600 text-sm">❌ %s</div>
+			<div class="flex items-center">
+				<svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				<div class="text-red-600 text-sm font-medium">Upload Failed</div>
+			</div>
+			<div class="text-red-600 text-sm mt-1">%s</div>
 		</div>
 		<button type="button" 
-				class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+				class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
 				onclick="resetUploadForm()">
 			Try Again
 		</button>
 	</div>`, message)
 
-	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(statusCode)
 	w.Write([]byte(html))
 }
@@ -172,17 +203,25 @@ func renderSuccess(w http.ResponseWriter, filename, path string) {
 	html := fmt.Sprintf(`
 	<div id="upload-status" class="space-y-4">
 		<div class="p-4 bg-green-50 border border-green-200 rounded-lg">
-			<div class="text-green-600 text-sm">✅ File uploaded successfully!</div>
-			<div class="text-xs text-green-600 mt-1">%s → %s</div>
+			<div class="flex items-center">
+				<svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				<div class="text-green-600 text-sm font-medium">Upload Successful!</div>
+			</div>
+			<div class="text-xs text-green-600 mt-1">
+				<div><strong>File:</strong> %s</div>
+				<div><strong>Location:</strong> %s</div>
+			</div>
 		</div>
 		<button type="button" 
-				class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+				class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
 				onclick="resetUploadForm()">
 			Upload Another File
 		</button>
 	</div>`, filename, path)
 
-	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(html))
 }
@@ -212,30 +251,48 @@ func ShowUploadPage(w http.ResponseWriter, r *http.Request) {
             border-radius: 8px;
             padding: 40px;
             text-align: center;
-            transition: border-color 0.3s;
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
         .upload-area:hover {
             border-color: #4299e1;
+            background-color: #f7fafc;
         }
         .upload-area.dragover {
             border-color: #4299e1;
             background-color: #ebf8ff;
+            transform: scale(1.02);
         }
         .htmx-request .upload-area {
             opacity: 0.5;
             pointer-events: none;
+        }
+        .file-info {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
         }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto py-8 px-4">
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-            <h1 class="text-2xl font-bold mb-4">Upload File to SharePoint</h1>
+            <h1 class="text-2xl font-bold mb-4 text-gray-800">Upload File to SharePoint</h1>
             
             <div class="mb-4 p-4 bg-blue-50 rounded-lg">
                 <p class="text-sm text-blue-800"><strong>User:</strong> %s</p>
                 <p class="text-sm text-blue-800"><strong>Department:</strong> %s</p>
                 <p class="text-sm text-blue-800"><strong>Upload to:</strong> uploads/%s/%s/</p>
+            </div>
+
+            <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p class="text-sm text-yellow-800">
+                    <strong>Allowed files:</strong> PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, ZIP, RAR, JPG, PNG
+                </p>
+                <p class="text-sm text-yellow-800">
+                    <strong>Maximum size:</strong> 250MB
+                </p>
             </div>
             
             <form id="uploadForm" 
@@ -247,23 +304,35 @@ func ShowUploadPage(w http.ResponseWriter, r *http.Request) {
                   class="space-y-4">
                 
                 <div class="upload-area" id="uploadArea">
-                    <input type="file" id="file" name="file" required class="hidden">
+                    <input type="file" id="file" name="file" required class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png">
                     <div id="uploadText">
                         <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                             <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <p class="text-gray-600">Click to select a file or drag and drop</p>
-                        <p class="text-sm text-gray-500">Maximum file size: 32MB</p>
+                        <p class="text-gray-600 font-medium">Click to select a file or drag and drop</p>
+                        <p class="text-sm text-gray-500 mt-1">PDF, DOC, XLS, PPT, Images, Archives</p>
+                        <p class="text-sm text-gray-500">Maximum file size: 250MB</p>
                     </div>
                 </div>
                 
-                <div id="fileInfo" class="hidden">
-                    <p class="text-sm text-gray-600">Selected file: <span id="fileName"></span></p>
-                    <p class="text-sm text-gray-600">Size: <span id="fileSize"></span></p>
+                <div id="fileInfo" class="hidden file-info">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-700">Selected file:</p>
+                            <p class="text-sm text-gray-600" id="fileName"></p>
+                            <p class="text-xs text-gray-500">Size: <span id="fileSize"></span></p>
+                        </div>
+                        <button type="button" onclick="clearFileSelection()" class="text-red-500 hover:text-red-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <button type="submit" id="uploadBtn" 
-                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400">
+                        class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
+                        disabled>
                     Upload to SharePoint
                 </button>
             </form>
@@ -278,7 +347,7 @@ func ShowUploadPage(w http.ResponseWriter, r *http.Request) {
             </div>
             
             <div class="mt-6">
-                <a href="/dashboard" class="text-blue-600 hover:text-blue-800">← Back to Dashboard</a>
+                <a href="/dashboard" class="text-blue-600 hover:text-blue-800 text-sm font-medium">← Back to Dashboard</a>
             </div>
         </div>
     </div>
@@ -320,11 +389,24 @@ func ShowUploadPage(w http.ResponseWriter, r *http.Request) {
         function handleFileSelect() {
             const file = fileInput.files[0];
             if (file) {
+                // Validate file size
+                if (file.size > 250 * 1024 * 1024) {
+                    alert('File is too large. Maximum size is 250MB.');
+                    clearFileSelection();
+                    return;
+                }
+
                 fileName.textContent = file.name;
                 fileSize.textContent = formatFileSize(file.size);
                 fileInfo.classList.remove('hidden');
                 uploadBtn.disabled = false;
             }
+        }
+
+        function clearFileSelection() {
+            fileInput.value = '';
+            fileInfo.classList.add('hidden');
+            uploadBtn.disabled = true;
         }
 
         function formatFileSize(bytes) {
@@ -336,9 +418,7 @@ func ShowUploadPage(w http.ResponseWriter, r *http.Request) {
         }
 
         function resetUploadForm() {
-            fileInput.value = '';
-            fileInfo.classList.add('hidden');
-            uploadBtn.disabled = false;
+            clearFileSelection();
             document.getElementById('upload-status').innerHTML = '';
         }
 
@@ -362,11 +442,11 @@ func ShowUploadPage(w http.ResponseWriter, r *http.Request) {
 </body>
 </html>`, user.Email, department, department, user.Email)
 
-	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
 }
 
-// createGraphClient creates Graph client with app credentials
+// createGraphClient creates Graph client with app credentials and required scopes
 func createGraphClient() (*msgraph.GraphServiceClient, error) {
 	cred, err := azidentity.NewClientSecretCredential(
 		os.Getenv("AZURE_TENANT_ID"),
@@ -375,9 +455,10 @@ func createGraphClient() (*msgraph.GraphServiceClient, error) {
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create credentials: %v", err)
+		return nil, fmt.Errorf("failed to create Azure credentials: %v", err)
 	}
 
+	// Create Graph client with required scopes for SharePoint
 	graphClient, err := msgraph.NewGraphServiceClientWithCredentials(
 		cred,
 		[]string{"https://graph.microsoft.com/.default"},
@@ -387,4 +468,43 @@ func createGraphClient() (*msgraph.GraphServiceClient, error) {
 	}
 
 	return graphClient, nil
+}
+
+// Security helper functions
+func isAllowedFileType(filename string) bool {
+	allowedExtensions := []string{
+		".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+		".txt", ".zip", ".rar", ".7z",
+		".jpg", ".jpeg", ".png", ".gif", ".bmp",
+		".mp4", ".avi", ".mov", ".wmv", // video files
+	}
+
+	ext := strings.ToLower(filepath.Ext(filename))
+	for _, allowed := range allowedExtensions {
+		if ext == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func sanitizeFilename(filename string) string {
+	// Remove or replace problematic characters
+	filename = strings.ReplaceAll(filename, " ", "_")
+	filename = strings.ReplaceAll(filename, "(", "")
+	filename = strings.ReplaceAll(filename, ")", "")
+	filename = strings.ReplaceAll(filename, "[", "")
+	filename = strings.ReplaceAll(filename, "]", "")
+	filename = strings.ReplaceAll(filename, "&", "and")
+	return filename
+}
+
+func sanitizeFolderName(name string) string {
+	// Remove email domain and clean up folder names
+	if strings.Contains(name, "@") {
+		name = strings.Split(name, "@")[0]
+	}
+	name = strings.ReplaceAll(name, " ", "_")
+	name = strings.ReplaceAll(name, ".", "_")
+	return name
 }
