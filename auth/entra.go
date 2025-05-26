@@ -57,6 +57,8 @@ func NewAuthService(db *sql.DB) (*AuthService, error) {
 			"profile",
 			"email",
 			"https://graph.microsoft.com/User.Read",
+			//"https://graph.microsoft.com/Files.ReadWrite.All", // For file operations
+			//"https://graph.microsoft.com/Sites.ReadWrite.All", // For SharePoint sites
 		},
 		Endpoint: microsoft.AzureADEndpoint(config.TenantID),
 	}

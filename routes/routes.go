@@ -58,6 +58,10 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
 
+		// Upload routes
+		r.Get("/upload", handlers.ShowUploadPage)
+		r.Post("/api/upload", handlers.UploadFileHandler)
+
 		// API endpoint for user info
 		r.Get("/api/auth/user", authMiddleware.UserInfoHandler)
 
