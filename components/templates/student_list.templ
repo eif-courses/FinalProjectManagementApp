@@ -3,21 +3,27 @@ package templates
 import (
     "FinalProjectManagementApp/auth"
     "FinalProjectManagementApp/database"
-    "FinalProjectManagementApp/components/card"
     "FinalProjectManagementApp/components/button"
-     "FinalProjectManagementApp/components/icon"
+    "FinalProjectManagementApp/components/icon"
+    "FinalProjectManagementApp/components/input"
+    "FinalProjectManagementApp/components/selectbox"
+    "FinalProjectManagementApp/components/badge"
+    "FinalProjectManagementApp/components/label"
+    "FinalProjectManagementApp/components/table"
     "strconv"
 )
 
 // Main StudentList function
-templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo, searchValue string) {
+templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo, searchValue string, filters *database.TemplateFilterParams) {
     @Layout(user, currentLocale, "Studentų sąrašas") {
         <div class="space-y-6">
             <!-- Header Section -->
             @StudentListHeader(user, searchValue)
 
-            <!-- Filters -->
-            @StudentListFilters(pagination)
+            <!-- Filters Form - Wrap all filters in a form for better HTMX coordination -->
+            <form id="filters-form" hx-get="/students-list" hx-target="#student-table-container" hx-trigger="change">
+                @StudentListFilters(pagination, filters)
+            </form>
 
             <!-- Table Container for HTMX updates -->
             <div id="student-table-container">
@@ -25,28 +31,91 @@ templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSumma
             </div>
         </div>
 
-        <!-- Add HTMX CSS for indicators -->
-        <style>
-            .htmx-indicator {
-                opacity: 0;
-                transition: opacity 200ms ease-in;
-            }
-            .htmx-request .htmx-indicator {
-                opacity: 1;
-            }
-            .htmx-request.htmx-indicator {
-                opacity: 1;
-            }
-        </style>
-
         <script>
-            // Clear all filters function
+            // Clear all filters function that works with selectbox component
             function clearAllFilters() {
-                document.getElementById('search').value = '';
-                document.querySelectorAll('select').forEach(select => {
-                    select.selectedIndex = 0;
+                // Clear search input
+                const searchInput = document.getElementById('search');
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+
+                // Reset all selectbox components
+                document.querySelectorAll('.select-container').forEach(container => {
+                    const trigger = container.querySelector('.select-trigger');
+                    const hiddenInput = trigger?.querySelector('input[type="hidden"]');
+                    const valueEl = trigger?.querySelector('.select-value');
+                    const contentId = trigger?.dataset.contentId;
+
+                    if (hiddenInput) {
+                        hiddenInput.value = '';
+                    }
+
+                    if (valueEl) {
+                        // Reset to placeholder based on the input name
+                        const inputName = hiddenInput?.name;
+                        let placeholder = 'Visos';
+                        if (inputName === 'limit') {
+                            placeholder = '10';
+                            hiddenInput.value = '10';
+                        }
+                        valueEl.textContent = placeholder;
+                        valueEl.classList.add('text-muted-foreground');
+                    }
+
+                    // Reset item selections in dropdown
+                    if (contentId) {
+                        const content = document.getElementById(contentId);
+                        if (content) {
+                            content.querySelectorAll('.select-item').forEach(item => {
+                                item.setAttribute('data-selected', 'false');
+                                item.classList.remove('bg-accent', 'text-accent-foreground');
+                                const check = item.querySelector('.select-check');
+                                if (check) check.classList.replace('opacity-100', 'opacity-0');
+                            });
+
+                            // Select default item
+                            const inputName = hiddenInput?.name;
+                            let defaultValue = '';
+                            if (inputName === 'limit') {
+                                defaultValue = '10';
+                            }
+
+                            const defaultItem = content.querySelector(`.select-item[data-value="${defaultValue}"]`);
+                            if (defaultItem) {
+                                defaultItem.setAttribute('data-selected', 'true');
+                                defaultItem.classList.add('bg-accent', 'text-accent-foreground');
+                                const check = defaultItem.querySelector('.select-check');
+                                if (check) check.classList.replace('opacity-0', 'opacity-100');
+                            }
+                        }
+                    }
+                });
+
+                // Trigger HTMX request to reload table
+                htmx.ajax('GET', '/students-list', {
+                    target: '#student-table-container',
+                    values: { limit: '10', group: '', study_program: '', topic_status: '', search: '', page: '1' }
                 });
             }
+
+            // Debug function to check filter values
+            function debugFilters() {
+                console.log('=== Filter Debug ===');
+                console.log('Search:', document.getElementById('search')?.value || 'empty');
+                console.log('Limit:', document.querySelector('[name="limit"]')?.value || 'empty');
+                console.log('Group:', document.querySelector('[name="group"]')?.value || 'empty');
+                console.log('Study Program:', document.querySelector('[name="study_program"]')?.value || 'empty');
+                console.log('Topic Status:', document.querySelector('[name="topic_status"]')?.value || 'empty');
+                console.log('===================');
+            }
+
+            // Add debug logging for HTMX requests
+            document.addEventListener('htmx:beforeRequest', function(evt) {
+                console.log('HTMX Request URL:', evt.detail.requestConfig.path);
+                console.log('HTMX Request Parameters:', evt.detail.requestConfig.parameters);
+                debugFilters();
+            });
         </script>
     }
 }
@@ -80,118 +149,265 @@ templ StudentListHeader(user *auth.AuthenticatedUser, searchValue string) {
         <div class="w-full">
             <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                    @icon.Search(icon.Props{Size: 20, Class: "text-gray-400"})
+                    @icon.Search(icon.Props{Size: 20, Class: "text-muted-foreground"})
                 </div>
-                <input
-                    type="text"
-                    id="search"
-                    name="search"
-                    name="search"
-                    placeholder="Ieškoti studentų pagal vardą, pavardę, temą arba el. paštą..."
-                    class="block w-full pl-10 pr-4 py-3 text-sm border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-500 transition-all duration-200"
-                    autocomplete="off"
-                    value={ searchValue }
-                    hx-get="/students-list"
-                    hx-trigger="input changed delay:300ms, search"
-                    hx-target="#student-table-container"
-                    hx-include="[name='limit'],[name='group'],[name='study_program'],[name='topic_status']"
-                    hx-indicator="#search-indicator"
-                />
-                <!-- Loading indicator -->
-                <div id="search-indicator" class="htmx-indicator absolute inset-y-0 right-0 pr-3 flex items-center">
-                    @icon.LoaderCircle(icon.Props{Size: 16, Class: "animate-spin text-blue-500"})
-                </div>
+                @input.Input(input.Props{
+                    Type: "text",
+                    ID: "search",
+                    Name: "search",
+                    Placeholder: "Ieškoti studentų pagal vardą, pavardę, temą arba el. paštą...",
+                    Value: searchValue,
+                    Class: "pl-10 h-12",
+                    Attributes: templ.Attributes{
+                        "hx-get": "/students-list",
+                        "hx-trigger": "input changed delay:300ms, search",
+                        "hx-target": "#student-table-container",
+                        "hx-include": "#filters-form",
+                        "autocomplete": "off",
+                    },
+                })
             </div>
         </div>
     </div>
 }
 
-// Update filters to work with HTMX
-templ StudentListFilters(pagination *database.PaginationInfo) {
-    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+// Update filters to work with current filter values
+templ StudentListFilters(pagination *database.PaginationInfo, filters *database.TemplateFilterParams) {
+    <div class="bg-muted/50 rounded-lg p-4 border border-border">
         <div class="flex items-center gap-4 flex-wrap">
             <!-- Records per page -->
             <div class="flex items-center gap-2">
-                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Kiek rodyti:</label>
-                <select
-                    name="limit"
-                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-16"
-                    hx-get="/students-list"
-                    hx-trigger="change"
-                    hx-target="#student-table-container"
-                    hx-include="[name='search'],[name='group'],[name='study_program'],[name='topic_status']"
-                >
-                    if pagination != nil && pagination.Limit == 10 {
-                        <option value="10" selected>10</option>
-                    } else {
-                        <option value="10">10</option>
+                @label.Label(label.Props{
+                    Class: "text-sm font-medium whitespace-nowrap",
+                }) {
+                    Kiek rodyti:
+                }
+                @selectbox.SelectBox(selectbox.Props{
+                    Class: "min-w-16",
+                }) {
+                    @selectbox.Trigger(selectbox.TriggerProps{
+                        Name: "limit",
+                        Attributes: templ.Attributes{
+                            "hx-include": "#search, #filters-form",
+                        },
+                    }) {
+                        @selectbox.Value(selectbox.ValueProps{
+                            Placeholder: "10",
+                        }) {
+                            if filters != nil && filters.Limit > 0 {
+                                { strconv.Itoa(filters.Limit) }
+                            } else if pagination != nil {
+                                { strconv.Itoa(pagination.Limit) }
+                            } else {
+                                10
+                            }
+                        }
                     }
-                    if pagination != nil && pagination.Limit == 25 {
-                        <option value="25" selected>25</option>
-                    } else {
-                        <option value="25">25</option>
+                    @selectbox.Content() {
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "10",
+                            Selected: (filters != nil && filters.Limit == 10) || (pagination != nil && pagination.Limit == 10) || (filters == nil && pagination == nil),
+                        }) {
+                            10
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "25",
+                            Selected: (filters != nil && filters.Limit == 25) || (pagination != nil && pagination.Limit == 25),
+                        }) {
+                            25
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "50",
+                            Selected: (filters != nil && filters.Limit == 50) || (pagination != nil && pagination.Limit == 50),
+                        }) {
+                            50
+                        }
                     }
-                    if pagination != nil && pagination.Limit == 50 {
-                        <option value="50" selected>50</option>
-                    } else {
-                        <option value="50">50</option>
-                    }
-                </select>
+                }
             </div>
 
             <!-- Group filter -->
             <div class="flex items-center gap-2">
-                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Grupė:</label>
-                <select
-                    name="group"
-                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-24"
-                    hx-get="/students-list"
-                    hx-trigger="change"
-                    hx-target="#student-table-container"
-                    hx-include="[name='search'],[name='limit'],[name='study_program'],[name='topic_status']"
-                >
-                    <option value="">Visos</option>
-                    <option value="PI22B">PI22B</option>
-                    <option value="PI22S">PI22S</option>
-                    <option value="PIT22">PIT22</option>
-                </select>
+                @label.Label(label.Props{
+                    Class: "text-sm font-medium whitespace-nowrap",
+                }) {
+                    Grupė:
+                }
+                @selectbox.SelectBox(selectbox.Props{
+                    Class: "min-w-24",
+                }) {
+                    @selectbox.Trigger(selectbox.TriggerProps{
+                        Name: "group",
+                        Attributes: templ.Attributes{
+                            "hx-include": "#search, #filters-form",
+                        },
+                    }) {
+                        @selectbox.Value(selectbox.ValueProps{
+                            Placeholder: "Visos",
+                        }) {
+                            if filters != nil && filters.Group != "" {
+                                { filters.Group }
+                            }
+                        }
+                    }
+                    @selectbox.Content() {
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "",
+                            Selected: filters == nil || filters.Group == "",
+                        }) {
+                            Visos
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "PI22B",
+                            Selected: filters != nil && filters.Group == "PI22B",
+                        }) {
+                            PI22B
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "PI22S",
+                            Selected: filters != nil && filters.Group == "PI22S",
+                        }) {
+                            PI22S
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "PIT22",
+                            Selected: filters != nil && filters.Group == "PIT22",
+                        }) {
+                            PIT22
+                        }
+                    }
+                }
             </div>
 
             <!-- Study program filter -->
             <div class="flex items-center gap-2">
-                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Programa:</label>
-                <select
-                    name="study_program"
-                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-32"
-                    hx-get="/students-list"
-                    hx-trigger="change"
-                    hx-target="#student-table-container"
-                    hx-include="[name='search'],[name='limit'],[name='group'],[name='topic_status']"
-                >
-                    <option value="">Visos</option>
-                    <option value="Informatikos inžinerija">Informatikos inž.</option>
-                    <option value="Programų sistemų inžinerija">Programų sist. inž.</option>
-                </select>
+                @label.Label(label.Props{
+                    Class: "text-sm font-medium whitespace-nowrap",
+                }) {
+                    Programa:
+                }
+                @selectbox.SelectBox(selectbox.Props{
+                    Class: "min-w-32",
+                }) {
+                    @selectbox.Trigger(selectbox.TriggerProps{
+                        Name: "study_program",
+                        Attributes: templ.Attributes{
+                            "hx-include": "#search, #filters-form",
+                        },
+                    }) {
+                        @selectbox.Value(selectbox.ValueProps{
+                            Placeholder: "Visos",
+                        }) {
+                            if filters != nil && filters.StudyProgram != "" {
+                                if filters.StudyProgram == "Informatikos inžinerija" {
+                                    Informatikos inž.
+                                } else if filters.StudyProgram == "Programų sistemų inžinerija" {
+                                    Programų sist. inž.
+                                } else {
+                                    { filters.StudyProgram }
+                                }
+                            }
+                        }
+                    }
+                    @selectbox.Content() {
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "",
+                            Selected: filters == nil || filters.StudyProgram == "",
+                        }) {
+                            Visos
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "Informatikos inžinerija",
+                            Selected: filters != nil && filters.StudyProgram == "Informatikos inžinerija",
+                        }) {
+                            Informatikos inž.
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "Programų sistemų inžinerija",
+                            Selected: filters != nil && filters.StudyProgram == "Programų sistemų inžinerija",
+                        }) {
+                            Programų sist. inž.
+                        }
+                    }
+                }
             </div>
 
             <!-- Topic status filter -->
             <div class="flex items-center gap-2">
-                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Temos būsena:</label>
-                <select
-                    name="topic_status"
-                    class="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-28"
-                    hx-get="/students-list"
-                    hx-trigger="change"
-                    hx-target="#student-table-container"
-                    hx-include="[name='search'],[name='limit'],[name='group'],[name='study_program']"
-                >
-                    <option value="">Visos</option>
-                    <option value="">Nepradėta</option>
-                    <option value="draft">Juodraštis</option>
-                    <option value="submitted">Pateikta</option>
-                    <option value="approved">Patvirtinta</option>
-                    <option value="rejected">Atmesta</option>
-                </select>
+                @label.Label(label.Props{
+                    Class: "text-sm font-medium whitespace-nowrap",
+                }) {
+                    Temos būsena:
+                }
+                @selectbox.SelectBox(selectbox.Props{
+                    Class: "min-w-28",
+                }) {
+                    @selectbox.Trigger(selectbox.TriggerProps{
+                        Name: "topic_status",
+                        Attributes: templ.Attributes{
+                            "hx-include": "#search, #filters-form",
+                        },
+                    }) {
+                        @selectbox.Value(selectbox.ValueProps{
+                            Placeholder: "Visos",
+                        }) {
+                            if filters != nil && filters.TopicStatus != "" {
+                                switch filters.TopicStatus {
+                                case "not_started":
+                                    Nepradėta
+                                case "draft":
+                                    Juodraštis
+                                case "submitted":
+                                    Pateikta
+                                case "approved":
+                                    Patvirtinta
+                                case "rejected":
+                                    Atmesta
+                                default:
+                                    { filters.TopicStatus }
+                                }
+                            }
+                        }
+                    }
+                    @selectbox.Content() {
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "",
+                            Selected: filters == nil || filters.TopicStatus == "",
+                        }) {
+                            Visos
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "not_started",
+                            Selected: filters != nil && filters.TopicStatus == "not_started",
+                        }) {
+                            Nepradėta
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "draft",
+                            Selected: filters != nil && filters.TopicStatus == "draft",
+                        }) {
+                            Juodraštis
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "submitted",
+                            Selected: filters != nil && filters.TopicStatus == "submitted",
+                        }) {
+                            Pateikta
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "approved",
+                            Selected: filters != nil && filters.TopicStatus == "approved",
+                        }) {
+                            Patvirtinta
+                        }
+                        @selectbox.Item(selectbox.ItemProps{
+                            Value: "rejected",
+                            Selected: filters != nil && filters.TopicStatus == "rejected",
+                        }) {
+                            Atmesta
+                        }
+                    }
+                }
             </div>
 
             <!-- Clear filters -->
@@ -201,25 +417,24 @@ templ StudentListFilters(pagination *database.PaginationInfo) {
                     Variant: button.VariantOutline,
                     Class: "h-9 px-3 text-sm flex items-center gap-1",
                     Attributes: templ.Attributes{
-                        "hx-get": "/students-list",
-                        "hx-target": "#student-table-container",
                         "onclick": "clearAllFilters()",
                     },
                 }) {
                     @icon.X(icon.Props{Size: 16})
-                    Išvalyti
+                    Atstatyti filtrą
                 }
             </div>
         </div>
+
+        <!-- Hidden inputs to ensure page resets when filters change -->
+        <input type="hidden" name="page" value="1" />
     </div>
 }
 
 // Separate component for table and pagination that can be updated
 templ StudentTableWithPagination(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo) {
-    <!-- Table Card -->
-    @card.Card() {
-        @StudentListTable(user, students, currentLocale)
-    }
+    <!-- Table -->
+    @StudentListTable(user, students, currentLocale)
 
     <!-- Pagination -->
     if pagination != nil {
@@ -227,259 +442,219 @@ templ StudentTableWithPagination(user *auth.AuthenticatedUser, students []databa
     }
 }
 
-// Main Table
+// Main Table using proper table components
 templ StudentListTable(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string) {
-    <div class="relative w-full overflow-auto">
-        <table class="w-full caption-bottom text-sm">
-            <thead class="border-b">
-                <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-20">
-                        Grupė
-                    </th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-64">
-                        Studentas
-                    </th>
-                    if canViewTopicRegistration(user.Role) {
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-48">
-                            Tema
-                        </th>
+    @table.Table() {
+        @table.Header() {
+            @table.Row() {
+                @table.Head() {
+                    Grupė
+                }
+                @table.Head() {
+                    <div class="flex items-center gap-1">
+                        Vardas pavardė
+                        @icon.ArrowUpDown(icon.Props{Size: 14})
+                    </div>
+                }
+                if canViewTopicRegistration(user.Role) {
+                    @table.Head() {
+                        <div class="flex items-center gap-1">
+                            Temos registravimo lapas
+                            @icon.ArrowUpDown(icon.Props{Size: 14})
+                        </div>
                     }
-                    if canViewDocuments(user.Role) {
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-32">
-                            Dokumentai
-                        </th>
+                }
+                if canViewDocuments(user.Role) {
+                    @table.Head() {
+                        Dokumentai
                     }
-                    if canViewReviewer(user.Role) {
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-48">
+                }
+                if canViewReviewer(user.Role) {
+                    @table.Head() {
+                        <div class="flex items-center gap-1">
                             Recenzentas
-                        </th>
+                            @icon.ArrowUpDown(icon.Props{Size: 14})
+                        </div>
                     }
-                    if canViewSupervisor(user.Role) {
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-48">
+                }
+                if canViewSupervisor(user.Role) {
+                    @table.Head() {
+                        <div class="flex items-center gap-1">
                             Vadovas
-                        </th>
+                            @icon.ArrowUpDown(icon.Props{Size: 14})
+                        </div>
                     }
-                </tr>
-            </thead>
-            <tbody class="[&_tr:last-child]:border-0">
-                for _, student := range students {
-                    <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                        <!-- Group -->
-                        <td class="p-4 align-middle">
-                            @CompactBadge(student.StudentGroup, "primary")
-                        </td>
-
-                        <!-- Student Info -->
-                        <td class="p-4 align-middle">
-                            <div class="space-y-1">
-                                <div class="font-medium text-foreground">
-                                    { student.GetDisplayName(currentLocale) }
-                                </div>
-                                <div class="text-sm text-muted-foreground">
-                                    { student.GetLocalizedTitle(currentLocale) }
-                                </div>
-                                if canViewStudentDetails(user.Role) {
-                                    <div class="text-xs text-muted-foreground">
-                                        { student.StudentEmail }
-                                    </div>
-                                }
-                            </div>
-                        </td>
-
-                        if canViewTopicRegistration(user.Role) {
-                            <td class="p-4 align-middle">
-                                @RegistrationStatus(user, student.TopicStatus, student.TopicApproved, student.ID)
-                            </td>
-                        }
-
-                        if canViewDocuments(user.Role) {
-                            <td class="p-4 align-middle">
-                                @DocumentsCell(user, student.ID)
-                            </td>
-                        }
-
-                        if canViewReviewer(user.Role) {
-                            <td class="p-4 align-middle">
-                                @ReviewerStatus(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned, student.ID)
-                            </td>
-                        }
-
-                        if canViewSupervisor(user.Role) {
-                            <td class="p-4 align-middle">
-                                @SupervisorStatus(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned, student.ID)
-                            </td>
-                        }
-                    </tr>
                 }
-            </tbody>
-        </table>
-    </div>
-}
-
-// Enhanced registration status with proper view buttons
-templ RegistrationStatus(user *auth.AuthenticatedUser, status string, approved bool, studentID int) {
-    <div class="space-y-2">
-        if approved {
-            <div class="space-y-2">
-                <div class="text-sm font-medium text-green-700">Patvirtinta katedros vedėjo</div>
-                <div class="flex flex-col gap-1">
-                    @IconButton("eye", "viewRegistration(" + strconv.Itoa(studentID) + ")", "Žiūrėti registraciją", "outline")
-                    if user.Role == "department_head" || user.Role == "admin" {
-                        @IconButton("file-text", "viewTopicRegistrationForm(" + strconv.Itoa(studentID) + ")", "Temos registravimo lapas", "primary")
-                    }
-                </div>
-            </div>
-        } else if status == "submitted" {
-            @CompactBadge("Pateikta", "warning")
-            <div class="flex items-center gap-1">
-                if canEditRegistration(user.Role, status) {
-                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Redaguoti", "outline")
-                }
-                if user.Role == "department_head" || user.Role == "admin" {
-                    @IconButton("check", "approveRegistration(" + strconv.Itoa(studentID) + ")", "Patvirtinti", "success")
-                    @IconButton("edit-3", "requestChanges(" + strconv.Itoa(studentID) + ")", "Prašyti pakeitimų", "warning")
-                }
-            </div>
-        } else if status == "draft" {
-            @CompactBadge("Juodraštis", "secondary")
-            if canEditRegistration(user.Role, status) {
-                <div class="flex">
-                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Redaguoti", "outline")
-                </div>
-            }
-        } else if status == "needs_revision" {
-            @CompactBadge("Reikia pataisymų", "warning")
-            if canEditRegistration(user.Role, status) {
-                <div class="flex">
-                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Pataisyti", "primary")
-                </div>
-            }
-        } else if status == "rejected" {
-            @CompactBadge("Atmesta", "error")
-            if canEditRegistration(user.Role, status) {
-                <div class="flex">
-                    @IconButton("edit", "editRegistration(" + strconv.Itoa(studentID) + ")", "Redaguoti", "outline")
-                </div>
-            }
-        } else {
-            @CompactBadge("Nepradėta", "error")
-            if canCreateRegistration(user.Role) {
-                <div class="flex">
-                    @IconButton("plus", "editRegistration(" + strconv.Itoa(studentID) + ")", "Pradėti", "primary")
-                </div>
             }
         }
-    </div>
+        @table.Body() {
+            for _, student := range students {
+                @table.Row() {
+                    @table.Cell() {
+                        @badge.Badge(badge.Props{Variant: badge.VariantDefault, Class: "text-xs"}) {
+                            { student.StudentGroup }
+                        }
+                    }
+                    @table.Cell() {
+                        <div class="space-y-1">
+                            <div class="font-medium text-foreground text-sm">
+                                { student.GetDisplayName(currentLocale) }
+                            </div>
+                            <div class="text-xs text-muted-foreground">
+                                { student.GetLocalizedTitle(currentLocale) }
+                            </div>
+                        </div>
+                    }
+                    if canViewTopicRegistration(user.Role) {
+                        @table.Cell() {
+                            @RegistrationStatus(user, student.TopicStatus, student.TopicApproved, student.ID)
+                        }
+                    }
+                    if canViewDocuments(user.Role) {
+                        @table.Cell() {
+                            @DocumentsCell(user, student.ID)
+                        }
+                    }
+                    if canViewReviewer(user.Role) {
+                        @table.Cell() {
+                            @ReviewerStatus(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned, student.ID)
+                        }
+                    }
+                    if canViewSupervisor(user.Role) {
+                        @table.Cell() {
+                            @SupervisorStatus(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned, student.ID)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+templ RegistrationStatus(user *auth.AuthenticatedUser, status string, approved bool, studentID int) {
+    if approved {
+        <div class="space-y-1">
+            <div class="text-xs text-green-700 dark:text-green-400 font-medium">Patvirtinta katedros vedėjo</div>
+            <div class="flex gap-1">
+                @CompactIconButton("eye", "viewRegistration(" + strconv.Itoa(studentID) + ")", "Žiūrėti registraciją")
+                @CompactIconButton("file-text", "viewTopicRegistrationForm(" + strconv.Itoa(studentID) + ")", "Lapas")
+            </div>
+        </div>
+    } else if status == "submitted" {
+        <div class="space-y-1">
+            <div class="text-xs text-blue-600 font-medium">studentas pateikė peržiūrai</div>
+            @button.Button(button.Props{
+                Variant: button.VariantDefault,
+                Class: "h-7 px-3 text-xs",
+                Attributes: templ.Attributes{
+                    "onclick": "approveRegistration(" + strconv.Itoa(studentID) + ")",
+                },
+            }) {
+                @icon.FileText(icon.Props{Size: 12})
+                Peržiūrėti
+            }
+        </div>
+    } else if status == "draft" {
+        <div class="text-xs text-muted-foreground">Juodraštis</div>
+    } else if status == "needs_revision" {
+        <div class="text-xs text-yellow-600">Reikia pataisymų</div>
+    } else if status == "rejected" {
+        <div class="text-xs text-red-600">Atmesta</div>
+    } else {
+        <div class="text-xs text-muted-foreground">nepradėtas pildyti</div>
+    }
 }
 
 templ DocumentsCell(user *auth.AuthenticatedUser, studentID int) {
-    <div class="space-y-2">
-        <div
-            id={ "docs-" + strconv.Itoa(studentID) }
-            class="space-y-1"
-            data-student-id={ strconv.Itoa(studentID) }
-            data-user-role={ user.Role }
-            data-load-documents="true"
-        >
-            <div class="text-xs text-muted-foreground italic">Kraunama...</div>
-        </div>
-        if canUploadDocuments(user.Role) {
-            <div class="flex">
-                @IconButton("upload", "uploadDocument(" + strconv.Itoa(studentID) + ")", "Įkelti dokumentą", "outline")
-            </div>
-        }
+    <div
+        id={ "docs-" + strconv.Itoa(studentID) }
+        class="text-xs"
+        data-student-id={ strconv.Itoa(studentID) }
+        data-user-role={ user.Role }
+        data-load-documents="true"
+    >
+        <div class="text-muted-foreground italic">Kraunama...</div>
     </div>
 }
 
-// Enhanced reviewer status with view button when signed
 templ ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasReport bool, isSigned bool, studentID int) {
-    <div class="space-y-2">
-        if reviewerName != "" {
-            <div class="text-xs font-medium text-foreground truncate max-w-32" title={ reviewerName }>
+    if reviewerName != "" {
+        <div class="space-y-1">
+            <div class="text-xs font-medium text-foreground">
                 { reviewerName }
             </div>
             if hasReport {
-                <div class="flex items-center gap-1">
-                    if isSigned {
-                        @CompactBadge("Pasirašyta", "success")
-                        @IconButton("eye", "viewReviewerReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti recenzento atsiliepimą", "outline")
-                    } else {
-                        @CompactBadge("Užpildyta", "info")
-                        if canViewReview(user.Role) {
-                            @IconButton("eye", "viewReview(" + strconv.Itoa(studentID) + ")", "Žiūrėti", "outline")
-                        }
-                    }
-                </div>
-            } else {
-                <div class="flex items-center gap-1">
-                    @CompactBadge("Neužpildyta", "secondary")
-                    if canEditReview(user.Role, reviewerName, user.Email) {
-                        @IconButton("edit", "editReview(" + strconv.Itoa(studentID) + ")", "Pildyti", "primary")
-                    }
-                </div>
-            }
-        } else {
-            <div class="space-y-1">
-                <span class="text-xs text-muted-foreground">Nepaskirtas</span>
-                if canAssignReviewer(user.Role) {
-                    <div class="flex">
-                        @IconButton("user-plus", "assignReviewer(" + strconv.Itoa(studentID) + ")", "Paskirti", "outline")
+                if isSigned {
+                    <div class="flex items-center gap-1">
+                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span class="text-xs text-green-700">Pasirašyta</span>
+                    </div>
+                } else {
+                    <div class="flex items-center gap-1">
+                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span class="text-xs text-blue-700">Užpildyta</span>
                     </div>
                 }
-            </div>
-        }
-    </div>
+                @CompactIconButton("eye", "viewReview(" + strconv.Itoa(studentID) + ")", "Žiūrėti")
+            } else {
+                <div class="flex items-center gap-1">
+                    <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <span class="text-xs text-yellow-700">not_filled</span>
+                </div>
+            }
+        </div>
+    } else {
+        <div class="text-xs text-muted-foreground">Nepaskirtas</div>
+    }
 }
 
-// Enhanced supervisor status with view button when signed
 templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasReport bool, isSigned bool, studentID int) {
-    <div class="space-y-2">
-        <div class="text-xs text-muted-foreground truncate max-w-32" title={ supervisorEmail }>
+    <div class="space-y-1">
+        <div class="text-xs text-muted-foreground">
             { supervisorEmail }
         </div>
         if hasReport {
-            <div class="flex items-center gap-1">
-                if isSigned {
-                    @CompactBadge("Pasirašyta", "success")
-                    @IconButton("eye", "viewSupervisorReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti vadovo ataskaitą", "outline")
-                } else {
-                    @CompactBadge("Užpildyta", "info")
-                    if canViewSupervisorReport(user.Role) {
-                        @IconButton("eye", "viewSupervisorReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti", "outline")
-                    }
-                }
-            </div>
+            if isSigned {
+                <div class="flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span class="text-xs text-green-700">Pasirašyta</span>
+                </div>
+            } else {
+                <div class="flex items-center gap-1">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span class="text-xs text-blue-700">Užpildyta</span>
+                </div>
+            }
+            @CompactIconButton("eye", "viewSupervisorReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti")
         } else {
             <div class="flex items-center gap-1">
-                @CompactBadge("Neužpildyta", "secondary")
-                if canEditSupervisorReport(user.Role, supervisorEmail, user.Email) {
-                    @IconButton("edit", "editSupervisorReport(" + strconv.Itoa(studentID) + ")", "Pildyti", "primary")
-                }
+                <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <span class="text-xs text-yellow-700">not_filled</span>
             </div>
         }
     </div>
 }
 
-// Pagination Component
+templ CompactIconButton(iconName, action, tooltip string) {
+    @button.Button(button.Props{
+        Variant: button.VariantGhost,
+        Size: button.SizeIcon,
+        Class: "h-6 w-6 p-0",
+        Attributes: templ.Attributes{
+            "onclick": action,
+            "title": tooltip,
+        },
+    }) {
+        @renderTemplUIIcon(iconName)
+    }
+}
+
 templ PaginationComponent(pagination *database.PaginationInfo) {
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between py-4">
         <div class="text-sm text-muted-foreground">
             Rodoma { strconv.Itoa((pagination.Page-1)*pagination.Limit + 1) } - { strconv.Itoa(minInt(pagination.Page*pagination.Limit, pagination.Total)) } iš { strconv.Itoa(pagination.Total) }
         </div>
-
         <div class="flex items-center gap-2">
-            @button.Button(button.Props{
-                Variant: button.VariantOutline,
-                Size: button.SizeIcon,
-                Attributes: templ.Attributes{
-                    "hx-get": "/students-list",
-                    "hx-target": "#student-table-container",
-                    "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
-                },
-            }) {
-                @icon.RotateCcw(icon.Props{Size: 16})
-            }
-
             <div class="flex">
                 if pagination.HasPrev {
                     @button.Button(button.Props{
@@ -488,13 +663,12 @@ templ PaginationComponent(pagination *database.PaginationInfo) {
                         Attributes: templ.Attributes{
                             "hx-get": "/students-list?page=" + strconv.Itoa(pagination.PrevPage),
                             "hx-target": "#student-table-container",
-                            "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
+                            "hx-include": "#search, #filters-form",
                         },
                     }) {
                         @icon.ChevronLeft(icon.Props{Size: 16})
                     }
                 }
-
                 for i := maxInt(1, pagination.Page-2); i <= minInt(pagination.TotalPages, pagination.Page+2); i++ {
                     if i == pagination.Page {
                         @button.Button(button.Props{
@@ -510,14 +684,13 @@ templ PaginationComponent(pagination *database.PaginationInfo) {
                             Attributes: templ.Attributes{
                                 "hx-get": "/students-list?page=" + strconv.Itoa(i),
                                 "hx-target": "#student-table-container",
-                                "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
+                                "hx-include": "#search, #filters-form",
                             },
                         }) {
                             { strconv.Itoa(i) }
                         }
                     }
                 }
-
                 if pagination.HasNext {
                     @button.Button(button.Props{
                         Variant: button.VariantOutline,
@@ -525,7 +698,7 @@ templ PaginationComponent(pagination *database.PaginationInfo) {
                         Attributes: templ.Attributes{
                             "hx-get": "/students-list?page=" + strconv.Itoa(pagination.NextPage),
                             "hx-target": "#student-table-container",
-                            "hx-include": "[name='search'],[name='limit'],[name='group'],[name='study_program'],[name='topic_status']",
+                            "hx-include": "#search, #filters-form",
                         },
                     }) {
                         @icon.ChevronRight(icon.Props{Size: 16})
@@ -536,22 +709,6 @@ templ PaginationComponent(pagination *database.PaginationInfo) {
     </div>
 }
 
-// Enhanced icon button with templui icons
-templ IconButton(iconName, action, tooltip string, variant string) {
-    @button.Button(button.Props{
-        Variant: getButtonVariant(variant),
-        Class: "h-8 w-full px-2 text-xs flex items-center justify-center gap-1",
-        Attributes: templ.Attributes{
-            "onclick": action,
-            "title": tooltip,
-        },
-    }) {
-        @renderTemplUIIcon(iconName)
-        <span class="truncate">{ getButtonText(iconName, tooltip) }</span>
-    }
-}
-
-// Render templui icons with correct icon names from your available icons
 templ renderTemplUIIcon(iconName string) {
     switch iconName {
     case "eye":
@@ -579,81 +736,6 @@ templ renderTemplUIIcon(iconName string) {
     }
 }
 
-// Utility Components
-templ CompactBadge(text, variant string) {
-    <span class={
-        "inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-md " +
-        getBadgeClasses(variant)
-    }>
-        { text }
-    </span>
-}
-
-// Badge classes
-func getBadgeClasses(variant string) string {
-    switch variant {
-    case "success":
-        return "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-    case "warning":
-        return "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-    case "error":
-        return "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-    case "info":
-        return "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20"
-    case "primary":
-        return "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20"
-    case "secondary":
-        return "bg-gray-50 text-gray-700 ring-1 ring-gray-600/20"
-    default:
-        return "bg-gray-50 text-gray-700 ring-1 ring-gray-600/20"
-    }
-}
-
-// Helper function to get button text
-func getButtonText(iconName, tooltip string) string {
-    switch iconName {
-    case "eye":
-        return "Žiūrėti"
-    case "file-text":
-        return "Lapas"
-    case "edit":
-        return "Redaguoti"
-    case "edit-3":
-        return "Pakeitimai"
-    case "check":
-        return "Patvirtinti"
-    case "x":
-        return "Atmesti"
-    case "plus":
-        return "Pradėti"
-    case "upload":
-        return "Įkelti"
-    case "user-plus":
-        return "Paskirti"
-    default:
-        return tooltip
-    }
-}
-
-// Button variant mapping
-func getButtonVariant(variant string) button.Variant {
-    switch variant {
-    case "success":
-        return button.VariantDefault
-    case "error":
-        return button.VariantDestructive
-    case "warning":
-        return button.VariantOutline
-    case "primary":
-        return button.VariantDefault
-    case "ghost":
-        return button.VariantGhost
-    default:
-        return button.VariantOutline
-    }
-}
-
-// Utility functions
 func minInt(a, b int) int {
     if a < b {
         return a

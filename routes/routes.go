@@ -1,6 +1,8 @@
+// routes/routes.go
 package routes
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,11 +13,11 @@ import (
 
 	"FinalProjectManagementApp/auth"
 	"FinalProjectManagementApp/handlers"
-	"FinalProjectManagementApp/notifications" // Add this import
+	"FinalProjectManagementApp/notifications"
 )
 
-// Update the function signature to accept notification service
-func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddleware, notificationService *notifications.NotificationService) *chi.Mux {
+// Updated function signature to accept database and notification service
+func SetupRoutes(db *sql.DB, authService *auth.AuthService, authMiddleware *auth.AuthMiddleware, notificationService *notifications.NotificationService) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -25,8 +27,9 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Compress(5))
 
-	// Initialize handlers
+	// Initialize handlers with database
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
+	topicHandlers := handlers.NewTopicHandlers(db)
 
 	// Static files - serve both assets and static directories
 	workDir, _ := filepath.Abs("./")
@@ -78,13 +81,33 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 		// API endpoints for student data
 		r.Get("/api/students/{id}/documents", handlers.DocumentsAPIHandler)
 
-		// NEW: Notification test route (admin only)
+		// Topic registration routes
+		r.Route("/topic", func(r chi.Router) {
+			r.Get("/register", topicHandlers.ShowTopicRegistrationForm)
+			r.Get("/", topicHandlers.ShowTopicRegistrationForm) // Alternative route
+		})
+
+		// API routes
+		r.Route("/api", func(r chi.Router) {
+			// Topic API endpoints
+			r.Post("/topic/submit", topicHandlers.SubmitTopic)
+			r.Post("/topic/save-draft", topicHandlers.SaveDraft)
+			r.Post("/topic/{id}/comment", topicHandlers.AddComment)
+
+			// Department head/Admin only routes
+			r.Group(func(r chi.Router) {
+				r.Use(authMiddleware.RequireRole(auth.RoleDepartmentHead, auth.RoleAdmin))
+				r.Post("/topic/{id}/approve", topicHandlers.ApproveTopic)
+				r.Post("/topic/{id}/reject", topicHandlers.RejectTopic)
+			})
+		})
+
+		// Notification test route (admin only)
 		if notificationService != nil {
 			r.Route("/admin/notifications", func(r chi.Router) {
 				r.Use(authMiddleware.RequireRole(auth.RoleAdmin))
 
 				// Test notification endpoint
-				// In your routes/routes.go, update the test notification handler:
 				r.Post("/test", func(w http.ResponseWriter, r *http.Request) {
 					email := r.FormValue("email")
 					if email == "" {
@@ -95,8 +118,6 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 					log.Printf("DEBUG: Starting notification test to email: %s", email)
 					log.Printf("DEBUG: Notification service enabled: %v", notificationService.IsEnabled())
 					log.Printf("DEBUG: System email: %s", notificationService.GetSystemEmail())
-
-					//err := notificationService.SendTestNotification(r.Context(), email)
 
 					err := notificationService.SendTestNotificationWithDebug(r.Context(), email)
 
@@ -127,10 +148,9 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 
 		// Student routes
 		r.Route("/students", func(r chi.Router) {
-			r.Use(authMiddleware.RequireAuth)
 			r.Get("/profile", handlers.StudentProfileHandler)
-			r.Get("/topic", handlers.StudentTopicHandler)
-			r.Post("/topic/submit", handlers.SubmitTopicHandler)
+			r.Get("/topic", topicHandlers.ShowTopicRegistrationForm) // Redirect to topic registration
+			r.Post("/topic/submit", topicHandlers.SubmitTopic)       // Legacy route
 		})
 
 		// Supervisor routes
@@ -148,27 +168,33 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 			r.Get("/students", handlers.DepartmentStudentsHandler)
 			r.Get("/topics/pending", handlers.PendingTopicsHandler)
 
-			// Update these handlers to use notification service
+			// Topic approval routes with notification integration
 			r.Post("/topics/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
-				// Call your existing approve handler
-				handlers.ApproveTopicHandler(w, r)
+				// Call the topic approval handler
+				topicHandlers.ApproveTopic(w, r)
 
-				// TODO: Add notification logic here after successful approval
-				// Example:
-				// topicID := chi.URLParam(r, "id")
-				// if notificationService != nil {
-				//     // Send approval notification to student
-				//     student := getStudentByTopicID(topicID) // You'll need to implement this
-				//     notificationService.SendTopicApprovalNotification(r.Context(), student.Email, student.Name, student.TopicTitle, true)
-				// }
+				// Add notification logic after successful approval
+				if notificationService != nil {
+					topicID := chi.URLParam(r, "id")
+					// TODO: Get student info and send notification
+					// student := getStudentByTopicID(topicID)
+					// notificationService.SendTopicApprovalNotification(r.Context(), student.Email, student.Name, student.TopicTitle, true)
+					log.Printf("Topic %s approved - notification would be sent here", topicID)
+				}
 			})
 
 			r.Post("/topics/{id}/reject", func(w http.ResponseWriter, r *http.Request) {
-				// Call your existing reject handler
-				handlers.RejectTopicHandler(w, r)
+				// Call the topic rejection handler
+				topicHandlers.RejectTopic(w, r)
 
-				// TODO: Add notification logic here after successful rejection
-				// Similar to approval but with approved=false
+				// Add notification logic after successful rejection
+				if notificationService != nil {
+					topicID := chi.URLParam(r, "id")
+					// TODO: Get student info and send notification
+					// student := getStudentByTopicID(topicID)
+					// notificationService.SendTopicApprovalNotification(r.Context(), student.Email, student.Name, student.TopicTitle, false)
+					log.Printf("Topic %s rejected - notification would be sent here", topicID)
+				}
 			})
 		})
 
@@ -181,14 +207,14 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 		})
 	})
 
-	// Debug route for testing CSS
+	// Debug route for testing CSS and notifications
 	r.Get("/debug/css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CSS Debug</title>
+    <title>CSS Debug & Notification Test</title>
     <link rel="stylesheet" href="/assets/css/output.css">
     <style>
     .test { background: red; color: white; padding: 10px; }
@@ -196,7 +222,7 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
 </head>
 <body>
     <div class="test">This should have red background (inline CSS)</div>
-    <div class="bg-primary text-primary-foreground p-4">This should be styled if templUI CSS loads</div>
+    <div class="bg-primary text-primary-foreground p-4">This should be styled if TemplUI CSS loads</div>
     <button class="bg-blue-500 text-white px-4 py-2 rounded">Tailwind button test</button>
     
     <!-- Add notification test form for admins -->
@@ -207,6 +233,14 @@ func SetupRoutes(authService *auth.AuthService, authMiddleware *auth.AuthMiddlew
             <button type="submit" style="padding: 5px 10px;">Send Test Notification</button>
         </form>
         <div id="notificationResult" style="margin-top: 10px;"></div>
+    </div>
+
+    <!-- Topic Registration Test -->
+    <div style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+        <h3>Topic Registration Test</h3>
+        <a href="/topic/register" style="padding: 10px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+            Go to Topic Registration Form
+        </a>
     </div>
     
     <script>

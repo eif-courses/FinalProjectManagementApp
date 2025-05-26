@@ -231,6 +231,15 @@ type StudentRecord struct {
 	UpdatedAt           time.Time `json:"updated_at" db:"updated_at"`
 }
 
+// Add this to your database/models.go file
+type TemplateFilterParams struct {
+	Limit        int    `json:"limit"`
+	Group        string `json:"group"`
+	StudyProgram string `json:"study_program"`
+	TopicStatus  string `json:"topic_status"`
+	Search       string `json:"search"`
+}
+
 // GetFullName returns the student's full name
 func (s *StudentRecord) GetFullName() string {
 	return s.StudentName + " " + s.StudentLastname
@@ -890,6 +899,7 @@ type StudentFilter struct {
 	Supervisor   *string `json:"supervisor"`
 	Status       *string `json:"status"`
 	Search       *string `json:"search"`
+	TopicStatus  *string `json:"topic_status"`
 	Page         int     `json:"page"`
 	Limit        int     `json:"limit"`
 	SortBy       string  `json:"sort_by"`

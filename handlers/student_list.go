@@ -28,6 +28,15 @@ func StudentListHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse filter parameters
 	filter := parseStudentFilter(r)
 
+	// Create filter params for template
+	filterParams := &database.TemplateFilterParams{
+		Limit:        filter.Limit,
+		Group:        getStringValue(filter.Group),
+		StudyProgram: getStringValue(filter.StudyProgram),
+		TopicStatus:  getStringValue(filter.TopicStatus),
+		Search:       getStringValue(filter.Search),
+	}
+
 	// Get students from database
 	students, total, err := getStudentsWithFilter(filter)
 	if err != nil {
@@ -58,7 +67,7 @@ func StudentListHandler(w http.ResponseWriter, r *http.Request) {
 		err = templates.StudentTableWithPagination(user, students, locale, pagination).Render(r.Context(), w)
 	} else {
 		// Return full page for regular requests
-		err = templates.StudentList(user, students, locale, pagination, searchValue).Render(r.Context(), w)
+		err = templates.StudentList(user, students, locale, pagination, searchValue, filterParams).Render(r.Context(), w)
 	}
 
 	if err != nil {
@@ -107,7 +116,7 @@ func canViewStudentList(role string) bool {
 func parseStudentFilter(r *http.Request) *database.StudentFilter {
 	filter := &database.StudentFilter{
 		Page:      1,
-		Limit:     20,
+		Limit:     10,
 		SortBy:    "student_name",
 		SortOrder: "asc",
 	}
@@ -144,16 +153,23 @@ func parseStudentFilter(r *http.Request) *database.StudentFilter {
 	if search := r.URL.Query().Get("search"); search != "" {
 		filter.Search = &search
 	}
+	if topicStatus := r.URL.Query().Get("topic_status"); topicStatus != "" {
+		filter.TopicStatus = &topicStatus
+	}
 
 	return filter
 }
 
-// Mock implementations - replace with real database queries
-func getStudentsWithFilter(filter *database.StudentFilter) ([]database.StudentSummaryView, int, error) {
-	// TODO: Implement actual database query
-	students := getMockStudents()
+// Helper functions
+func getStringValue(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
+}
 
-	// Apply filters
+func getStudentsWithFilter(filter *database.StudentFilter) ([]database.StudentSummaryView, int, error) {
+	students := getMockStudents()
 	filteredStudents := applyFilters(students, filter)
 
 	// Apply pagination
@@ -193,6 +209,36 @@ func applyFilters(students []database.StudentSummaryView, filter *database.Stude
 			continue
 		}
 
+		// Apply topic status filter
+		if filter.TopicStatus != nil && *filter.TopicStatus != "" {
+			switch *filter.TopicStatus {
+			case "not_started":
+				if student.TopicStatus != "" {
+					continue
+				}
+			case "draft":
+				if student.TopicStatus != "draft" {
+					continue
+				}
+			case "submitted":
+				if student.TopicStatus != "submitted" {
+					continue
+				}
+			case "approved":
+				if !student.TopicApproved {
+					continue
+				}
+			case "rejected":
+				if student.TopicStatus != "rejected" {
+					continue
+				}
+			default:
+				if student.TopicStatus != *filter.TopicStatus {
+					continue
+				}
+			}
+		}
+
 		// Apply year filter
 		if filter.Year != nil && student.CurrentYear != *filter.Year {
 			continue
@@ -205,8 +251,6 @@ func applyFilters(students []database.StudentSummaryView, filter *database.Stude
 }
 
 func getStudentDocuments(studentID int) ([]database.Document, error) {
-	// TODO: Implement actual database query
-	// Mock documents for now
 	documents := []database.Document{
 		{
 			ID:               1,
