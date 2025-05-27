@@ -6,6 +6,7 @@ import (
 	"FinalProjectManagementApp/components/templates"
 	"FinalProjectManagementApp/database"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
@@ -198,6 +199,10 @@ func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, 
 		return
 	}
 
+	// TODO NEED REVIEW HERE
+	action := "supervisor_report_action" // or whatever action this represents
+	formVariant := "create"              // or "update", "view", etc.
+
 	// Create audit log
 	userEmail := h.getUserEmailFromRequest(r)
 	h.createAuditLog(database.AuditLog{
@@ -206,11 +211,17 @@ func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, 
 		Action:       "create_supervisor_report",
 		ResourceType: "supervisor_report",
 		ResourceID:   database.NullableString(fmt.Sprintf("%d", studentID)),
-		Details: database.JSONMap{
-			"student_id": studentID,
-			"pass":       formData.IsPassOrFailed,
-			"similarity": formData.OtherMatch + formData.OneMatch + formData.OwnMatch + formData.JoinMatch,
-		},
+		Details: func() *string {
+			detailsMap := map[string]interface{}{
+				"student_id":    studentID,
+				"report_action": action,
+				"supervisor":    supervisorName,
+				"form_variant":  formVariant,
+			}
+			detailsJSON, _ := json.Marshal(detailsMap)
+			detailsStr := string(detailsJSON)
+			return &detailsStr
+		}(),
 		IPAddress: database.NullableString(h.getClientIP(r)),
 		UserAgent: database.NullableString(r.UserAgent()),
 		Success:   true,
