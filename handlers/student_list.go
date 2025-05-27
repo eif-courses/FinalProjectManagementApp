@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/jmoiron/sqlx"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,7 +13,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func StudentListHandler(w http.ResponseWriter, r *http.Request) {
+type StudentListHandler struct {
+	db *sqlx.DB
+}
+
+// NewSupervisorReportHandler creates a new handler instance
+func NewStudentListHandler(db *sqlx.DB) *StudentListHandler {
+	return &StudentListHandler{
+		db: db,
+	}
+}
+
+func (h *StudentListHandler) StudentTableDisplayHandler(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -38,7 +50,7 @@ func StudentListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get students from database
-	students, total, err := getStudentsWithFilter(filter)
+	students, total, err := h.getStudentsWithFilter(filter)
 	if err != nil {
 		http.Error(w, "Failed to fetch students", http.StatusInternalServerError)
 		return
@@ -168,22 +180,90 @@ func getStringValue(ptr *string) string {
 	return *ptr
 }
 
-func getStudentsWithFilter(filter *database.StudentFilter) ([]database.StudentSummaryView, int, error) {
-	students := getMockStudents()
-	filteredStudents := applyFilters(students, filter)
+//func getStudentsWithFilter(filter *database.StudentFilter) ([]database.StudentSummaryView, int, error) {
+//	students := getMockStudents()
+//	filteredStudents := applyFilters(students, filter)
+//
+//	// Apply pagination
+//	start := (filter.Page - 1) * filter.Limit
+//	end := start + filter.Limit
+//	if end > len(filteredStudents) {
+//		end = len(filteredStudents)
+//	}
+//
+//	if start >= len(filteredStudents) {
+//		return []database.StudentSummaryView{}, len(filteredStudents), nil
+//	}
+//
+//	return filteredStudents[start:end], len(filteredStudents), nil
+//}
 
-	// Apply pagination
-	start := (filter.Page - 1) * filter.Limit
-	end := start + filter.Limit
-	if end > len(filteredStudents) {
-		end = len(filteredStudents)
+func (h *StudentListHandler) getStudentsWithFilter(filter *database.StudentFilter) ([]database.StudentSummaryView, int, error) {
+	var students []database.StudentSummaryView
+	var args []interface{}
+	where := []string{"1=1"}
+
+	// Filters
+	if filter.Search != nil && *filter.Search != "" {
+		search := "%" + strings.ToLower(*filter.Search) + "%"
+		where = append(where, `(LOWER(student_name) LIKE ? OR LOWER(student_lastname) LIKE ? OR LOWER(final_project_title) LIKE ? OR LOWER(student_email) LIKE ?)`)
+		args = append(args, search, search, search, search)
+	}
+	if filter.Group != nil {
+		where = append(where, "student_group = ?")
+		args = append(args, *filter.Group)
+	}
+	if filter.StudyProgram != nil {
+		where = append(where, "study_program = ?")
+		args = append(args, *filter.StudyProgram)
+	}
+	if filter.TopicStatus != nil {
+		if *filter.TopicStatus == "not_started" {
+			where = append(where, "(topic_status IS NULL OR topic_status = '')")
+		} else {
+			where = append(where, "topic_status = ?")
+			args = append(args, *filter.TopicStatus)
+		}
+	}
+	if filter.Year != nil {
+		where = append(where, "current_year = ?")
+		args = append(args, *filter.Year)
 	}
 
-	if start >= len(filteredStudents) {
-		return []database.StudentSummaryView{}, len(filteredStudents), nil
+	// Sorting & Pagination
+	sortBy := filter.SortBy
+	if sortBy == "" {
+		sortBy = "student_name"
+	}
+	sortOrder := strings.ToUpper(filter.SortOrder)
+	if sortOrder != "ASC" && sortOrder != "DESC" {
+		sortOrder = "ASC"
+	}
+	offset := (filter.Page - 1) * filter.Limit
+
+	query := `
+		SELECT *
+		FROM student_summary_view
+		WHERE ` + strings.Join(where, " AND ") + `
+		ORDER BY ` + sortBy + ` ` + sortOrder + `
+		LIMIT ? OFFSET ?`
+
+	args = append(args, filter.Limit, offset)
+
+	err := h.db.Select(&students, query, args...)
+	if err != nil {
+		return nil, 0, err
 	}
 
-	return filteredStudents[start:end], len(filteredStudents), nil
+	// Count query (without limit/offset)
+	countQuery := `SELECT COUNT(*) FROM student_summary_view WHERE ` + strings.Join(where, " AND ")
+	var total int
+	err = h.db.Get(&total, countQuery, args[:len(args)-2]...) // exclude limit/offset
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return students, total, nil
 }
 
 func applyFilters(students []database.StudentSummaryView, filter *database.StudentFilter) []database.StudentSummaryView {

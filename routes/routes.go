@@ -31,6 +31,7 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
 	topicHandlers := handlers.NewTopicHandlers(db.DB)
 	supervisorReportHandler := handlers.NewSupervisorReportHandler(db)
+	studentListHandler := handlers.NewStudentListHandler(db)
 
 	// Static files - serve both assets and static directories
 	workDir, _ := filepath.Abs("./")
@@ -91,7 +92,7 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 		r.Get("/dashboard", handlers.DashboardHandler)
 
 		// Student List
-		r.Get("/students-list", handlers.StudentListHandler)
+		r.Get("/students-list", studentListHandler.StudentTableDisplayHandler)
 
 		// API endpoints for student data
 		r.Get("/api/students/{id}/documents", handlers.DocumentsAPIHandler)
