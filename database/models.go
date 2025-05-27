@@ -785,7 +785,7 @@ type ReportWithDetails struct {
 	ProjectTitle string `json:"project_title" db:"project_title"`
 
 	// Report information
-	SupervisorReport *SupervisorReport `json:"supervisor_report,omitempty"`
+	SupervisorReport *SupervisorReport `json:"supervisor_report.templ,omitempty"`
 	ReviewerReport   *ReviewerReport   `json:"reviewer_report,omitempty"`
 
 	// Status flags
