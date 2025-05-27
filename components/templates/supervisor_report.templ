@@ -1,103 +1,117 @@
+
+
 // supervisor_report.templ
 package templates
 
-import "fmt"
-import "time"
-import "FinalProjectManagementApp/database"
+import (
+  "fmt"
+ "time"
+ "FinalProjectManagementApp/database"
+)
 
-templ SupervisorReportForm(props SupervisorReportFormProps, formData *SupervisorReportFormData) {
+templ SupervisorReportForm(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
 	<div class="supervisor-report-container">
 		<button
-			class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+			class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200"
 			hx-get={ fmt.Sprintf("/supervisor-report/%d/modal", props.StudentRecord.ID) }
 			hx-target="#modal-container"
 			hx-swap="innerHTML"
 			hx-indicator="#loading-indicator"
+			aria-label="Open supervisor report form"
 		>
 			<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
 			</svg>
 			{ props.ButtonLabel }
-			<div id="loading-indicator" class="htmx-indicator ml-2">
-				<svg class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-				</svg>
-			</div>
+			@LoadingSpinner("h-3 w-3 ml-2", "loading-indicator")
 		</button>
 
 		<!-- Status indicators -->
 		<div class="mt-2 space-y-1">
 			if props.InitialReport != nil {
 				<div class="flex items-center space-x-2 text-xs">
-					<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+					<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
 						{ getReportStatusText(props.FormVariant, "exists") }
 					</span>
 					if props.InitialReport.IsSigned {
-						<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+						<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+							<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+								<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+							</svg>
 							{ getReportStatusText(props.FormVariant, "signed") }
 						</span>
 					} else {
-						<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+						<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+							<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+								<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+							</svg>
 							{ getReportStatusText(props.FormVariant, "unsigned") }
 						</span>
 					}
 				</div>
 			} else {
-				<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+				<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+					<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+						<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+					</svg>
 					{ getReportStatusText(props.FormVariant, "missing") }
 				</span>
 			}
 		</div>
 
 		<div id="modal-container"></div>
+		<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 	</div>
 }
 
-templ SupervisorReportModal(props SupervisorReportFormProps, formData *SupervisorReportFormData) {
-	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-		 onclick="document.getElementById('modal-container').innerHTML = ''"
+templ SupervisorReportModal(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
+	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-4 px-4"
+		 onclick="closeModal()"
 		 id="supervisor-report-modal">
-		<div class="relative top-4 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white dark:bg-gray-800 max-h-[95vh] overflow-y-auto"
+		<div class="relative w-full max-w-6xl bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[95vh] overflow-y-auto"
 			 onclick="event.stopPropagation()">
 
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 sticky top-0 bg-white dark:bg-gray-800 z-10">
-				<div>
-					<h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
-						if props.FormVariant == "en" {
-							Final Thesis Supervisor's Review Form
-						} else {
-							Baigiamojo darbo vadovo atsiliepimo pildymas
-						}
-					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-						{ props.StudentRecord.GetFullName() } - { props.StudentRecord.StudentGroup }
-					</p>
+			<div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 z-10">
+				<div class="flex items-center justify-between">
+					<div class="flex-1">
+						<h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
+							if props.FormVariant == "en" {
+								Final Thesis Supervisor's Review Form
+							} else {
+								Baigiamojo darbo vadovo atsiliepimo pildymas
+							}
+						</h3>
+						<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+							{ props.StudentRecord.GetFullName() } - { props.StudentRecord.StudentGroup }
+						</p>
+						<div class="mt-2">
+							@ProgressIndicator(props, formData)
+						</div>
+					</div>
+					<button
+						onclick="closeModal()"
+						class="ml-4 flex-shrink-0 text-gray-500 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-700 dark:hover:text-red-400 focus:ring-2 focus:ring-red-500 rounded-lg p-2 transition-colors duration-200"
+						aria-label="Close modal"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+						</svg>
+					</button>
 				</div>
-				<button
-					onclick="document.getElementById('modal-container').innerHTML = ''"
-					class="ml-auto flex-shrink-0 text-gray-500 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-700 dark:hover:text-red-400 focus:ring-2 focus:ring-red-500 rounded-sm p-2"
-					aria-label="Close modal"
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-					</svg>
-				</button>
 			</div>
 
 			<!-- Form Content -->
 			<form
+				id="supervisor-report-form"
 				hx-post={ fmt.Sprintf("/supervisor-report/%d/submit", props.StudentRecord.ID) }
 				hx-target="#modal-container"
 				hx-swap="innerHTML"
 				hx-indicator="#saving-indicator"
-				class="text-sm text-gray-900 dark:text-gray-100 space-y-6"
+				class="px-6 py-6 space-y-8"
 				autocomplete="off"
+				onsubmit="return validateForm()"
 			>
-				<!-- CSRF Token (if you're using CSRF protection) -->
-				<!-- <input type="hidden" name="csrf_token" value={ getCSRFToken() } /> -->
-
 				@FormHeader(props)
 				@StudentInfoSection(props)
 				@FeedbackTextSection(props, formData)
@@ -108,9 +122,94 @@ templ SupervisorReportModal(props SupervisorReportFormProps, formData *Superviso
 			</form>
 		</div>
 	</div>
+
+	@EnhancedJavaScript(props)
 }
 
-templ FormHeader(props SupervisorReportFormProps) {
+templ ProgressIndicator(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
+	<div class="flex items-center space-x-2 text-xs">
+		<div class="flex items-center space-x-1">
+			<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+			<span class="text-gray-600 dark:text-gray-400">
+				if props.FormVariant == "en" {
+					Form Progress
+				} else {
+					Formos pildymas
+				}
+			</span>
+		</div>
+		<div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+			<div class="bg-blue-500 h-1 rounded-full transition-all duration-300" style="width: 60%"></div>
+		</div>
+	</div>
+}
+
+templ LoadingSpinner(size string, id string) {
+	<div id={ id } class="htmx-indicator">
+		<svg class={ "animate-spin " + size + " text-white" } fill="none" viewBox="0 0 24 24">
+			<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+			<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+		</svg>
+	</div>
+}
+
+templ ValidationMessage(field string, errors map[string]string) {
+	if errors[field] != "" {
+		<div class="flex items-center mt-1 text-sm text-red-600 dark:text-red-400 animate-fadeIn">
+			<svg class="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+			</svg>
+			<span>{ errors[field] }</span>
+		</div>
+	}
+}
+
+templ Toast(message string, toastType string) {
+	<div class={ "p-4 rounded-lg shadow-lg transition-all duration-300 " + getToastClasses(toastType) }
+		 x-data="{ show: true }"
+		 x-show="show"
+		 x-transition:enter="transform ease-out duration-300 transition"
+		 x-transition:enter-start="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+		 x-transition:enter-end="translate-y-0 opacity-100 sm:translate-x-0"
+		 x-transition:leave="transition ease-in duration-100"
+		 x-transition:leave-start="opacity-100"
+		 x-transition:leave-end="opacity-0">
+		<div class="flex items-center">
+			@ToastIcon(toastType)
+			<span class="ml-2 text-sm font-medium">{ message }</span>
+			<button
+				@click="show = false"
+				class="ml-4 text-gray-400 hover:text-gray-600 focus:outline-none">
+				<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+				</svg>
+			</button>
+		</div>
+	</div>
+}
+
+templ ToastIcon(toastType string) {
+	switch toastType {
+		case "success":
+			<svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+			</svg>
+		case "error":
+			<svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+			</svg>
+		case "warning":
+			<svg class="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+			</svg>
+		default:
+			<svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+			</svg>
+	}
+}
+
+templ FormHeader(props database.SupervisorReportFormProps) {
 	<div class="text-right text-xs mb-8 text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 pb-4">
 		<p>
 			if props.FormVariant == "en" {
@@ -170,9 +269,12 @@ templ FormHeader(props SupervisorReportFormProps) {
 	</div>
 }
 
-templ StudentInfoSection(props SupervisorReportFormProps) {
+templ StudentInfoSection(props database.SupervisorReportFormProps) {
 	<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6 border border-gray-200 dark:border-gray-600">
-		<h4 class="font-semibold text-gray-900 dark:text-white mb-4">
+		<h4 class="font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+			<svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+			</svg>
 			if props.FormVariant == "en" {
 				Student Information
 			} else {
@@ -181,15 +283,15 @@ templ StudentInfoSection(props SupervisorReportFormProps) {
 		</h4>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-			<div>
-				<label class="text-gray-600 dark:text-gray-400">
+			<div class="space-y-2">
+				<label class="text-gray-600 dark:text-gray-400 font-medium">
 					if props.FormVariant == "en" {
 						Study Program:
 					} else {
 						Studijų programa:
 					}
 				</label>
-				<p class="font-medium text-gray-900 dark:text-white">
+				<p class="font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-800 p-2 rounded border">
 					„{ props.StudentRecord.StudyProgram }",
 					if props.FormVariant == "en" {
 						code
@@ -200,98 +302,112 @@ templ StudentInfoSection(props SupervisorReportFormProps) {
 				</p>
 			</div>
 
-			<div>
-				<label class="text-gray-600 dark:text-gray-400">
+			<div class="space-y-2">
+				<label class="text-gray-600 dark:text-gray-400 font-medium">
 					if props.FormVariant == "en" {
 						Student:
 					} else {
 						Studentas (-ė):
 					}
 				</label>
-				<p class="font-medium text-gray-900 dark:text-white">{ props.StudentRecord.GetDisplayName(props.FormVariant) }</p>
-				<p class="text-xs text-gray-500 dark:text-gray-400">{ props.StudentRecord.StudentEmail }</p>
+				<div class="bg-white dark:bg-gray-800 p-2 rounded border">
+					<p class="font-medium text-gray-900 dark:text-white">{ props.StudentRecord.GetDisplayName(props.FormVariant) }</p>
+					<p class="text-xs text-gray-500 dark:text-gray-400">{ props.StudentRecord.StudentEmail }</p>
+				</div>
 			</div>
 
-			<div>
-				<label class="text-gray-600 dark:text-gray-400">
+			<div class="space-y-2">
+				<label class="text-gray-600 dark:text-gray-400 font-medium">
 					if props.FormVariant == "en" {
 						Group:
 					} else {
 						Grupė:
 					}
 				</label>
-				<p class="font-medium text-gray-900 dark:text-white">{ props.StudentRecord.StudentGroup }</p>
+				<p class="font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-800 p-2 rounded border">{ props.StudentRecord.StudentGroup }</p>
 			</div>
 
-			<div>
-				<label class="text-gray-600 dark:text-gray-400">
+			<div class="space-y-2">
+				<label class="text-gray-600 dark:text-gray-400 font-medium">
 					if props.FormVariant == "en" {
 						Student Number:
 					} else {
 						Studento numeris:
 					}
 				</label>
-				<p class="font-medium text-gray-900 dark:text-white">{ props.StudentRecord.StudentNumber }</p>
+				<p class="font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-800 p-2 rounded border">{ props.StudentRecord.StudentNumber }</p>
 			</div>
 		</div>
 
-		<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-			<label class="text-gray-600 dark:text-gray-400">
+		<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+			<label class="text-gray-600 dark:text-gray-400 font-medium block mb-2">
 				if props.FormVariant == "en" {
 					Final Thesis Topic:
 				} else {
 					Baigiamojo darbo tema:
 				}
 			</label>
-			<p class="font-bold text-gray-900 dark:text-white text-base leading-relaxed">
+			<p class="font-bold text-gray-900 dark:text-white text-base leading-relaxed bg-white dark:bg-gray-800 p-3 rounded border">
 				{ props.StudentRecord.GetLocalizedTitle(props.FormVariant) }
 			</p>
 		</div>
 	</div>
 }
 
-templ FeedbackTextSection(props SupervisorReportFormProps, formData *SupervisorReportFormData) {
-	<div class="space-y-3">
-		<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+templ FeedbackTextSection(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
+	<div class="space-y-4">
+		<h4 class="font-semibold text-gray-900 dark:text-white text-base flex items-center">
+			<svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path>
+			</svg>
 			if props.FormVariant == "en" {
 				Supervisor's Feedback Text
 			} else {
 				Vadovo atsiliepimo tekstas
 			}
-			<span class="text-red-500">*</span>
-		</label>
+			<span class="text-red-500 ml-1">*</span>
+		</h4>
 
-		if props.ValidationErrors["supervisor_comments"] != "" {
-			<p class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-				{ props.ValidationErrors["supervisor_comments"] }
-			</p>
-		}
+		@ValidationMessage("supervisor_comments", props.ValidationErrors)
 
-		<textarea
-			name="supervisor_comments"
-			rows="8"
-			class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-			placeholder={ getPlaceholder(props.FormVariant, "feedback") }
-			required
-			minlength="50"
-		>{ formData.SupervisorComments }</textarea>
+		<div class="relative">
+			<textarea
+				name="supervisor_comments"
+				rows="8"
+				class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200"
+				placeholder={ getPlaceholder(props.FormVariant, "feedback") }
+				required
+				minlength="50"
+				maxlength="2000"
+				oninput="updateCharacterCount(this, 'comment-counter'); validateField(this, 50)"
+			>{ formData.SupervisorComments }</textarea>
+
+			<div class="absolute bottom-2 right-2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded border">
+				<span id="comment-counter">{ fmt.Sprintf("%d", len(formData.SupervisorComments)) }</span>/2000
+			</div>
+		</div>
 
 		<div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-			<span>
+			<span class="flex items-center">
+				<svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+				</svg>
 				if props.FormVariant == "en" {
 					Minimum 50 characters required
 				} else {
 					Reikalingi mažiausiai 50 simboliai
 				}
 			</span>
-			<span id="comment-counter">{ fmt.Sprintf("%d", len(formData.SupervisorComments)) }</span>
 		</div>
 	</div>
 }
 
-templ DefenseEligibilitySection(props SupervisorReportFormProps, formData *SupervisorReportFormData) {
+templ DefenseEligibilitySection(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
 	<div class="space-y-4 border-t border-gray-200 dark:border-gray-600 pt-6">
-		<h4 class="font-semibold text-gray-900 dark:text-white text-base">
+		<h4 class="font-semibold text-gray-900 dark:text-white text-base flex items-center">
+			<svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+			</svg>
 			if props.FormVariant == "en" {
 				Defense Eligibility Assessment
 			} else {
@@ -300,16 +416,17 @@ templ DefenseEligibilitySection(props SupervisorReportFormProps, formData *Super
 		</h4>
 
 		<div class="space-y-3">
-			<label class="flex items-start space-x-3 p-4 border-2 border-green-200 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer transition-colors">
+			<label class="flex items-start space-x-3 p-4 border-2 border-green-200 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer transition-all duration-200 group">
 				<input
 					type="radio"
 					name="is_pass_or_failed"
 					value="true"
 					checked?={ formData.IsPassOrFailed }
-					class="mt-1 h-4 w-4 text-green-600 border-gray-300 focus:ring-green-500"
+					class="mt-1 h-4 w-4 text-green-600 border-gray-300 focus:ring-green-500 focus:ring-2"
+					onchange="updateEligibilityStatus()"
 				/>
 				<div class="text-sm">
-					<div class="font-medium text-gray-900 dark:text-white mb-1">
+					<div class="font-medium text-gray-900 dark:text-white mb-1 group-hover:text-green-700 dark:group-hover:text-green-300 transition-colors duration-200">
 						<svg class="inline w-4 h-4 mr-1 text-green-600" fill="currentColor" viewBox="0 0 20 20">
 							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
 						</svg>
@@ -329,16 +446,17 @@ templ DefenseEligibilitySection(props SupervisorReportFormProps, formData *Super
 				</div>
 			</label>
 
-			<label class="flex items-start space-x-3 p-4 border-2 border-red-200 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors">
+			<label class="flex items-start space-x-3 p-4 border-2 border-red-200 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-all duration-200 group">
 				<input
 					type="radio"
 					name="is_pass_or_failed"
 					value="false"
 					checked?={ !formData.IsPassOrFailed }
-					class="mt-1 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500"
+					class="mt-1 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500 focus:ring-2"
+					onchange="updateEligibilityStatus()"
 				/>
 				<div class="text-sm">
-					<div class="font-medium text-gray-900 dark:text-white mb-1">
+					<div class="font-medium text-gray-900 dark:text-white mb-1 group-hover:text-red-700 dark:group-hover:text-red-300 transition-colors duration-200">
 						<svg class="inline w-4 h-4 mr-1 text-red-600" fill="currentColor" viewBox="0 0 20 20">
 							<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
 						</svg>
@@ -361,9 +479,12 @@ templ DefenseEligibilitySection(props SupervisorReportFormProps, formData *Super
 	</div>
 }
 
-templ PlagiarismPercentagesSection(props SupervisorReportFormProps, formData *SupervisorReportFormData) {
+templ PlagiarismPercentagesSection(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
 	<div class="space-y-4 border-t border-gray-200 dark:border-gray-600 pt-6">
-		<h4 class="font-semibold text-gray-900 dark:text-white text-base">
+		<h4 class="font-semibold text-gray-900 dark:text-white text-base flex items-center">
+			<svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4a1 1 0 011-1h3zm-1 2v1h-1V5h1zM11 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm2 2v-1h1v1h-1z" clip-rule="evenodd"></path>
+			</svg>
 			if props.FormVariant == "en" {
 				Plagiarism Analysis Results
 			} else {
@@ -373,7 +494,10 @@ templ PlagiarismPercentagesSection(props SupervisorReportFormProps, formData *Su
 
 		<!-- Total Match Percentage -->
 		<div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-			<div class="flex items-center space-x-2 text-sm mb-2">
+			<div class="flex items-center space-x-2 text-sm mb-3">
+				<svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+				</svg>
 				<span class="text-gray-700 dark:text-gray-300 font-medium">
 					if props.FormVariant == "en" {
 						Total identified match with other works:
@@ -390,10 +514,10 @@ templ PlagiarismPercentagesSection(props SupervisorReportFormProps, formData *Su
 					min="0"
 					max="100"
 					value={ fmt.Sprintf("%.1f", formData.OtherMatch) }
-					class="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-center focus:ring-blue-500 focus:border-blue-500"
+					class="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-center focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
 					placeholder="0.0"
 					required
-					oninput="updateTotalSimilarity()"
+					oninput="updateTotalSimilarity(); validatePercentage(this)"
 				/>
 				<span class="text-gray-700 dark:text-gray-300">
 					if props.FormVariant == "en" {
@@ -404,9 +528,7 @@ templ PlagiarismPercentagesSection(props SupervisorReportFormProps, formData *Su
 				</span>
 			</div>
 
-			if props.ValidationErrors["other_match"] != "" {
-				<p class="text-sm text-red-600 dark:text-red-400 mt-2">{ props.ValidationErrors["other_match"] }</p>
-			}
+			@ValidationMessage("other_match", props.ValidationErrors)
 		</div>
 
 		<!-- Detailed Breakdown -->
@@ -419,14 +541,17 @@ templ PlagiarismPercentagesSection(props SupervisorReportFormProps, formData *Su
 		<!-- Total Display and Assessment -->
 		<div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
 			<div class="flex justify-between items-center mb-2">
-				<span class="font-medium text-gray-700 dark:text-gray-300">
+				<span class="font-medium text-gray-700 dark:text-gray-300 flex items-center">
+					<svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+						<path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 2a1 1 0 000 2h6a1 1 0 100-2H7zm6 7a1 1 0 011 1v3a1 1 0 11-2 0v-3a1 1 0 011-1zm-3 3a1 1 0 100 2h.01a1 1 0 100-2H10zm-4 1a1 1 0 011-1h.01a1 1 0 110 2H7a1 1 0 01-1-1zm1-4a1 1 0 100 2h.01a1 1 0 100-2H7zm2 1a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1zm4-4a1 1 0 100 2h.01a1 1 0 100-2H13zM9 9a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1zM7 8a1 1 0 000 2h.01a1 1 0 000-2H7z" clip-rule="evenodd"></path>
+					</svg>
 					if props.FormVariant == "en" {
 						Total Similarity:
 					} else {
 						Bendras panašumas:
 					}
 				</span>
-				<span class="font-bold text-xl" id="total-similarity" data-similarity={ fmt.Sprintf("%.1f", formData.GetTotalSimilarity()) }>
+				<span class="font-bold text-xl transition-colors duration-300" id="total-similarity" data-similarity={ fmt.Sprintf("%.1f", formData.GetTotalSimilarity()) }>
 					{ fmt.Sprintf("%.1f%%", formData.GetTotalSimilarity()) }
 				</span>
 			</div>
@@ -438,7 +563,7 @@ templ PlagiarismPercentagesSection(props SupervisorReportFormProps, formData *Su
 						Vertinimas:
 					}
 				</span>
-				<span class={ "text-sm font-medium " + formData.GetSimilarityColor() } id="similarity-status">
+				<span class={ "text-sm font-medium transition-colors duration-300 " + formData.GetSimilarityColor() } id="similarity-status">
 					{ getSimilarityStatusText(props.FormVariant, formData.GetSimilarityStatus()) }
 				</span>
 			</div>
@@ -446,8 +571,8 @@ templ PlagiarismPercentagesSection(props SupervisorReportFormProps, formData *Su
 	</div>
 }
 
-templ PlagiarismField(props SupervisorReportFormProps, fieldName, ltLabel, enLabel string, value float64) {
-	<div class="flex items-center space-x-3 text-sm bg-white dark:bg-gray-800 p-3 rounded-md border border-gray-200 dark:border-gray-600">
+templ PlagiarismField(props database.SupervisorReportFormProps, fieldName, ltLabel, enLabel string, value float64) {
+	<div class="flex items-center space-x-3 text-sm bg-white dark:bg-gray-800 p-3 rounded-md border border-gray-200 dark:border-gray-600 transition-all duration-200 hover:shadow-md">
 		<span class="flex-1 text-gray-700 dark:text-gray-300">
 			if props.FormVariant == "en" {
 				{ enLabel }
@@ -462,10 +587,10 @@ templ PlagiarismField(props SupervisorReportFormProps, fieldName, ltLabel, enLab
 			min="0"
 			max="100"
 			value={ fmt.Sprintf("%.1f", value) }
-			class="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-center focus:ring-blue-500 focus:border-blue-500"
+			class="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-center focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
 			placeholder="0.0"
 			required
-			oninput="updateTotalSimilarity()"
+			oninput="updateTotalSimilarity(); validatePercentage(this)"
 		/>
 		<span class="text-gray-700 dark:text-gray-300 w-16">
 			if props.FormVariant == "en" {
@@ -477,9 +602,12 @@ templ PlagiarismField(props SupervisorReportFormProps, fieldName, ltLabel, enLab
 	</div>
 }
 
-templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *SupervisorReportFormData) {
+templ SupervisorDetailsSection(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
 	<div class="space-y-6 border-t border-gray-200 dark:border-gray-600 pt-6">
-		<h4 class="font-semibold text-gray-900 dark:text-white text-base">
+		<h4 class="font-semibold text-gray-900 dark:text-white text-base flex items-center">
+			<svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+			</svg>
 			if props.FormVariant == "en" {
 				Supervisor Information
 			} else {
@@ -491,7 +619,7 @@ templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *Superv
 		<div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
 			<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between sm:space-x-4">
 				<div class="mb-2 sm:mb-0">
-					<p class="text-gray-700 dark:text-gray-300 text-sm">
+					<p class="text-gray-700 dark:text-gray-300 text-sm font-medium">
 						if props.FormVariant == "en" {
 							Final Thesis Supervisor:
 						} else {
@@ -531,18 +659,17 @@ templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *Superv
 					<span class="text-red-500">*</span>
 				</label>
 
-				if props.ValidationErrors["supervisor_workplace"] != "" {
-					<p class="text-sm text-red-600 dark:text-red-400 mb-1">{ props.ValidationErrors["supervisor_workplace"] }</p>
-				}
+				@ValidationMessage("supervisor_workplace", props.ValidationErrors)
 
 				<input
 					type="text"
 					name="supervisor_workplace"
 					value={ formData.SupervisorWorkplace }
 					placeholder={ getPlaceholder(props.FormVariant, "workplace") }
-					class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+					class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
 					required
 					minlength="2"
+					oninput="validateField(this, 2)"
 				/>
 			</div>
 
@@ -556,25 +683,27 @@ templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *Superv
 					<span class="text-red-500">*</span>
 				</label>
 
-				if props.ValidationErrors["supervisor_position"] != "" {
-					<p class="text-sm text-red-600 dark:text-red-400 mb-1">{ props.ValidationErrors["supervisor_position"] }</p>
-				}
+				@ValidationMessage("supervisor_position", props.ValidationErrors)
 
 				<input
 					type="text"
 					name="supervisor_position"
 					value={ formData.SupervisorPosition }
 					placeholder={ getPlaceholder(props.FormVariant, "position") }
-					class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+					class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
 					required
 					minlength="2"
+					oninput="validateField(this, 2)"
 				/>
 			</div>
 		</div>
 
 		<!-- Optional Grade Section -->
-		<div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-			<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+		<div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
+			<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+				<svg class="w-4 h-4 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+					<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+				</svg>
 				if props.FormVariant == "en" {
 					Preliminary Grade (Optional)
 				} else {
@@ -583,7 +712,8 @@ templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *Superv
 			</label>
 			<select
 				name="grade"
-				class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+				class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+				onchange="updateGradeDisplay(this)"
 			>
 				<option value="">
 					if props.FormVariant == "en" {
@@ -598,7 +728,10 @@ templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *Superv
 					</option>
 				}
 			</select>
-			<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+			<p class="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
+				<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+				</svg>
 				if props.FormVariant == "en" {
 					This grade is preliminary and for internal use only
 				} else {
@@ -609,24 +742,39 @@ templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *Superv
 
 		<!-- Additional Comments -->
 		<div>
-			<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+			<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+				<svg class="w-4 h-4 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path>
+				</svg>
 				if props.FormVariant == "en" {
 					Additional Comments (Optional)
 				} else {
 					Papildomi komentarai (neprivalomi)
 				}
 			</label>
-			<textarea
-				name="final_comments"
-				rows="3"
-				class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-				placeholder={ getPlaceholder(props.FormVariant, "additional_comments") }
-			>{ formData.FinalComments }</textarea>
+			<div class="relative">
+				<textarea
+					name="final_comments"
+					rows="3"
+					maxlength="1000"
+					class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+					placeholder={ getPlaceholder(props.FormVariant, "additional_comments") }
+					oninput="updateCharacterCount(this, 'final-comment-counter')"
+				>{ formData.FinalComments }</textarea>
+				<div class="absolute bottom-2 right-2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded border">
+					<span id="final-comment-counter">{ fmt.Sprintf("%d", len(formData.FinalComments)) }</span>/1000
+				</div>
+			</div>
 		</div>
 
 		<!-- Submission Date Display -->
 		<div class="text-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-			<p class="font-medium text-gray-900 dark:text-white">{ time.Now().Format("2006-01-02") }</p>
+			<div class="flex items-center justify-center mb-1">
+				<svg class="w-4 h-4 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+					<path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+				</svg>
+				<p class="font-medium text-gray-900 dark:text-white">{ time.Now().Format("2006-01-02") }</p>
+			</div>
 			<p class="text-xs text-gray-500 dark:text-gray-400">
 				if props.FormVariant == "en" {
 					(submission date)
@@ -638,12 +786,26 @@ templ SupervisorDetailsSection(props SupervisorReportFormProps, formData *Superv
 	</div>
 }
 
-templ FormActions(props SupervisorReportFormProps) {
+templ FormActions(props database.SupervisorReportFormProps) {
 	<div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-6 border-t border-gray-200 dark:border-gray-600 sticky bottom-0 bg-white dark:bg-gray-800 pb-2">
+		<!-- Auto-save indicator -->
+		<div id="auto-save-status" class="hidden sm:flex items-center text-xs text-gray-500 dark:text-gray-400 mr-auto">
+			<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+			</svg>
+			<span>
+				if props.FormVariant == "en" {
+					Auto-saved
+				} else {
+					Automatiškai išsaugota
+				}
+			</span>
+		</div>
+
 		<button
 			type="button"
-			onclick="document.getElementById('modal-container').innerHTML = ''"
-			class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+			onclick="closeModal()"
+			class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
 		>
 			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -657,14 +819,10 @@ templ FormActions(props SupervisorReportFormProps) {
 
 		<button
 			type="submit"
-			class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+			id="submit-button"
+			class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
 		>
-			<div id="saving-indicator" class="htmx-indicator mr-2">
-				<svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-				</svg>
-			</div>
+			@LoadingSpinner("h-4 w-4 mr-2", "saving-indicator")
 			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 			</svg>
@@ -677,112 +835,721 @@ templ FormActions(props SupervisorReportFormProps) {
 	</div>
 }
 
+templ EnhancedJavaScript(props database.SupervisorReportFormProps) {
+	<script>
+		// Global variables
+		let autoSaveTimeout;
+		let formData = {};
+		const VARIANT = "{ props.FormVariant }";
+
+		// Utility functions
+		function closeModal() {
+			document.getElementById('modal-container').innerHTML = '';
+		}
+
+		function showToast(message, type = 'info') {
+			const container = document.getElementById('toast-container');
+			if (!container) return;
+
+			const toast = document.createElement('div');
+			toast.innerHTML = `
+				<div class="p-4 rounded-lg shadow-lg transition-all duration-300 ${getToastClasses(type)}">
+					<div class="flex items-center">
+						${getToastIcon(type)}
+						<span class="ml-2 text-sm font-medium">${message}</span>
+						<button onclick="this.parentElement.parentElement.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-600 focus:outline-none">
+							<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+								<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+							</svg>
+						</button>
+					</div>
+				</div>
+			`;
+
+			container.appendChild(toast);
+
+			// Auto remove after 5 seconds
+			setTimeout(() => {
+				if (toast.parentNode) {
+					toast.remove();
+				}
+			}, 5000);
+		}
+
+		function getToastClasses(type) {
+			switch (type) {
+				case 'success': return 'bg-green-100 text-green-800 border border-green-300';
+				case 'error': return 'bg-red-100 text-red-800 border border-red-300';
+				case 'warning': return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+				default: return 'bg-blue-100 text-blue-800 border border-blue-300';
+			}
+		}
+
+		function getToastIcon(type) {
+			const iconClass = "w-5 h-5";
+			switch (type) {
+				case 'success':
+					return `<svg class="${iconClass} text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`;
+				case 'error':
+					return `<svg class="${iconClass} text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>`;
+				case 'warning':
+					return `<svg class="${iconClass} text-yellow-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a11 0 00-1-1z" clip-rule="evenodd"></path></svg>`;
+   			default:
+   				return `<svg class="${iconClass} text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>`;
+   		}
+   	}
+
+   	// Validation functions
+   	function validateField(field, minLength = 0) {
+   		const value = field.value.trim();
+   		const isValid = value.length >= minLength;
+
+   		if (isValid) {
+   			field.classList.remove('border-red-500');
+   			field.classList.add('border-green-500');
+   		} else {
+   			field.classList.add('border-red-500');
+   			field.classList.remove('border-green-500');
+   		}
+
+   		return isValid;
+   	}
+
+   	function validatePercentage(field) {
+   		const value = parseFloat(field.value) || 0;
+   		const isValid = value >= 0 && value <= 100;
+
+   		if (isValid) {
+   			field.classList.remove('border-red-500');
+   			field.classList.add('border-green-500');
+   		} else {
+   			field.classList.add('border-red-500');
+   			field.classList.remove('border-green-500');
+   		}
+
+   		return isValid;
+   	}
+
+   	function validateForm() {
+   		let isValid = true;
+   		const requiredFields = document.querySelectorAll('[required]');
+
+   		requiredFields.forEach(field => {
+   			if (field.type === 'number') {
+   				if (!validatePercentage(field)) {
+   					isValid = false;
+   				}
+   			} else {
+   				const minLength = field.getAttribute('minlength') || 0;
+   				if (!validateField(field, parseInt(minLength))) {
+   					isValid = false;
+   				}
+   			}
+   		});
+
+   		// Validate total similarity doesn't exceed 100%
+   		const totalSimilarity = calculateTotalSimilarity();
+   		if (totalSimilarity > 100) {
+   			showToast(
+   				VARIANT === 'en'
+   					? 'Total similarity cannot exceed 100%'
+   					: 'Bendras panašumas negali viršyti 100%',
+   				'error'
+   			);
+   			isValid = false;
+   		}
+
+   		// Update submit button state
+   		const submitButton = document.getElementById('submit-button');
+   		if (submitButton) {
+   			submitButton.disabled = !isValid;
+   		}
+
+   		return isValid;
+   	}
+
+   	// Similarity calculation functions
+   	function calculateTotalSimilarity() {
+   		const inputs = ['other_match', 'one_match', 'own_match', 'join_match'];
+   		let total = 0;
+
+   		inputs.forEach(name => {
+   			const input = document.querySelector(`input[name="${name}"]`);
+   			if (input) {
+   				total += parseFloat(input.value) || 0;
+   			}
+   		});
+
+   		return total;
+   	}
+
+   	function updateTotalSimilarity() {
+   		const total = calculateTotalSimilarity();
+   		const totalElement = document.getElementById('total-similarity');
+   		const statusElement = document.getElementById('similarity-status');
+
+   		if (totalElement) {
+   			totalElement.textContent = total.toFixed(1) + '%';
+   			totalElement.setAttribute('data-similarity', total.toFixed(1));
+
+   			// Add visual feedback for high similarity
+   			if (total > 100) {
+   				totalElement.classList.add('text-red-600', 'animate-pulse');
+   			} else {
+   				totalElement.classList.remove('text-red-600', 'animate-pulse');
+   			}
+   		}
+
+   		if (statusElement) {
+   			const { status, colorClass } = getSimilarityStatus(total);
+   			statusElement.textContent = status;
+   			statusElement.className = 'text-sm font-medium transition-colors duration-300 ' + colorClass;
+   		}
+
+   		return total <= 100;
+   	}
+
+   	function getSimilarityStatus(total) {
+   		const isLithuanian = VARIANT === 'lt';
+
+   		if (total <= 15) {
+   			return {
+   				status: isLithuanian ? 'Žemas panašumas' : 'Low similarity',
+   				colorClass: 'text-green-600'
+   			};
+   		} else if (total <= 25) {
+   			return {
+   				status: isLithuanian ? 'Vidutinis panašumas' : 'Moderate similarity',
+   				colorClass: 'text-yellow-600'
+   			};
+   		} else {
+   			return {
+   				status: isLithuanian ? 'Aukštas panašumas' : 'High similarity',
+   				colorClass: 'text-red-600'
+   			};
+   		}
+   	}
+
+   	// Character counter functions
+   	function updateCharacterCount(textarea, counterId) {
+   		const counter = document.getElementById(counterId);
+   		if (counter) {
+   			const length = textarea.value.length;
+   			counter.textContent = length;
+
+   			// Visual feedback for character limits
+   			const maxLength = textarea.getAttribute('maxlength');
+   			if (maxLength) {
+   				const percentage = (length / parseInt(maxLength)) * 100;
+   				if (percentage > 90) {
+   					counter.classList.add('text-red-500');
+   				} else if (percentage > 75) {
+   					counter.classList.add('text-yellow-500');
+   					counter.classList.remove('text-red-500');
+   				} else {
+   					counter.classList.remove('text-red-500', 'text-yellow-500');
+   				}
+   			}
+   		}
+   	}
+
+   	// Auto-save functionality
+   	function autoSave() {
+   		clearTimeout(autoSaveTimeout);
+   		autoSaveTimeout = setTimeout(() => {
+   			const form = document.getElementById('supervisor-report-form');
+   			if (form) {
+   				const formData = new FormData(form);
+   				const data = Object.fromEntries(formData.entries());
+
+   				// Store in localStorage as backup
+   				localStorage.setItem('supervisor-report-draft', JSON.stringify(data));
+
+   				// Show auto-save indicator
+   				const indicator = document.getElementById('auto-save-status');
+   				if (indicator) {
+   					indicator.classList.remove('hidden');
+   					setTimeout(() => {
+   						indicator.classList.add('hidden');
+   					}, 2000);
+   				}
+   			}
+   		}, 2000);
+   	}
+
+   	// Load draft from localStorage
+   	function loadDraft() {
+   		const draft = localStorage.getItem('supervisor-report-draft');
+   		if (draft) {
+   			try {
+   				const data = JSON.parse(draft);
+   				Object.keys(data).forEach(key => {
+   					const field = document.querySelector(`[name="${key}"]`);
+   					if (field) {
+   						field.value = data[key];
+   						if (field.type === 'radio' && field.value === data[key]) {
+   							field.checked = true;
+   						}
+   					}
+   				});
+
+   				showToast(
+   					VARIANT === 'en'
+   						? 'Draft loaded from previous session'
+   						: 'Juodraštis įkeltas iš ankstesnės sesijos',
+   					'info'
+   				);
+   			} catch (e) {
+   				console.error('Error loading draft:', e);
+   			}
+   		}
+   	}
+
+   	// Clear draft
+   	function clearDraft() {
+   		localStorage.removeItem('supervisor-report-draft');
+   	}
+
+   	// Update eligibility status
+   	function updateEligibilityStatus() {
+   		const passRadio = document.querySelector('input[name="is_pass_or_failed"][value="true"]');
+   		const failRadio = document.querySelector('input[name="is_pass_or_failed"][value="false"]');
+
+   		if (failRadio && failRadio.checked) {
+   			showToast(
+   				VARIANT === 'en'
+   					? 'Warning: Thesis marked as not suitable for defense'
+   					: 'Įspėjimas: Darbas pažymėtas kaip netinkamas gynimui',
+   				'warning'
+   			);
+   		}
+   	}
+
+   	// Update grade display
+   	function updateGradeDisplay(select) {
+   		const selectedValue = select.value;
+   		if (selectedValue) {
+   			const option = select.querySelector(`option[value="${selectedValue}"]`);
+   			if (option) {
+   				showToast(
+   					VARIANT === 'en'
+   						? `Preliminary grade selected: ${option.textContent}`
+   						: `Pasirinktas preliminarus įvertinimas: ${option.textContent}`,
+   					'info'
+   				);
+   			}
+   		}
+   	}
+
+   	// Keyboard shortcuts
+   	function handleKeyboardShortcuts(e) {
+   		// Ctrl/Cmd + S to save
+   		if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+   			e.preventDefault();
+   			const form = document.getElementById('supervisor-report-form');
+   			if (form && validateForm()) {
+   				form.submit();
+   			}
+   		}
+
+   		// Escape to close modal
+   		if (e.key === 'Escape') {
+   			closeModal();
+   		}
+   	}
+
+   	// Progress tracking
+   	function updateProgress() {
+   		const form = document.getElementById('supervisor-report-form');
+   		if (!form) return;
+
+   		const requiredFields = form.querySelectorAll('[required]');
+   		let completedFields = 0;
+
+   		requiredFields.forEach(field => {
+   			if (field.type === 'radio') {
+   				const radioGroup = form.querySelectorAll(`[name="${field.name}"]`);
+   				if (Array.from(radioGroup).some(radio => radio.checked)) {
+   					completedFields++;
+   				}
+   			} else if (field.value.trim()) {
+   				completedFields++;
+   			}
+   		});
+
+   		const progress = (completedFields / requiredFields.length) * 100;
+   		const progressBar = document.querySelector('.bg-blue-500.h-1');
+   		if (progressBar) {
+   			progressBar.style.width = `${progress}%`;
+   		}
+   	}
+
+   	// Event listeners setup
+   	function setupEventListeners() {
+   		// Form validation on input
+   		document.addEventListener('input', function(e) {
+   			if (e.target.closest('#supervisor-report-form')) {
+   				autoSave();
+   				updateProgress();
+
+   				// Specific handlers
+   				if (e.target.name === 'supervisor_comments') {
+   					updateCharacterCount(e.target, 'comment-counter');
+   					validateField(e.target, 50);
+   				}
+
+   				if (e.target.name === 'final_comments') {
+   					updateCharacterCount(e.target, 'final-comment-counter');
+   				}
+
+   				if (['other_match', 'one_match', 'own_match', 'join_match'].includes(e.target.name)) {
+   					validatePercentage(e.target);
+   					updateTotalSimilarity();
+   				}
+
+   				if (e.target.required) {
+   					validateField(e.target, parseInt(e.target.getAttribute('minlength')) || 0);
+   				}
+   			}
+   		});
+
+   		// Form submission
+   		document.addEventListener('submit', function(e) {
+   			if (e.target.id === 'supervisor-report-form') {
+   				if (!validateForm()) {
+   					e.preventDefault();
+   					showToast(
+   						VARIANT === 'en'
+   							? 'Please correct the errors before submitting'
+   							: 'Prašome ištaisyti klaidas prieš pateikiant',
+   						'error'
+   					);
+   					return false;
+   				}
+
+   				// Clear draft on successful submission
+   				clearDraft();
+
+   				showToast(
+   					VARIANT === 'en'
+   						? 'Submitting report...'
+   						: 'Pateikiamas atsiliepimas...',
+   					'info'
+   				);
+   			}
+   		});
+
+   		// HTMX event listeners
+   		document.addEventListener('htmx:beforeRequest', function(evt) {
+   			if (evt.target.closest('#supervisor-report-form')) {
+   				const submitButton = document.getElementById('submit-button');
+   				if (submitButton) {
+   					submitButton.disabled = true;
+   				}
+   			}
+   		});
+
+   		document.addEventListener('htmx:afterRequest', function(evt) {
+   			const submitButton = document.getElementById('submit-button');
+   			if (submitButton) {
+   				submitButton.disabled = false;
+   			}
+
+   			if (evt.detail.successful) {
+   				showToast(
+   					VARIANT === 'en'
+   						? 'Report submitted successfully!'
+   						: 'Atsiliepimas sėkmingai pateiktas!',
+   					'success'
+   				);
+   				clearDraft();
+   			} else {
+   				showToast(
+   					VARIANT === 'en'
+   						? 'Error submitting report. Please try again.'
+   						: 'Klaida pateikiant atsiliepimą. Bandykite dar kartą.',
+   					'error'
+   				);
+   			}
+   		});
+
+   		document.addEventListener('htmx:afterSettle', function(evt) {
+   			if (evt.detail.target.id === 'modal-container') {
+   				setupModalEventListeners();
+   				updateTotalSimilarity();
+   				updateProgress();
+   				loadDraft();
+   			}
+   		});
+
+   		// Keyboard shortcuts
+   		document.addEventListener('keydown', handleKeyboardShortcuts);
+   	}
+
+   	function setupModalEventListeners() {
+   		// Setup all event listeners specific to the modal
+   		const form = document.getElementById('supervisor-report-form');
+   		if (form) {
+   			// Initialize character counters
+   			const commentTextarea = form.querySelector('[name="supervisor_comments"]');
+   			if (commentTextarea) {
+   				updateCharacterCount(commentTextarea, 'comment-counter');
+   			}
+
+   			const finalCommentTextarea = form.querySelector('[name="final_comments"]');
+   			if (finalCommentTextarea) {
+   				updateCharacterCount(finalCommentTextarea, 'final-comment-counter');
+   			}
+
+   			// Initialize validation
+   			validateForm();
+   		}
+   	}
+
+   	// Initialize on page load
+   	document.addEventListener('DOMContentLoaded', function() {
+   		setupEventListeners();
+   		updateTotalSimilarity();
+   		updateProgress();
+   	});
+
+   	// Handle page unload
+   	window.addEventListener('beforeunload', function(e) {
+   		const form = document.getElementById('supervisor-report-form');
+   		if (form) {
+   			const formData = new FormData(form);
+   			const hasData = Array.from(formData.entries()).some(([key, value]) => value.trim() !== '');
+
+   			if (hasData) {
+   				e.preventDefault();
+   				e.returnValue = VARIANT === 'en'
+   					? 'You have unsaved changes. Are you sure you want to leave?'
+   					: 'Turite neišsaugotų pakeitimų. Ar tikrai norite išeiti?';
+   			}
+   		}
+   	});
+
+   	// Expose functions for template use
+   	window.supervisorReportForm = {
+   		updateTotalSimilarity,
+   		validateForm,
+   		validateField,
+   		validatePercentage,
+   		updateCharacterCount,
+   		updateEligibilityStatus,
+   		updateGradeDisplay,
+   		closeModal,
+   		showToast
+   	};
+   </script>
+
+   <style>
+   	/* Custom animations */
+   	@keyframes fadeIn {
+   		from { opacity: 0; transform: translateY(-10px); }
+   		to { opacity: 1; transform: translateY(0); }
+   	}
+
+   	.animate-fadeIn {
+   		animation: fadeIn 0.3s ease-out;
+   	}
+
+   	/* Loading states */
+   	.htmx-indicator {
+   		display: none;
+   	}
+
+   	.htmx-request .htmx-indicator {
+   		display: inline-flex;
+   	}
+
+   	.htmx-request.htmx-indicator {
+   		display: inline-flex;
+   	}
+
+   	/* Form field focus states */
+   	.focus\:ring-blue-500:focus {
+   		--tw-ring-color: rgb(59 130 246);
+   	}
+
+   	/* Custom scrollbar for modal */
+   	.supervisor-report-modal::-webkit-scrollbar {
+   		width: 8px;
+   	}
+
+   	.supervisor-report-modal::-webkit-scrollbar-track {
+   		background: #f1f5f9;
+   	}
+
+   	.supervisor-report-modal::-webkit-scrollbar-thumb {
+   		background: #cbd5e1;
+   		border-radius: 4px;
+   	}
+
+   	.supervisor-report-modal::-webkit-scrollbar-thumb:hover {
+   		background: #94a3b8;
+   	}
+
+   	/* Dark mode scrollbar */
+   	@media (prefers-color-scheme: dark) {
+   		.supervisor-report-modal::-webkit-scrollbar-track {
+   			background: #374151;
+   		}
+
+   		.supervisor-report-modal::-webkit-scrollbar-thumb {
+   			background: #6b7280;
+   		}
+
+   		.supervisor-report-modal::-webkit-scrollbar-thumb:hover {
+   			background: #9ca3af;
+   		}
+   	}
+
+   	/* Print styles */
+   	@media print {
+   		.supervisor-report-modal {
+   			position: static !important;
+   			background: white !important;
+   			box-shadow: none !important;
+   			max-height: none !important;
+   			overflow: visible !important;
+   		}
+
+   		button, .htmx-indicator {
+   			display: none !important;
+   		}
+   	}
+
+   	/* Mobile improvements */
+   	@media (max-width: 640px) {
+   		.supervisor-report-modal > div {
+   			margin: 0;
+   			border-radius: 0;
+   			min-height: 100vh;
+   		}
+   	}
+   </style>
+}
+
 // Helper functions
 func getPlaceholder(variant, field string) string {
-	if variant == "en" {
-		switch field {
-		case "feedback":
-			return "Describe the author's independence, initiative, consistency in thesis preparation, theoretical background quality, practical implementation, adherence to requirements, writing quality, and overall assessment..."
-		case "workplace":
-			return "Enter your workplace..."
-		case "position":
-			return "Enter your position/duties"
-		case "additional_comments":
-			return "Any additional observations, recommendations, or notes..."
-		default:
-			return ""
-		}
-	} else {
-		switch field {
-		case "feedback":
-			return "Aprašykite baigiamojo darbo autoriaus savarankiškumą, iniciatyvą, darbo rengimo nuoseklumą, teorinio pagrindo kokybę, praktinio įgyvendinimo lygį, reikalavimų laikymąsi, rašymo kokybę ir bendrą vertinimą..."
-		case "workplace":
-			return "Įrašykite darbovietę..."
-		case "position":
-			return "Nurodykite savo pareigas..."
-		case "additional_comments":
-			return "Papildomi pastebėjimai, rekomendacijos ar komentarai..."
-		default:
-			return ""
-		}
-	}
+   if variant == "en" {
+   	switch field {
+   	case "feedback":
+   		return "Describe the author's independence, initiative, consistency in thesis preparation, theoretical background quality, practical implementation, adherence to requirements, writing quality, and overall assessment..."
+   	case "workplace":
+   		return "Enter your workplace..."
+   	case "position":
+   		return "Enter your position/duties"
+   	case "additional_comments":
+   		return "Any additional observations, recommendations, or notes..."
+   	default:
+   		return ""
+   	}
+   } else {
+   	switch field {
+   	case "feedback":
+   		return "Aprašykite baigiamojo darbo autoriaus savarankiškumą, iniciatyvą, darbo rengimo nuoseklumą, teorinio pagrindo kokybę, praktinio įgyvendinimo lygį, reikalavimų laikymąsi, rašymo kokybę ir bendrą vertinimą..."
+   	case "workplace":
+   		return "Įrašykite darbovietę..."
+   	case "position":
+   		return "Nurodykite savo pareigas..."
+   	case "additional_comments":
+   		return "Papildomi pastebėjimai, rekomendacijos ar komentarai..."
+   	default:
+   		return ""
+   	}
+   }
 }
 
 func getReportStatusText(variant, status string) string {
-	if variant == "en" {
-		switch status {
-		case "exists":
-			return "Report exists"
-		case "signed":
-			return "Signed"
-		case "unsigned":
-			return "Pending signature"
-		case "missing":
-			return "Report missing"
-		default:
-			return "Unknown"
-		}
-	} else {
-		switch status {
-		case "exists":
-			return "Atsiliepimas egzistuoja"
-		case "signed":
-			return "Pasirašytas"
-		case "unsigned":
-			return "Laukia parašo"
-		case "missing":
-			return "Atsiliepimas trūksta"
-		default:
-			return "Nežinoma"
-		}
-	}
+   if variant == "en" {
+   	switch status {
+   	case "exists":
+   		return "Report exists"
+   	case "signed":
+   		return "Signed"
+   	case "unsigned":
+   		return "Pending signature"
+   	case "missing":
+   		return "Report missing"
+   	default:
+   		return "Unknown"
+   	}
+   } else {
+   	switch status {
+   	case "exists":
+   		return "Atsiliepimas egzistuoja"
+   	case "signed":
+   		return "Pasirašytas"
+   	case "unsigned":
+   		return "Laukia parašo"
+   	case "missing":
+   		return "Atsiliepimas trūksta"
+   	default:
+   		return "Nežinoma"
+   	}
+   }
 }
 
 func getSimilarityStatusText(variant, status string) string {
-	if variant == "en" {
-		switch status {
-		case "Low":
-			return "Low similarity"
-		case "Moderate":
-			return "Moderate similarity"
-		case "High":
-			return "High similarity"
-		default:
-			return "Unknown"
-		}
-	} else {
-		switch status {
-		case "Low":
-			return "Žemas panašumas"
-		case "Moderate":
-			return "Vidutinis panašumas"
-		case "High":
-			return "Aukštas panašumas"
-		default:
-			return "Nežinoma"
-		}
-	}
+   if variant == "en" {
+   	switch status {
+   	case "Low":
+   		return "Low similarity"
+   	case "Moderate":
+   		return "Moderate similarity"
+   	case "High":
+   		return "High similarity"
+   	default:
+   		return "Unknown"
+   	}
+   } else {
+   	switch status {
+   	case "Low":
+   		return "Žemas panašumas"
+   	case "Moderate":
+   		return "Vidutinis panašumas"
+   	case "High":
+   		return "Aukštas panašumas"
+   	default:
+   		return "Nežinoma"
+   	}
+   }
 }
 
 func getGradeText(variant string, grade int) string {
-	if variant == "en" {
-		return database.GetGradeText(grade)
-	} else {
-		switch grade {
-		case 10:
-			return "Puikiai"
-		case 9:
-			return "Labai gerai"
-		case 8:
-			return "Gerai"
-		case 7:
-			return "Patenkinamai"
-		case 6:
-			return "Silpnai"
-		case 5:
-			return "Blogai"
-		default:
-			return "Nežinoma"
-		}
-	}
+   if variant == "en" {
+   	return database.GetGradeText(grade)
+   } else {
+   	switch grade {
+   	case 10:
+   		return "Puikiai"
+   	case 9:
+   		return "Labai gerai"
+   	case 8:
+   		return "Gerai"
+   	case 7:
+   		return "Patenkinamai"
+   	case 6:
+   		return "Silpnai"
+   	case 5:
+   		return "Blogai"
+   	default:
+   		return "Nežinoma"
+   	}
+   }
+}
+
+func getToastClasses(toastType string) string {
+   switch toastType {
+   case "success":
+   	return "bg-green-100 text-green-800 border border-green-300"
+   case "error":
+   	return "bg-red-100 text-red-800 border border-red-300"
+   case "warning":
+   	return "bg-yellow-100 text-yellow-800 border border-yellow-300"
+   default:
+   	return "bg-blue-100 text-blue-800 border border-blue-300"
+   }
 }

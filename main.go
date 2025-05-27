@@ -83,7 +83,7 @@ func main() {
 	}
 
 	// Setup routes (pass notification service to routes)
-	r := routes.SetupRoutes(db.DB, authService, authMiddleware, notificationService)
+	r := routes.SetupRoutes(db, authService, authMiddleware, notificationService)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")

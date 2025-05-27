@@ -2,30 +2,33 @@
 package handlers
 
 import (
+	"FinalProjectManagementApp/auth"
+	"FinalProjectManagementApp/components/templates"
 	"FinalProjectManagementApp/database"
-	"context"
+	"database/sql"
 	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // SupervisorReportHandler handles supervisor report operations
 type SupervisorReportHandler struct {
-	// Add any dependencies like database connection, logger, etc.
-	// db *database.DB
-	// logger *log.Logger
+	db *sqlx.DB
 }
 
 // NewSupervisorReportHandler creates a new handler instance
-func NewSupervisorReportHandler() *SupervisorReportHandler {
-	return &SupervisorReportHandler{}
+func NewSupervisorReportHandler(db *sqlx.DB) *SupervisorReportHandler {
+	return &SupervisorReportHandler{
+		db: db,
+	}
 }
 
-// GetSupervisorReportModal returns the modal for editing supervisor report
-func (h *SupervisorReportHandler) GetSupervisorReportModal(w http.ResponseWriter, r *http.Request) {
+// Add a new handler for the full page
+func (h *SupervisorReportHandler) GetSupervisorReportPage(w http.ResponseWriter, r *http.Request) {
 	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "Invalid student ID", http.StatusBadRequest)
@@ -33,37 +36,111 @@ func (h *SupervisorReportHandler) GetSupervisorReportModal(w http.ResponseWriter
 	}
 
 	// Get student record
-	student, err := database.GetStudentRecord(studentID)
+	student, err := h.getStudentRecord(studentID)
 	if err != nil {
 		http.Error(w, "Student not found", http.StatusNotFound)
 		return
 	}
 
 	// Get existing supervisor report if any
-	existingReport, _ := database.GetSupervisorReport(studentID)
+	existingReport, _ := h.getSupervisorReport(studentID)
 
 	// Create form data
-	formData := NewSupervisorReportFormData(existingReport)
+	formData := database.NewSupervisorReportFormData(existingReport)
 
-	// Get language from context/session/header
+	// Get language and user info from context
 	language := h.getLanguageFromRequest(r)
+	user := auth.GetUserFromContext(r.Context())
+
+	supervisorName := ""
+	supervisorEmail := ""
+	if user != nil {
+		supervisorName = user.Name
+		supervisorEmail = user.Email
+	}
 
 	// Create props
-	props := SupervisorReportFormProps{
-		StudentRecord: *student,
-		InitialReport: existingReport,
-		ButtonLabel:   h.getButtonLabel(language, existingReport != nil),
-		ModalTitle:    h.getModalTitle(language),
-		FormVariant:   language,
-		IsModalOpen:   true,
-		IsSaving:      false,
+	props := database.SupervisorReportFormProps{
+		StudentRecord:          *student,
+		InitialReport:          existingReport,
+		ButtonLabel:            h.getButtonLabel(language, existingReport != nil),
+		ModalTitle:             h.getModalTitle(language),
+		FormVariant:            language,
+		IsModalOpen:            true,
+		IsSaving:               false,
+		CurrentSupervisorName:  supervisorName,
+		CurrentSupervisorEmail: supervisorEmail,
+	}
+
+	// Set content type
+	w.Header().Set("Content-Type", "text/html")
+
+	title := h.getModalTitle(language)
+	component := templates.SupervisorReportPage(user, language, title, props, formData)
+
+	if err := component.Render(r.Context(), w); err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		return
+	}
+}
+
+// GetSupervisorReportModal returns the modal for editing supervisor report
+// Keep your existing modal handler for HTMX
+func (h *SupervisorReportHandler) GetSupervisorReportModal(w http.ResponseWriter, r *http.Request) {
+	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		return
+	}
+
+	mode := r.URL.Query().Get("mode") // view, edit, or create
+
+	// Get student record
+	student, err := h.getStudentRecord(studentID)
+	if err != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	// Get existing supervisor report if any
+	existingReport, _ := h.getSupervisorReport(studentID)
+
+	// Create form data
+	formData := database.NewSupervisorReportFormData(existingReport)
+
+	// Get language and user info from context
+	language := h.getLanguageFromRequest(r)
+	user := auth.GetUserFromContext(r.Context())
+
+	supervisorName := ""
+	supervisorEmail := ""
+	if user != nil {
+		supervisorName = user.Name
+		supervisorEmail = user.Email
+	}
+
+	// Modify props based on mode
+	isReadOnly := mode == "view"
+
+	// Create props
+	props := database.SupervisorReportFormProps{
+		StudentRecord:          *student,
+		InitialReport:          existingReport,
+		ButtonLabel:            h.getButtonLabel(language, existingReport != nil),
+		ModalTitle:             h.getModalTitle(language),
+		FormVariant:            language,
+		IsModalOpen:            true,
+		IsSaving:               false,
+		IsReadOnly:             isReadOnly, // Add this field to your props if it doesn't exist
+		CurrentSupervisorName:  supervisorName,
+		CurrentSupervisorEmail: supervisorEmail,
 	}
 
 	// Set content type for HTMX
 	w.Header().Set("Content-Type", "text/html")
 
-	// Render modal
-	component := SupervisorReportModal(props, formData)
+	// Render modal only (for HTMX)
+	component := templates.SupervisorReportModal(props, formData)
 	if err := component.Render(r.Context(), w); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		return
@@ -114,7 +191,7 @@ func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, 
 	}
 
 	// Save to database
-	if err := database.SaveSupervisorReport(reportData); err != nil {
+	if err := h.saveSupervisorReport(reportData); err != nil {
 		h.renderFormWithErrors(w, r, studentID, formData, map[string]string{
 			"general": "Failed to save report: " + err.Error(),
 		})
@@ -123,7 +200,7 @@ func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, 
 
 	// Create audit log
 	userEmail := h.getUserEmailFromRequest(r)
-	database.CreateAuditLog(database.AuditLog{
+	h.createAuditLog(database.AuditLog{
 		UserEmail:    userEmail,
 		UserRole:     "supervisor",
 		Action:       "create_supervisor_report",
@@ -143,6 +220,25 @@ func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, 
 	w.Header().Set("HX-Trigger", "reportSaved")
 	w.Header().Set("HX-Refresh", "true")
 	w.WriteHeader(http.StatusOK)
+
+	// Send success message
+	successHTML := `
+		<div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+			<div class="flex items-center">
+				<svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				<div class="text-green-600 text-sm font-medium">Report saved successfully!</div>
+			</div>
+		</div>
+		<script>
+			setTimeout(function() {
+				document.getElementById('modal-container').innerHTML = '';
+				window.location.reload();
+			}, 2000);
+		</script>
+	`
+	w.Write([]byte(successHTML))
 }
 
 // GetSupervisorReportButton returns just the button (for initial page load)
@@ -154,18 +250,18 @@ func (h *SupervisorReportHandler) GetSupervisorReportButton(w http.ResponseWrite
 	}
 
 	// Get student record
-	student, err := database.GetStudentRecord(studentID)
+	student, err := h.getStudentRecord(studentID)
 	if err != nil {
 		http.Error(w, "Student not found", http.StatusNotFound)
 		return
 	}
 
 	// Check if report exists
-	existingReport, _ := database.GetSupervisorReport(studentID)
+	existingReport, _ := h.getSupervisorReport(studentID)
 
 	language := h.getLanguageFromRequest(r)
 
-	props := SupervisorReportFormProps{
+	props := database.SupervisorReportFormProps{
 		StudentRecord: *student,
 		InitialReport: existingReport,
 		ButtonLabel:   h.getButtonLabel(language, existingReport != nil),
@@ -178,16 +274,200 @@ func (h *SupervisorReportHandler) GetSupervisorReportButton(w http.ResponseWrite
 	w.Header().Set("Content-Type", "text/html")
 
 	// Render just the button
-	component := SupervisorReportForm(props, nil)
+	component := templates.SupervisorReportForm(props, nil)
 	if err := component.Render(r.Context(), w); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		return
 	}
 }
 
-// Helper methods
+// Database helper methods using sqlx
+func (h *SupervisorReportHandler) getStudentRecord(studentID int) (*database.StudentRecord, error) {
+	var record database.StudentRecord
 
-func (h *SupervisorReportHandler) parseFormData(r *http.Request) (*SupervisorReportFormData, error) {
+	query := `
+		SELECT id, student_group, final_project_title, final_project_title_en,
+		       student_email, student_name, student_lastname, student_number,
+		       supervisor_email, study_program, department, program_code,
+		       current_year, reviewer_email, reviewer_name, is_favorite,
+		       created_at, updated_at
+		FROM student_records
+		WHERE id = ?
+	`
+
+	err := h.db.Get(&record, query, studentID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
+}
+
+func (h *SupervisorReportHandler) getSupervisorReport(studentID int) (*database.SupervisorReport, error) {
+	var report database.SupervisorReport
+
+	query := `
+		SELECT id, student_record_id, supervisor_comments, supervisor_name,
+		       supervisor_position, supervisor_workplace, is_pass_or_failed,
+		       is_signed, other_match, one_match, own_match, join_match,
+		       created_date, updated_date, grade, final_comments
+		FROM supervisor_reports
+		WHERE student_record_id = ?
+	`
+
+	err := h.db.Get(&report, query, studentID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &report, nil
+}
+
+func (h *SupervisorReportHandler) saveSupervisorReport(data *database.SupervisorReportData) error {
+	// Check if report exists
+	//existingReport, err := h.getSupervisorReport(data.StudentRecordID)
+	_, err := h.getSupervisorReport(data.StudentRecordID)
+	if err == sql.ErrNoRows {
+		// Create new report using sqlx Named query
+		query := `
+			INSERT INTO supervisor_reports (
+				student_record_id, supervisor_comments, supervisor_name,
+				supervisor_position, supervisor_workplace, is_pass_or_failed,
+				other_match, one_match, own_match, join_match, grade, final_comments
+			) VALUES (
+				:student_record_id, :supervisor_comments, :supervisor_name,
+				:supervisor_position, :supervisor_workplace, :is_pass_or_failed,
+				:other_match, :one_match, :own_match, :join_match, :grade, :final_comments
+			)
+		`
+
+		// Convert to map for Named exec
+		params := map[string]interface{}{
+			"student_record_id":    data.StudentRecordID,
+			"supervisor_comments":  data.SupervisorComments,
+			"supervisor_name":      data.SupervisorName,
+			"supervisor_position":  data.SupervisorPosition,
+			"supervisor_workplace": data.SupervisorWorkplace,
+			"is_pass_or_failed":    data.IsPassOrFailed,
+			"other_match":          data.OtherMatch,
+			"one_match":            data.OneMatch,
+			"own_match":            data.OwnMatch,
+			"join_match":           data.JoinMatch,
+			"grade":                data.Grade,
+			"final_comments":       data.FinalComments,
+		}
+
+		_, err = h.db.NamedExec(query, params)
+		return err
+
+	} else if err != nil {
+		return err
+	} else {
+		// Update existing report using sqlx Named query
+		query := `
+			UPDATE supervisor_reports SET
+				supervisor_comments = :supervisor_comments,
+				supervisor_position = :supervisor_position,
+				supervisor_workplace = :supervisor_workplace,
+				is_pass_or_failed = :is_pass_or_failed,
+				other_match = :other_match,
+				one_match = :one_match,
+				own_match = :own_match,
+				join_match = :join_match,
+				grade = :grade,
+				final_comments = :final_comments,
+				updated_date = :updated_date
+			WHERE student_record_id = :student_record_id
+		`
+
+		params := map[string]interface{}{
+			"student_record_id":    data.StudentRecordID,
+			"supervisor_comments":  data.SupervisorComments,
+			"supervisor_position":  data.SupervisorPosition,
+			"supervisor_workplace": data.SupervisorWorkplace,
+			"is_pass_or_failed":    data.IsPassOrFailed,
+			"other_match":          data.OtherMatch,
+			"one_match":            data.OneMatch,
+			"own_match":            data.OwnMatch,
+			"join_match":           data.JoinMatch,
+			"grade":                data.Grade,
+			"final_comments":       data.FinalComments,
+			"updated_date":         time.Now(),
+		}
+
+		_, err = h.db.NamedExec(query, params)
+		return err
+	}
+}
+
+func (h *SupervisorReportHandler) createAuditLog(log database.AuditLog) error {
+	query := `
+		INSERT INTO audit_logs (
+			user_email, user_role, action, resource_type, resource_id,
+			details, ip_address, user_agent, success, created_at
+		) VALUES (
+			:user_email, :user_role, :action, :resource_type, :resource_id,
+			:details, :ip_address, :user_agent, :success, :created_at
+		)
+	`
+
+	// Set created_at if not set
+	if log.CreatedAt.IsZero() {
+		log.CreatedAt = time.Now()
+	}
+
+	_, err := h.db.NamedExec(query, log)
+	return err
+}
+
+// Bulk operations using sqlx (bonus methods)
+func (h *SupervisorReportHandler) getMultipleStudentRecords(studentIDs []int) ([]database.StudentRecord, error) {
+	if len(studentIDs) == 0 {
+		return []database.StudentRecord{}, nil
+	}
+
+	query, args, err := sqlx.In(`
+		SELECT id, student_group, final_project_title, final_project_title_en,
+		       student_email, student_name, student_lastname, student_number,
+		       supervisor_email, study_program, department, program_code,
+		       current_year, reviewer_email, reviewer_name, is_favorite,
+		       created_at, updated_at
+		FROM student_records
+		WHERE id IN (?)
+	`, studentIDs)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Rebind for MySQL
+	query = h.db.Rebind(query)
+
+	var records []database.StudentRecord
+	err = h.db.Select(&records, query, args...)
+	return records, err
+}
+
+func (h *SupervisorReportHandler) getSupervisorReportsBySupervisor(supervisorEmail string) ([]database.SupervisorReport, error) {
+	var reports []database.SupervisorReport
+
+	query := `
+		SELECT sr.id, sr.student_record_id, sr.supervisor_comments, sr.supervisor_name,
+		       sr.supervisor_position, sr.supervisor_workplace, sr.is_pass_or_failed,
+		       sr.is_signed, sr.other_match, sr.one_match, sr.own_match, sr.join_match,
+		       sr.created_date, sr.updated_date, sr.grade, sr.final_comments
+		FROM supervisor_reports sr
+		JOIN student_records st ON sr.student_record_id = st.id
+		WHERE st.supervisor_email = ?
+		ORDER BY sr.created_date DESC
+	`
+
+	err := h.db.Select(&reports, query, supervisorEmail)
+	return reports, err
+}
+
+// Form parsing and validation methods
+func (h *SupervisorReportHandler) parseFormData(r *http.Request) (*database.SupervisorReportFormData, error) {
 	// Parse numeric fields with error handling
 	otherMatch, err := strconv.ParseFloat(r.FormValue("other_match"), 64)
 	if err != nil {
@@ -220,7 +500,7 @@ func (h *SupervisorReportHandler) parseFormData(r *http.Request) (*SupervisorRep
 		}
 	}
 
-	return &SupervisorReportFormData{
+	return &database.SupervisorReportFormData{
 		SupervisorComments:  r.FormValue("supervisor_comments"),
 		SupervisorWorkplace: r.FormValue("supervisor_workplace"),
 		SupervisorPosition:  r.FormValue("supervisor_position"),
@@ -235,40 +515,69 @@ func (h *SupervisorReportHandler) parseFormData(r *http.Request) (*SupervisorRep
 	}, nil
 }
 
-func (h *SupervisorReportHandler) renderFormWithErrors(w http.ResponseWriter, r *http.Request, studentID int, formData *SupervisorReportFormData, errors map[string]string) {
-	student, _ := database.GetStudentRecord(studentID)
-	existingReport, _ := database.GetSupervisorReport(studentID)
+func (h *SupervisorReportHandler) renderFormWithErrors(w http.ResponseWriter, r *http.Request, studentID int, formData *database.SupervisorReportFormData, errors map[string]string) {
+	student, _ := h.getStudentRecord(studentID)
+	existingReport, _ := h.getSupervisorReport(studentID)
 
 	if formData == nil {
-		formData = NewSupervisorReportFormData(existingReport)
+		formData = database.NewSupervisorReportFormData(existingReport)
 	}
 
 	language := h.getLanguageFromRequest(r)
+	user := auth.GetUserFromContext(r.Context())
 
-	props := SupervisorReportFormProps{
-		StudentRecord:    *student,
-		InitialReport:    existingReport,
-		FormVariant:      language,
-		IsModalOpen:      true,
-		IsSaving:         false,
-		ValidationErrors: errors,
+	supervisorName := ""
+	supervisorEmail := ""
+	if user != nil {
+		supervisorName = user.Name
+		supervisorEmail = user.Email
+	}
+
+	props := database.SupervisorReportFormProps{
+		StudentRecord:          *student,
+		InitialReport:          existingReport,
+		FormVariant:            language,
+		IsModalOpen:            true,
+		IsSaving:               false,
+		ValidationErrors:       errors,
+		CurrentSupervisorName:  supervisorName,
+		CurrentSupervisorEmail: supervisorEmail,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	component := SupervisorReportModal(props, formData)
+	component := templates.SupervisorReportModal(props, formData)
 	component.Render(r.Context(), w)
 }
 
 func (h *SupervisorReportHandler) parseValidationErrors(err error) map[string]string {
 	// Parse validation errors based on your validation approach
-	// This is a simple example - you might want more sophisticated error parsing
-	return map[string]string{
-		"general": err.Error(),
+	errorMessage := err.Error()
+
+	// Map common validation errors to field names
+	if strings.Contains(errorMessage, "supervisor comments") {
+		return map[string]string{"supervisor_comments": errorMessage}
 	}
+	if strings.Contains(errorMessage, "supervisor name") {
+		return map[string]string{"supervisor_name": errorMessage}
+	}
+	if strings.Contains(errorMessage, "supervisor position") {
+		return map[string]string{"supervisor_position": errorMessage}
+	}
+	if strings.Contains(errorMessage, "supervisor workplace") {
+		return map[string]string{"supervisor_workplace": errorMessage}
+	}
+	if strings.Contains(errorMessage, "match percentage") {
+		return map[string]string{"other_match": errorMessage}
+	}
+	if strings.Contains(errorMessage, "grade") {
+		return map[string]string{"grade": errorMessage}
+	}
+
+	// Default to general error
+	return map[string]string{"general": errorMessage}
 }
 
-// Context/session helper methods - implement based on your auth system
-
+// Context/session helper methods
 func (h *SupervisorReportHandler) getLanguageFromRequest(r *http.Request) string {
 	// Try to get from session first
 	if lang := h.getFromSession(r, "language"); lang != "" {
@@ -282,7 +591,8 @@ func (h *SupervisorReportHandler) getLanguageFromRequest(r *http.Request) string
 
 	// Try Accept-Language header
 	if r.Header.Get("Accept-Language") != "" &&
-		(r.Header.Get("Accept-Language")[:2] == "en") {
+		len(r.Header.Get("Accept-Language")) >= 2 &&
+		r.Header.Get("Accept-Language")[:2] == "en" {
 		return "en"
 	}
 
@@ -311,26 +621,53 @@ func (h *SupervisorReportHandler) getUserEmailFromRequest(r *http.Request) strin
 }
 
 func (h *SupervisorReportHandler) getFromSession(r *http.Request, key string) string {
-	// Implement based on your session management
-	// This is a placeholder - replace with your actual session handling
-
-	// Example for context-based session:
-	if val := r.Context().Value(key); val != nil {
-		if str, ok := val.(string); ok {
-			return str
-		}
+	// Get user from context (your auth system)
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		return ""
 	}
 
-	return ""
+	switch key {
+	case "user_name":
+		return user.Name
+	case "user_email":
+		return user.Email
+	case "first_name":
+		// Extract first name from full name
+		parts := strings.Fields(user.Name)
+		if len(parts) > 0 {
+			return parts[0]
+		}
+		return user.Name
+	case "last_name":
+		// Extract last name from full name
+		parts := strings.Fields(user.Name)
+		if len(parts) > 1 {
+			return parts[len(parts)-1]
+		}
+		return ""
+	case "language":
+		// Default language or get from user preferences
+		return "lt"
+	default:
+		return ""
+	}
 }
 
 func (h *SupervisorReportHandler) getClientIP(r *http.Request) string {
 	// Check for forwarded IP first
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		return forwarded
+		// Take the first IP in the list
+		ips := strings.Split(forwarded, ",")
+		return strings.TrimSpace(ips[0])
 	}
 	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
 		return realIP
+	}
+	// Extract IP from RemoteAddr (remove port)
+	parts := strings.Split(r.RemoteAddr, ":")
+	if len(parts) > 0 {
+		return parts[0]
 	}
 	return r.RemoteAddr
 }

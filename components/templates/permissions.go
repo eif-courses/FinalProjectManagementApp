@@ -89,16 +89,6 @@ func canViewSupervisorReport(role string) bool {
 	return role == "admin" || role == "department_head" || role == "supervisor"
 }
 
-func canEditSupervisorReport(role string, supervisorEmail string, userEmail string) bool {
-	if role == "admin" || role == "department_head" {
-		return true
-	}
-	if role == "supervisor" && supervisorEmail == userEmail {
-		return true
-	}
-	return false
-}
-
 func canSignSupervisorReport(role string, supervisorEmail string, userEmail string) bool {
 	if role == "admin" {
 		return true
@@ -134,4 +124,25 @@ func canExportStudentData(role string) bool {
 // Filter permissions
 func canFilterByStatus(role string) bool {
 	return role == "admin" || role == "department_head"
+}
+
+//	func canEditSupervisorReport(role string, supervisorEmail string, userEmail string) bool {
+//		if role == "admin" || role == "department_head" {
+//			return true
+//		}
+//		if role == "supervisor" && supervisorEmail == userEmail {
+//			return true
+//		}
+//		return false
+//	}
+func canEditSupervisorReport(userRole, supervisorEmail, userEmail string) bool {
+	// Allow supervisors to edit their own reports, and admins to edit any
+	return userRole == "admin" || userRole == "department_head" ||
+		(userRole == "supervisor" && supervisorEmail == userEmail)
+}
+
+func canCreateSupervisorReport(userRole, supervisorEmail, userEmail string) bool {
+	// Allow supervisors to create reports for their students, and admins to create any
+	return userRole == "admin" || userRole == "department_head" ||
+		(userRole == "supervisor" && supervisorEmail == userEmail)
 }

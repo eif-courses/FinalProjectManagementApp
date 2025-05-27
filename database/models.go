@@ -231,7 +231,7 @@ type StudentRecord struct {
 	UpdatedAt           time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// Add this to your database/models.go file
+// TemplateFilterParams for template filtering
 type TemplateFilterParams struct {
 	Limit        int    `json:"limit"`
 	Group        string `json:"group"`
@@ -785,7 +785,7 @@ type ReportWithDetails struct {
 	ProjectTitle string `json:"project_title" db:"project_title"`
 
 	// Report information
-	SupervisorReport *SupervisorReport `json:"supervisor_report.templ,omitempty"`
+	SupervisorReport *SupervisorReport `json:"supervisor_report,omitempty"`
 	ReviewerReport   *ReviewerReport   `json:"reviewer_report,omitempty"`
 
 	// Status flags
@@ -826,6 +826,146 @@ func (rwd *ReportWithDetails) IsComplete() bool {
 	return rwd.HasSupervisorReport &&
 		rwd.HasReviewerReport &&
 		rwd.BothReportsSigned
+}
+
+// ================================
+// SUPERVISOR REPORT FORM TYPES
+// ================================
+
+// SupervisorReportFormProps represents the props for the supervisor report form
+type SupervisorReportFormProps struct {
+	// Student and context data
+	StudentRecord StudentRecord     `json:"student_record"`
+	InitialReport *SupervisorReport `json:"initial_report,omitempty"`
+
+	// Form configuration
+	ButtonLabel string `json:"button_label"`
+	ModalTitle  string `json:"modal_title"`
+	FormVariant string `json:"form_variant"` // "lt" or "en"
+
+	// Form state
+	IsModalOpen bool `json:"is_modal_open"`
+	IsSaving    bool `json:"is_saving"`
+
+	IsReadOnly bool `json:"is_read_only"`
+
+	// Validation errors
+	ValidationErrors map[string]string `json:"validation_errors,omitempty"`
+
+	// Current user info (supervisor)
+	CurrentSupervisorName  string `json:"current_supervisor_name"`
+	CurrentSupervisorEmail string `json:"current_supervisor_email"`
+}
+
+// SupervisorReportFormData represents the data being edited in the form
+type SupervisorReportFormData struct {
+	SupervisorComments  string    `json:"supervisor_comments" form:"supervisor_comments"`
+	SupervisorWorkplace string    `json:"supervisor_workplace" form:"supervisor_workplace"`
+	SupervisorPosition  string    `json:"supervisor_position" form:"supervisor_position"`
+	OtherMatch          float64   `json:"other_match" form:"other_match"` // Maps to database.other_match
+	OneMatch            float64   `json:"one_match" form:"one_match"`     // Maps to database.one_match
+	OwnMatch            float64   `json:"own_match" form:"own_match"`     // Maps to database.own_match
+	JoinMatch           float64   `json:"join_match" form:"join_match"`   // Maps to database.join_match
+	IsPassOrFailed      bool      `json:"is_pass_or_failed" form:"is_pass_or_failed"`
+	Grade               *int      `json:"grade" form:"grade"` // Optional grade 1-10
+	FinalComments       string    `json:"final_comments" form:"final_comments"`
+	SubmissionDate      time.Time `json:"submission_date"`
+}
+
+// ToSupervisorReportData converts form data to SupervisorReportData
+func (f *SupervisorReportFormData) ToSupervisorReportData(studentRecordID int, supervisorName string) *SupervisorReportData {
+	return &SupervisorReportData{
+		StudentRecordID:     studentRecordID,
+		SupervisorComments:  f.SupervisorComments,
+		SupervisorName:      supervisorName,
+		SupervisorPosition:  f.SupervisorPosition,
+		SupervisorWorkplace: f.SupervisorWorkplace,
+		IsPassOrFailed:      f.IsPassOrFailed,
+		OtherMatch:          f.OtherMatch,
+		OneMatch:            f.OneMatch,
+		OwnMatch:            f.OwnMatch,
+		JoinMatch:           f.JoinMatch,
+		Grade:               f.Grade,
+		FinalComments:       f.FinalComments,
+	}
+}
+
+// ToSupervisorReport converts form data to SupervisorReport model
+func (f *SupervisorReportFormData) ToSupervisorReport(studentRecordID int, supervisorName string) *SupervisorReport {
+	return &SupervisorReport{
+		StudentRecordID:     studentRecordID,
+		SupervisorComments:  f.SupervisorComments,
+		SupervisorName:      supervisorName,
+		SupervisorPosition:  f.SupervisorPosition,
+		SupervisorWorkplace: f.SupervisorWorkplace,
+		IsPassOrFailed:      f.IsPassOrFailed,
+		IsSigned:            false, // Will be signed separately
+		OtherMatch:          f.OtherMatch,
+		OneMatch:            f.OneMatch,
+		OwnMatch:            f.OwnMatch,
+		JoinMatch:           f.JoinMatch,
+		Grade:               f.Grade,
+		FinalComments:       f.FinalComments,
+		CreatedDate:         time.Now(),
+		UpdatedDate:         time.Now(),
+	}
+}
+
+// NewSupervisorReportFormData creates form data from existing report or defaults
+func NewSupervisorReportFormData(report *SupervisorReport) *SupervisorReportFormData {
+	if report == nil {
+		return &SupervisorReportFormData{
+			IsPassOrFailed: true, // Default to pass
+			SubmissionDate: time.Now(),
+			OtherMatch:     0.0,
+			OneMatch:       0.0,
+			OwnMatch:       0.0,
+			JoinMatch:      0.0,
+		}
+	}
+
+	return &SupervisorReportFormData{
+		SupervisorComments:  report.SupervisorComments,
+		SupervisorWorkplace: report.SupervisorWorkplace,
+		SupervisorPosition:  report.SupervisorPosition,
+		OtherMatch:          report.OtherMatch,
+		OneMatch:            report.OneMatch,
+		OwnMatch:            report.OwnMatch,
+		JoinMatch:           report.JoinMatch,
+		IsPassOrFailed:      report.IsPassOrFailed,
+		Grade:               report.Grade,
+		FinalComments:       report.FinalComments,
+		SubmissionDate:      time.Now(),
+	}
+}
+
+// GetTotalSimilarity calculates total similarity percentage
+func (f *SupervisorReportFormData) GetTotalSimilarity() float64 {
+	return f.OtherMatch + f.OneMatch + f.OwnMatch + f.JoinMatch
+}
+
+// GetSimilarityStatus returns similarity assessment
+func (f *SupervisorReportFormData) GetSimilarityStatus() string {
+	total := f.GetTotalSimilarity()
+	if total <= 15 {
+		return "Low"
+	} else if total <= 25 {
+		return "Moderate"
+	} else {
+		return "High"
+	}
+}
+
+// GetSimilarityColor returns CSS color class for similarity level
+func (f *SupervisorReportFormData) GetSimilarityColor() string {
+	total := f.GetTotalSimilarity()
+	if total <= 15 {
+		return "text-green-600"
+	} else if total <= 25 {
+		return "text-yellow-600"
+	} else {
+		return "text-red-600"
+	}
 }
 
 // ================================
@@ -1227,6 +1367,14 @@ func NullableInt(i int) *int {
 	return &i
 }
 
+// NullableInt64 converts zero to nil for database
+func NullableInt64(i int64) *int64 {
+	if i == 0 {
+		return nil
+	}
+	return &i
+}
+
 // StringValue safely returns string value from pointer
 func StringValue(s *string) string {
 	if s == nil {
@@ -1305,10 +1453,39 @@ func GetGradeText(grade int) string {
 	}
 }
 
-// Add this function to your database/models.go file
-func NullableInt64(i int64) *int64 {
-	if i == 0 {
-		return nil
-	}
-	return &i
+// ================================
+// DATABASE HELPER FUNCTIONS
+// ================================
+
+// CreateAuditLog creates an audit log entry (placeholder function)
+func CreateAuditLog(log AuditLog) error {
+	// This would normally insert into database
+	// For now, just log to console
+	fmt.Printf("Audit Log: %+v\n", log)
+	return nil
+}
+
+// GetStudentRecord retrieves a student record by ID (placeholder function)
+func GetStudentRecord(id int) (*StudentRecord, error) {
+	// This would normally query the database
+	// For now, return a placeholder
+	return &StudentRecord{
+		ID:          id,
+		StudentName: "Test Student",
+	}, nil
+}
+
+// GetSupervisorReport retrieves a supervisor report by student ID (placeholder function)
+func GetSupervisorReport(studentID int) (*SupervisorReport, error) {
+	// This would normally query the database
+	// For now, return nil to indicate no report exists
+	return nil, nil
+}
+
+// SaveSupervisorReport saves a supervisor report to database (placeholder function)
+func SaveSupervisorReport(data *SupervisorReportData) error {
+	// This would normally save to database
+	// For now, just log
+	fmt.Printf("Saving supervisor report: %+v\n", data)
+	return nil
 }

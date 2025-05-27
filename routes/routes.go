@@ -2,8 +2,8 @@
 package routes
 
 import (
-	"database/sql"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -17,7 +17,7 @@ import (
 )
 
 // Updated function signature to accept database and notification service
-func SetupRoutes(db *sql.DB, authService *auth.AuthService, authMiddleware *auth.AuthMiddleware, notificationService *notifications.NotificationService) *chi.Mux {
+func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *auth.AuthMiddleware, notificationService *notifications.NotificationService) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -29,7 +29,8 @@ func SetupRoutes(db *sql.DB, authService *auth.AuthService, authMiddleware *auth
 
 	// Initialize handlers with database
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
-	topicHandlers := handlers.NewTopicHandlers(db)
+	topicHandlers := handlers.NewTopicHandlers(db.DB)
+	supervisorReportHandler := handlers.NewSupervisorReportHandler(db)
 
 	// Static files - serve both assets and static directories
 	workDir, _ := filepath.Abs("./")
@@ -65,6 +66,20 @@ func SetupRoutes(db *sql.DB, authService *auth.AuthService, authMiddleware *auth
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
 
+		r.Route("/supervisor-report", func(r chi.Router) {
+			// Only supervisors and admins can access
+			r.Use(authMiddleware.RequireRole(auth.RoleSupervisor, auth.RoleAdmin, auth.RoleDepartmentHead))
+			r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
+			r.Post("/submit/{id}", supervisorReportHandler.SubmitSupervisorReport)
+			r.Get("/button/{id}", supervisorReportHandler.GetSupervisorReportButton)
+
+			// Full page view
+			r.Get("/{id}", supervisorReportHandler.GetSupervisorReportPage)
+
+			// Modal for HTMX
+			r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
+
+		})
 		// Upload routes
 		r.Get("/upload", handlers.ShowUploadPage)
 		r.Post("/api/upload", handlers.UploadFileHandler)
