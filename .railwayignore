@@ -1,0 +1,45 @@
+# Development files
+.env
+.env.local
+.env.example
+.env.railway
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+
+# Test files
+*_test.go
+test/
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Build artifacts (will be built in container)
+main
+*.exe
+
+# Docker files (not needed for Railway)
+docker-compose*.yml
+.dockerignore
+Dockerfile.dev

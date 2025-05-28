@@ -2,11 +2,13 @@
 package routes
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -26,6 +28,17 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Compress(5))
+
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		response := map[string]interface{}{
+			"status":    "healthy",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"service":   "thesis-management-app",
+		}
+		json.NewEncoder(w).Encode(response)
+	})
 
 	dashboardHandlers := handlers.NewDashboardHandlers(db)
 
