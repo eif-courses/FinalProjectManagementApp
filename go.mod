@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.0
+	github.com/BurntSushi/toml v1.5.0
 	github.com/Oudwins/tailwind-merge-go v0.2.1
 	github.com/a-h/templ v0.3.865
 	github.com/go-chi/chi/v5 v5.2.1

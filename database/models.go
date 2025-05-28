@@ -2,6 +2,7 @@
 package database
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -1760,24 +1761,23 @@ func (f *SupervisorReportFormData) GetSimilarityColor() string {
 type StudentSummaryView struct {
 	StudentRecord
 
-	// Topic information
-	TopicApproved bool    `json:"topic_approved" db:"topic_approved"`
-	TopicStatus   string  `json:"topic_status" db:"topic_status"`
-	ApprovedBy    *string `json:"approved_by" db:"approved_by"`
-	ApprovedAt    *int64  `json:"approved_at" db:"approved_at"`
+	// From project_topic_registrations
+	TopicApproved bool           `json:"topic_approved" db:"topic_approved"` // derived as CASE (1/0)
+	TopicStatus   sql.NullString `json:"topic_status" db:"topic_status"`     // ptr.status
+	ApprovedBy    sql.NullString `json:"approved_by" db:"approved_by"`       // ptr.approved_by
+	ApprovedAt    sql.NullInt64  `json:"approved_at" db:"approved_at"`       // ptr.approved_at
 
-	// Report flags
-	HasSupervisorReport bool `json:"has_supervisor_report" db:"has_supervisor_report"`
-	HasReviewerReport   bool `json:"has_reviewer_report" db:"has_reviewer_report"`
-	HasVideo            bool `json:"has_video" db:"has_video"`
+	// From supervisor_reports
+	HasSupervisorReport    bool         `json:"has_supervisor_report" db:"has_supervisor_report"`       // derived as CASE (1/0)
+	SupervisorReportSigned sql.NullBool `json:"supervisor_report_signed" db:"supervisor_report_signed"` // sup_rep.is_signed
 
-	// Report status
-	SupervisorReportSigned bool     `json:"supervisor_report_signed" db:"supervisor_report_signed"`
-	ReviewerReportSigned   bool     `json:"reviewer_report_signed" db:"reviewer_report_signed"`
-	ReviewerGrade          *float64 `json:"reviewer_grade" db:"reviewer_grade"`
+	// From reviewer_reports
+	HasReviewerReport    bool            `json:"has_reviewer_report" db:"has_reviewer_report"`       // derived as CASE (1/0)
+	ReviewerReportSigned sql.NullBool    `json:"reviewer_report_signed" db:"reviewer_report_signed"` // rev_rep.is_signed
+	ReviewerGrade        sql.NullFloat64 `json:"reviewer_grade" db:"reviewer_grade"`                 // rev_rep.grade
 
-	// Defense readiness (new)
-	DefenseReadiness int `json:"defense_readiness" db:"defense_readiness"`
+	// From videos
+	HasVideo bool `json:"has_video" db:"has_video"` // derived as CASE (1/0)
 }
 
 // GetCompletionStatus returns overall completion status
@@ -1791,7 +1791,7 @@ func (ssv *StudentSummaryView) GetCompletionStatus() string {
 	if !ssv.HasReviewerReport {
 		return "Reviewer Report Missing"
 	}
-	if !ssv.SupervisorReportSigned || !ssv.ReviewerReportSigned {
+	if !ssv.SupervisorReportSigned.Valid || !ssv.ReviewerReportSigned.Bool {
 		return "Reports Pending Signature"
 	}
 	if ssv.HasDefenseScheduled() {
@@ -1814,7 +1814,7 @@ func (ssv *StudentSummaryView) GetCompletionPercentage() int {
 	if ssv.HasReviewerReport {
 		completed++
 	}
-	if ssv.SupervisorReportSigned && ssv.ReviewerReportSigned {
+	if ssv.SupervisorReportSigned.Valid && ssv.ReviewerReportSigned.Bool {
 		completed++
 	}
 

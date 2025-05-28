@@ -1,6 +1,7 @@
 package main
 
 import (
+	"FinalProjectManagementApp/i18n"
 	"FinalProjectManagementApp/notifications"
 	"github.com/joho/godotenv"
 	"log"
@@ -16,6 +17,12 @@ import (
 
 func main() {
 	// Load environment variables from .env file
+
+	translator := i18n.GetTranslator()
+	if err := translator.LoadTranslations(); err != nil {
+		log.Fatal("Failed to load translations:", err)
+	}
+
 	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: .env file not found: %v", err)
 	}
@@ -61,7 +68,7 @@ func main() {
 	log.Println("Database migrations completed successfully")
 
 	// Auth setup (your existing code)
-	authService, err := auth.NewAuthService(db.DB)
+	authService, err := auth.NewAuthService(db)
 	if err != nil {
 		log.Fatal("Failed to initialize auth service:", err)
 	}

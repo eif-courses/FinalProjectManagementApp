@@ -2,6 +2,7 @@ package templates
 
 import (
     "FinalProjectManagementApp/auth"
+    "database/sql"
     "FinalProjectManagementApp/database"
     "FinalProjectManagementApp/components/button"
     "FinalProjectManagementApp/components/icon"
@@ -138,28 +139,28 @@ templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSumma
             }
 
             // Function to edit existing supervisor report
-            function editSupervisorReport(studentId) {
-                // Open modal for editing
-                htmx.ajax('GET', `/supervisor-report/modal/${studentId}?mode=edit`, {
-                    target: '#modal-container',
-                    swap: 'innerHTML'
-                });
 
-                // Show modal container
-                showModal();
-            }
 
-            // Function to create new supervisor report
-            function createSupervisorReport(studentId) {
-                // Open modal for creating new report
-                htmx.ajax('GET', `/supervisor-report/modal/${studentId}?mode=create`, {
-                    target: '#modal-container',
-                    swap: 'innerHTML'
-                });
 
-                // Show modal container
-                showModal();
-            }
+
+          function createSupervisorReport(studentId) {
+              htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {
+                  target: '#modal-container',
+                  swap: 'innerHTML'
+              });
+              showModal();
+          }
+
+          function editSupervisorReport(studentId) {
+              htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {
+                  target: '#modal-container',
+                  swap: 'innerHTML'
+              });
+              showModal();
+          }
+
+
+
 
             // Function to show modal
             function showModal() {
@@ -199,7 +200,23 @@ templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSumma
         </script>
     }
 }
-
+templ CompactSupervisorButton(studentID int, action, tooltip string) {
+    @button.Button(button.Props{
+        Variant: button.VariantGhost,
+        Size: button.SizeIcon,
+        Class: "h-6 w-6 p-0",
+        Attributes: templ.Attributes{
+            "onclick": getCompactSupervisorAction(studentID, action),
+            "title": tooltip,
+        },
+    }) {
+        if action == "create" {
+            @icon.Plus(icon.Props{Size: 14})
+        } else {
+            @icon.PencilLine(icon.Props{Size: 14})
+        }
+    }
+}
 // Update the search input in StudentListHeader
 templ StudentListHeader(user *auth.AuthenticatedUser, searchValue string) {
     <div class="space-y-4">
@@ -587,7 +604,7 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
                     }
                     if canViewTopicRegistration(user.Role) {
                         @table.Cell() {
-                            @RegistrationStatus(user, student.TopicStatus, student.TopicApproved, student.ID)
+                            @RegistrationStatus(user, getTopicStatus(student.TopicStatus), student.TopicApproved, student.ID)
                         }
                     }
                     if canViewDocuments(user.Role) {
@@ -597,12 +614,12 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
                     }
                     if canViewReviewer(user.Role) {
                         @table.Cell() {
-                            @ReviewerStatus(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned, student.ID)
+                            @ReviewerStatus(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool, student.ID)
                         }
                     }
                     if canViewSupervisor(user.Role) {
                         @table.Cell() {
-                            @SupervisorStatus(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned, student.ID)
+                            @SupervisorStatus(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned.Valid && student.SupervisorReportSigned.Bool, student.ID)
                         }
                     }
                 }
@@ -708,7 +725,8 @@ templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, has
             <div class="flex gap-1">
                 @CompactIconButton("eye", "viewSupervisorReport(" + strconv.Itoa(studentID) + ")", "Žiūrėti")
                 if canEditSupervisorReport(user.Role, supervisorEmail, user.Email) {
-                    @CompactIconButton("edit", "editSupervisorReport(" + strconv.Itoa(studentID) + ")", "Redaguoti")
+                    <!-- Use the compact form for editing -->
+                    @CompactSupervisorButton(studentID, "edit", "Redaguoti")
                 }
             </div>
         } else {
@@ -717,7 +735,8 @@ templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, has
                 <span class="text-xs text-yellow-700">Neužpildyta</span>
             </div>
             if canCreateSupervisorReport(user.Role, supervisorEmail, user.Email) {
-                @CompactIconButton("plus", "createSupervisorReport(" + strconv.Itoa(studentID) + ")", "Pildyti atsiliepimą")
+                <!-- Use the compact form for creating -->
+                @CompactSupervisorButton(studentID, "create", "Pildyti atsiliepimą")
             }
         }
     </div>
@@ -836,4 +855,17 @@ func maxInt(a, b int) int {
         return a
     }
     return b
+}
+func getTopicStatus(status sql.NullString) string {
+	if status.Valid {
+		return status.String
+	}
+	return ""
+}
+
+func getCompactSupervisorAction(studentID int, action string) string {
+    if action == "create" {
+        return "createSupervisorReport(" + strconv.Itoa(studentID) + ")"
+    }
+    return "editSupervisorReport(" + strconv.Itoa(studentID) + ")"
 }

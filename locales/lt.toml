@@ -1,0 +1,25 @@
+[dashboard]
+title = "Skydelis"
+welcome = "Sveiki, {{.Name}}!"
+student_dashboard = "Studento skydelis"
+supervisor_dashboard = "Vadovo skydelis"
+
+[navigation]
+home = "Pagrindinis"
+profile = "Profilis"
+topics = "Temos"
+students = "Studentai"
+logout = "Atsijungti"
+
+[forms]
+submit = "Pateikti"
+cancel = "Atšaukti"
+save = "Išsaugoti"
+edit = "Redaguoti"
+delete = "Ištrinti"
+
+[supervisor]
+evaluation_report = "Vadovo vertinimo ataskaita"
+feedback = "Vadovo atsiliepimas"
+workplace = "Darbovietė"
+position = "Pareigos"

@@ -1,0 +1,25 @@
+[dashboard]
+title = "Dashboard"
+welcome = "Welcome, {{.Name}}!"
+student_dashboard = "Student Dashboard"
+supervisor_dashboard = "Supervisor Dashboard"
+
+[navigation]
+home = "Home"
+profile = "Profile"
+topics = "Topics"
+students = "Students"
+logout = "Logout"
+
+[forms]
+submit = "Submit"
+cancel = "Cancel"
+save = "Save"
+edit = "Edit"
+delete = "Delete"
+
+[supervisor]
+evaluation_report = "Supervisor's Evaluation Report"
+feedback = "Supervisor's Feedback"
+workplace = "Workplace"
+position = "Position"

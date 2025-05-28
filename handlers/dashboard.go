@@ -1,20 +1,89 @@
 package handlers
 
 import (
-	"FinalProjectManagementApp/components/templates"
-	"net/http"
-
 	"FinalProjectManagementApp/auth"
+	"github.com/jmoiron/sqlx"
+	"net/http"
 )
 
-func DashboardHandler(w http.ResponseWriter, r *http.Request) {
-	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
-	if !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+type DashboardHandlers struct {
+	db *sqlx.DB
+}
+
+func NewDashboardHandlers(db *sqlx.DB) *DashboardHandlers {
+	return &DashboardHandlers{db: db}
+}
+
+func (h *DashboardHandlers) DashboardHandler(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 		return
 	}
 
-	// Get locale from query parameter or cookie
+	// Get and set locale
+	locale := h.getLocale(r, w)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	// Route to appropriate dashboard based on role
+	switch user.Role {
+	case auth.RoleStudent:
+		h.renderStudentDashboard(w, r, user, locale)
+	case auth.RoleSupervisor:
+		h.renderSupervisorDashboard(w, r, user, locale)
+	case auth.RoleDepartmentHead:
+		h.renderDepartmentDashboard(w, r, user, locale)
+	case auth.RoleAdmin:
+		h.renderAdminDashboard(w, r, user, locale)
+	default:
+		http.Error(w, "Unauthorized", http.StatusForbidden)
+	}
+}
+
+func (h *DashboardHandlers) renderStudentDashboard(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, locale string) {
+	// Get student-specific data
+	//data := h.getStudentDashboardData(user.Email)
+	//
+	//err := templates.StudentDashboard(user, data, locale).Render(r.Context(), w)
+	//if err != nil {
+	//	http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	//}
+}
+
+func (h *DashboardHandlers) renderSupervisorDashboard(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, locale string) {
+	// Get supervisor-specific data
+	//data := h.getSupervisorDashboardData(user.Email)
+	//
+	//err := templates.SupervisorDashboard(user, data, locale).Render(r.Context(), w)
+	//if err != nil {
+	//	http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	//}
+}
+
+func (h *DashboardHandlers) renderDepartmentDashboard(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, locale string) {
+	// Get department-specific data
+	//data := h.getDepartmentDashboardData(user.Email)
+	//
+	//err := templates.DepartmentDashboard(user, data, locale).Render(r.Context(), w)
+	//if err != nil {
+	//	http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	//}
+}
+
+func (h *DashboardHandlers) renderAdminDashboard(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, locale string) {
+	// Get admin-specific data
+	//data := h.getAdminDashboardData()
+	//
+	//err := templates.AdminDashboard(user, data, locale).Render(r.Context(), w)
+	//if err != nil {
+	//	http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	//}
+}
+
+// Locale handling
+func (h *DashboardHandlers) getLocale(r *http.Request, w http.ResponseWriter) string {
+	// Priority: Query param > Cookie > Default
 	locale := r.URL.Query().Get("locale")
 	if locale == "" {
 		locale = getLocaleFromCookie(r)
@@ -23,18 +92,17 @@ func DashboardHandler(w http.ResponseWriter, r *http.Request) {
 		locale = "lt" // default
 	}
 
-	// Set locale cookie if changed
+	// Validate locale
+	if locale != "lt" && locale != "en" {
+		locale = "lt"
+	}
+
+	// Set locale cookie if changed via query param
 	if r.URL.Query().Get("locale") != "" {
 		setLocaleCookie(w, locale)
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	err := templates.Layout(user, locale, "Dashboard").Render(r.Context(), w)
-	if err != nil {
-		http.Error(w, "Failed to render template", http.StatusInternalServerError)
-		return
-	}
+	return locale
 }
 
 func getLocaleFromCookie(r *http.Request) string {
@@ -52,65 +120,8 @@ func setLocaleCookie(w http.ResponseWriter, locale string) {
 		Path:     "/",
 		MaxAge:   86400 * 30, // 30 days
 		HttpOnly: false,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   false, // TODO Set to true in production with HTTPS
 		SameSite: http.SameSiteLaxMode,
 	}
 	http.SetCookie(w, cookie)
-}
-
-// Placeholder handlers for other routes
-func StudentProfileHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Student Profile - Coming Soon"))
-}
-
-func StudentTopicHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Student Topic - Coming Soon"))
-}
-
-func SubmitTopicHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Submit Topic - Coming Soon"))
-}
-
-func SupervisorDashboardHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Supervisor Dashboard - Coming Soon"))
-}
-
-func SupervisorStudentsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Supervisor Students - Coming Soon"))
-}
-
-func SupervisorReportsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Supervisor Reports - Coming Soon"))
-}
-
-func DepartmentDashboardHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Department Dashboard - Coming Soon"))
-}
-
-func DepartmentStudentsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Department Students - Coming Soon"))
-}
-
-func PendingTopicsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Pending Topics - Coming Soon"))
-}
-
-func ApproveTopicHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Approve Topic - Coming Soon"))
-}
-
-func RejectTopicHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Reject Topic - Coming Soon"))
-}
-
-func AdminDashboardHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Admin Dashboard - Coming Soon"))
-}
-
-func AdminUsersHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Admin Users - Coming Soon"))
-}
-
-func AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Audit Logs - Coming Soon"))
 }

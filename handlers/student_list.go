@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"github.com/jmoiron/sqlx"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -203,20 +205,26 @@ func (h *StudentListHandler) getStudentsWithFilter(filter *database.StudentFilte
 	var args []interface{}
 	where := []string{"1=1"}
 
-	// Filters
+	// Search filter
 	if filter.Search != nil && *filter.Search != "" {
 		search := "%" + strings.ToLower(*filter.Search) + "%"
 		where = append(where, `(LOWER(student_name) LIKE ? OR LOWER(student_lastname) LIKE ? OR LOWER(final_project_title) LIKE ? OR LOWER(student_email) LIKE ?)`)
 		args = append(args, search, search, search, search)
 	}
+
+	// Group filter
 	if filter.Group != nil {
 		where = append(where, "student_group = ?")
 		args = append(args, *filter.Group)
 	}
+
+	// Study program filter
 	if filter.StudyProgram != nil {
 		where = append(where, "study_program = ?")
 		args = append(args, *filter.StudyProgram)
 	}
+
+	// Topic status filter
 	if filter.TopicStatus != nil {
 		if *filter.TopicStatus == "not_started" {
 			where = append(where, "(topic_status IS NULL OR topic_status = '')")
@@ -225,41 +233,71 @@ func (h *StudentListHandler) getStudentsWithFilter(filter *database.StudentFilte
 			args = append(args, *filter.TopicStatus)
 		}
 	}
+
+	// Year filter
 	if filter.Year != nil {
 		where = append(where, "current_year = ?")
 		args = append(args, *filter.Year)
 	}
 
-	// Sorting & Pagination
+	// Validate and sanitize sortBy
+	allowedSortFields := map[string]bool{
+		"student_name":        true,
+		"student_lastname":    true,
+		"final_project_title": true,
+		"student_email":       true,
+		"student_group":       true,
+		"study_program":       true,
+		"topic_status":        true,
+		"reviewer_grade":      true,
+		"current_year":        true,
+	}
+
 	sortBy := filter.SortBy
-	if sortBy == "" {
+	if !allowedSortFields[sortBy] {
 		sortBy = "student_name"
 	}
+
 	sortOrder := strings.ToUpper(filter.SortOrder)
 	if sortOrder != "ASC" && sortOrder != "DESC" {
 		sortOrder = "ASC"
 	}
+
+	// Ensure pagination safety
+	if filter.Page < 1 {
+		filter.Page = 1
+	}
+	if filter.Limit <= 0 || filter.Limit > 100 {
+		filter.Limit = 10
+	}
 	offset := (filter.Page - 1) * filter.Limit
 
+	// Build query
 	query := `
 		SELECT *
 		FROM student_summary_view
 		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY ` + sortBy + ` ` + sortOrder + `
 		LIMIT ? OFFSET ?`
-
 	args = append(args, filter.Limit, offset)
 
+	// Debug logging
+	log.Printf("Student query: %s", query)
+	log.Printf("Query args: %+v", args)
+
+	// Run main query
 	err := h.db.Select(&students, query, args...)
 	if err != nil {
+		log.Printf("Query failed: %v", err)
 		return nil, 0, err
 	}
 
 	// Count query (without limit/offset)
 	countQuery := `SELECT COUNT(*) FROM student_summary_view WHERE ` + strings.Join(where, " AND ")
 	var total int
-	err = h.db.Get(&total, countQuery, args[:len(args)-2]...) // exclude limit/offset
+	err = h.db.Get(&total, countQuery, args[:len(args)-2]...)
 	if err != nil {
+		log.Printf("Count query failed: %v", err)
 		return nil, 0, err
 	}
 
@@ -293,15 +331,15 @@ func applyFilters(students []database.StudentSummaryView, filter *database.Stude
 		if filter.TopicStatus != nil && *filter.TopicStatus != "" {
 			switch *filter.TopicStatus {
 			case "not_started":
-				if student.TopicStatus != "" {
+				if getTopicStatus(student.TopicStatus) != "" {
 					continue
 				}
 			case "draft":
-				if student.TopicStatus != "draft" {
+				if getTopicStatus(student.TopicStatus) != "draft" {
 					continue
 				}
 			case "submitted":
-				if student.TopicStatus != "submitted" {
+				if getTopicStatus(student.TopicStatus) != "submitted" {
 					continue
 				}
 			case "approved":
@@ -309,11 +347,11 @@ func applyFilters(students []database.StudentSummaryView, filter *database.Stude
 					continue
 				}
 			case "rejected":
-				if student.TopicStatus != "rejected" {
+				if getTopicStatus(student.TopicStatus) != "rejected" {
 					continue
 				}
 			default:
-				if student.TopicStatus != *filter.TopicStatus {
+				if getTopicStatus(student.TopicStatus) != *filter.TopicStatus {
 					continue
 				}
 			}
@@ -348,222 +386,13 @@ func getStudentDocuments(studentID int) ([]database.Document, error) {
 	return documents, nil
 }
 
-func getMockStudents() []database.StudentSummaryView {
-	return []database.StudentSummaryView{
-		// 1. Topic not started (Nepradėta)
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                1,
-				StudentGroup:      "PI22B",
-				StudentName:       "Studentas",
-				StudentLastname:   "Nepradėjęs",
-				FinalProjectTitle: "",
-				StudentEmail:      "student1@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		// 2. Topic in draft (Juodraštis)
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                2,
-				StudentGroup:      "PI22B",
-				StudentName:       "Studentas",
-				StudentLastname:   "Juodraštis",
-				FinalProjectTitle: "Gyvūnų internetinė parduotuvė",
-				StudentEmail:      "student2@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "draft",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		// 3. Topic submitted (Pateikta)
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                3,
-				StudentGroup:      "PIT22",
-				StudentName:       "Studentas",
-				StudentLastname:   "Pateikta",
-				FinalProjectTitle: "Automatinių testų sistema",
-				StudentEmail:      "student3@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Programų sistemų inžinerija",
-				ReviewerName:      "",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "submitted",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		// 4. Topic approved, no reviewer assigned
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                4,
-				StudentGroup:      "PI22S",
-				StudentName:       "Studentas",
-				StudentLastname:   "Patvirtinta",
-				FinalProjectTitle: "Automobilių interneto svetainė",
-				StudentEmail:      "student4@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          true,
-			TopicStatus:            "approved",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		// 5. Topic approved, reviewer assigned, no reports
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                5,
-				StudentGroup:      "PI22S",
-				StudentName:       "Studentas",
-				StudentLastname:   "Su_Recenzentu",
-				FinalProjectTitle: "CRM sistema",
-				StudentEmail:      "student5@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          true,
-			TopicStatus:            "approved",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		// 6. Supervisor report filled, not signed
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                6,
-				StudentGroup:      "PIT22",
-				StudentName:       "Studentas",
-				StudentLastname:   "Vadovo_Ataskaita",
-				FinalProjectTitle: "Baigiamųjų darbų sistema",
-				StudentEmail:      "student6@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Programų sistemų inžinerija",
-				ReviewerName:      "Bronius Bronislovas",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          true,
-			TopicStatus:            "approved",
-			HasSupervisorReport:    true,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-		// 7. Supervisor report signed
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                7,
-				StudentGroup:      "PI22B",
-				StudentName:       "Studentas",
-				StudentLastname:   "Vadovas_Pasirašė",
-				FinalProjectTitle: "Internetinė parduotuvė",
-				StudentEmail:      "student7@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          true,
-			TopicStatus:            "approved",
-			HasSupervisorReport:    true,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: true,
-			ReviewerReportSigned:   false,
-		},
-		// 8. Reviewer report filled, not signed
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                8,
-				StudentGroup:      "PIT22",
-				StudentName:       "Studentas",
-				StudentLastname:   "Recenzento_Ataskaita",
-				FinalProjectTitle: "Testų automatizavimas",
-				StudentEmail:      "student8@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Programų sistemų inžinerija",
-				ReviewerName:      "Ona Onaitienė",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          true,
-			TopicStatus:            "approved",
-			HasSupervisorReport:    true,
-			HasReviewerReport:      true,
-			SupervisorReportSigned: true,
-			ReviewerReportSigned:   false,
-		},
-		// 9. Everything completed and signed
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                9,
-				StudentGroup:      "PI22S",
-				StudentName:       "Studentas",
-				StudentLastname:   "Viskas_Baigta",
-				FinalProjectTitle: "Pilnai užbaigtas projektas",
-				StudentEmail:      "student9@stud.viko.lt",
-				SupervisorEmail:   "penworld@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "Petras Petraitis",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          true,
-			TopicStatus:            "approved",
-			HasSupervisorReport:    true,
-			HasReviewerReport:      true,
-			SupervisorReportSigned: true,
-			ReviewerReportSigned:   true,
-		},
-		// 10. Rejected topic
-		{
-			StudentRecord: database.StudentRecord{
-				ID:                10,
-				StudentGroup:      "PI22B",
-				StudentName:       "Studentas",
-				StudentLastname:   "Atmesta_Tema",
-				FinalProjectTitle: "Atmesta tema",
-				StudentEmail:      "student10@stud.viko.lt",
-				SupervisorEmail:   "m.gzegozevskis@eif.viko.lt",
-				StudyProgram:      "Informatikos inžinerija",
-				ReviewerName:      "",
-				CurrentYear:       2024,
-			},
-			TopicApproved:          false,
-			TopicStatus:            "rejected",
-			HasSupervisorReport:    false,
-			HasReviewerReport:      false,
-			SupervisorReportSigned: false,
-			ReviewerReportSigned:   false,
-		},
-	}
-}
-
 // Helper function to create nullable int64
 func nullableInt64(value int64) *int64 {
 	return &value
+}
+func getTopicStatus(status sql.NullString) string {
+	if status.Valid {
+		return status.String
+	}
+	return ""
 }

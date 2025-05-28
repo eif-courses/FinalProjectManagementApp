@@ -27,6 +27,8 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Compress(5))
 
+	dashboardHandlers := handlers.NewDashboardHandlers(db)
+
 	// Initialize handlers with database
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
 	topicHandlers := handlers.NewTopicHandlers(db.DB)
@@ -67,20 +69,22 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
 
-		r.Route("/supervisor-report", func(r chi.Router) {
-			// Only supervisors and admins can access
-			r.Use(authMiddleware.RequireRole(auth.RoleSupervisor, auth.RoleAdmin, auth.RoleDepartmentHead))
-			r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
-			r.Post("/submit/{id}", supervisorReportHandler.SubmitSupervisorReport)
-			r.Get("/button/{id}", supervisorReportHandler.GetSupervisorReportButton)
+		r.Get("/supervisor-report/{id}/compact-modal", supervisorReportHandler.GetCompactSupervisorModal)
 
-			// Full page view
-			r.Get("/{id}", supervisorReportHandler.GetSupervisorReportPage)
-
-			// Modal for HTMX
-			r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
-
-		})
+		//r.Route("/supervisor-report", func(r chi.Router) {
+		//	// Only supervisors and admins can access
+		//	r.Use(authMiddleware.RequireRole(auth.RoleSupervisor, auth.RoleAdmin, auth.RoleDepartmentHead))
+		//	r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
+		//	r.Post("/submit/{id}", supervisorReportHandler.SubmitSupervisorReport)
+		//	r.Get("/button/{id}", supervisorReportHandler.GetSupervisorReportButton)
+		//
+		//	// Full page view
+		//	r.Get("/{id}", supervisorReportHandler.GetSupervisorReportPage)
+		//
+		//	// Modal for HTMX
+		//	r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
+		//
+		//})
 		// Upload routes
 		r.Get("/upload", handlers.ShowUploadPage)
 		r.Post("/api/upload", handlers.UploadFileHandler)
@@ -89,7 +93,22 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 		r.Get("/api/auth/user", authMiddleware.UserInfoHandler)
 
 		// Dashboard
-		r.Get("/dashboard", handlers.DashboardHandler)
+		//r.Get("/dashboard", handlers.DashboardHandler)
+
+		r.Get("/dashboard", dashboardHandlers.DashboardHandler)
+
+		// You can also create specific role routes if needed
+		r.Route("/student", func(r chi.Router) {
+			r.Use(authMiddleware.RequireRole(auth.RoleStudent))
+			//	r.Get("/profile", dashboardHandlers.StudentProfileHandler)
+			//	r.Get("/topic", dashboardHandlers.StudentTopicHandler)
+		})
+
+		r.Route("/supervisor", func(r chi.Router) {
+			r.Use(authMiddleware.RequireRole(auth.RoleSupervisor))
+			//r.Get("/students", dashboardHandlers.SupervisorStudentsHandler)
+			//r.Get("/reports", dashboardHandlers.SupervisorReportsHandler)
+		})
 
 		// Student List
 		r.Get("/students-list", studentListHandler.StudentTableDisplayHandler)
@@ -164,25 +183,25 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 
 		// Student routes
 		r.Route("/students", func(r chi.Router) {
-			r.Get("/profile", handlers.StudentProfileHandler)
+			//	r.Get("/profile", handlers.StudentProfileHandler)
 			r.Get("/topic", topicHandlers.ShowTopicRegistrationForm) // Redirect to topic registration
 			r.Post("/topic/submit", topicHandlers.SubmitTopic)       // Legacy route
 		})
 
 		// Supervisor routes
-		r.Route("/supervisor", func(r chi.Router) {
-			r.Use(authMiddleware.RequireRole(auth.RoleSupervisor, auth.RoleReviewer))
-			r.Get("/", handlers.SupervisorDashboardHandler)
-			r.Get("/students", handlers.SupervisorStudentsHandler)
-			r.Get("/reports", handlers.SupervisorReportsHandler)
-		})
+		//r.Route("/supervisor", func(r chi.Router) {
+		//r.Use(authMiddleware.RequireRole(auth.RoleSupervisor, auth.RoleReviewer))
+		//r.Get("/", handlers.SupervisorDashboardHandler)
+		//r.Get("/students", handlers.SupervisorStudentsHandler)
+		//	r.Get("/reports", handlers.SupervisorReportsHandler)
+		//})
 
 		// Department head routes
 		r.Route("/department", func(r chi.Router) {
 			r.Use(authMiddleware.RequireRole(auth.RoleDepartmentHead))
-			r.Get("/", handlers.DepartmentDashboardHandler)
-			r.Get("/students", handlers.DepartmentStudentsHandler)
-			r.Get("/topics/pending", handlers.PendingTopicsHandler)
+			//r.Get("/", handlers.DepartmentDashboardHandler)
+			//r.Get("/students", handlers.DepartmentStudentsHandler)
+			//r.Get("/topics/pending", handlers.PendingTopicsHandler)
 
 			// Topic approval routes with notification integration
 			r.Post("/topics/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
@@ -215,12 +234,12 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 		})
 
 		// Admin routes
-		r.Route("/admin", func(r chi.Router) {
-			r.Use(authMiddleware.RequireRole(auth.RoleAdmin))
-			r.Get("/", handlers.AdminDashboardHandler)
-			r.Get("/users", handlers.AdminUsersHandler)
-			r.Get("/audit-logs", handlers.AuditLogsHandler)
-		})
+		//r.Route("/admin", func(r chi.Router) {
+		//r.Use(authMiddleware.RequireRole(auth.RoleAdmin))
+		//r.Get("/", handlers.AdminDashboardHandler)
+		//r.Get("/users", handlers.AdminUsersHandler)
+		//r.Get("/audit-logs", handlers.AuditLogsHandler)
+		//})
 	})
 
 	// Debug route for testing CSS and notifications
