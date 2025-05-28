@@ -19,13 +19,23 @@ type StudentListHandler struct {
 	db *sqlx.DB
 }
 
-// NewSupervisorReportHandler creates a new handler instance
+// NewStudentListHandler creates a new handler instance
 func NewStudentListHandler(db *sqlx.DB) *StudentListHandler {
 	return &StudentListHandler{
 		db: db,
 	}
 }
 
+// Add missing getLocale function
+func getLocale(r *http.Request) string {
+	locale := r.URL.Query().Get("locale")
+	if locale == "" {
+		locale = "lt"
+	}
+	return locale
+}
+
+// Update your main handler method
 func (h *StudentListHandler) StudentTableDisplayHandler(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
 	if !ok {
@@ -33,63 +43,403 @@ func (h *StudentListHandler) StudentTableDisplayHandler(w http.ResponseWriter, r
 		return
 	}
 
-	// Check if user has permission to view student list
 	if !canViewStudentList(user.Role) {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
 
-	// Parse filter parameters
-	filter := parseStudentFilter(r)
+	// Parse filter parameters from URL
+	filterParams := parseTemplateFilterParams(r)
 
-	// Create filter params for template
-	filterParams := &database.TemplateFilterParams{
-		Limit:        filter.Limit,
-		Group:        getStringValue(filter.Group),
-		StudyProgram: getStringValue(filter.StudyProgram),
-		TopicStatus:  getStringValue(filter.TopicStatus),
-		Search:       getStringValue(filter.Search),
+	// Get filter options for current user
+	filterOptions, err := h.getFilterOptions(user.Role, user.Email)
+	if err != nil {
+		log.Printf("Error getting filter options: %v", err)
+		// Continue with empty options if there's an error
+		filterOptions = &database.FilterOptions{}
 	}
 
-	// Get students from database
-	students, total, err := h.getStudentsWithFilter(filter)
+	// Apply role-based filtering
+	var students []database.StudentSummaryView
+	var total int
+
+	switch user.Role {
+	case auth.RoleSupervisor:
+		students, total, err = h.getStudentsForSupervisor(user.Email, filterParams)
+	case auth.RoleDepartmentHead:
+		students, total, err = h.getStudentsForDepartmentHead(user, filterParams)
+	case auth.RoleAdmin:
+		students, total, err = h.getAllStudents(filterParams)
+	case auth.RoleReviewer:
+		students, total, err = h.getStudentsForReviewer(user.Email, filterParams)
+	default:
+		http.Error(w, "Unauthorized", http.StatusForbidden)
+		return
+	}
+
 	if err != nil {
+		log.Printf("Error fetching students: %v", err)
 		http.Error(w, "Failed to fetch students", http.StatusInternalServerError)
 		return
 	}
 
 	// Create pagination
-	pagination := database.NewPaginationInfo(filter.Page, filter.Limit, total)
+	pagination := database.NewPaginationInfo(filterParams.Page, filterParams.Limit, total)
 
-	// Get locale
-	locale := r.URL.Query().Get("locale")
-	if locale == "" {
-		locale = "lt"
-	}
-
-	// Get search value for template
-	searchValue := ""
-	if filter.Search != nil {
-		searchValue = *filter.Search
-	}
+	// Get locale and search value
+	locale := getLocale(r)
+	searchValue := r.URL.Query().Get("search")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	// Check if this is an HTMX request
 	if r.Header.Get("HX-Request") == "true" {
-		// Return only the table and pagination part for HTMX updates
 		err = templates.StudentTableWithPagination(user, students, locale, pagination).Render(r.Context(), w)
 	} else {
-		// Return full page for regular requests
-		err = templates.StudentList(user, students, locale, pagination, searchValue, filterParams).Render(r.Context(), w)
+		// Pass filter options to template
+		err = templates.StudentListWithOptions(user, students, locale, pagination, searchValue, filterParams, filterOptions).Render(r.Context(), w)
 	}
 
 	if err != nil {
+		log.Printf("Error rendering template: %v", err)
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		return
 	}
 }
 
+// Parse template filter params
+func parseTemplateFilterParams(r *http.Request) *database.TemplateFilterParams {
+	params := &database.TemplateFilterParams{
+		Page:  1,
+		Limit: 10,
+	}
+
+	// Parse page
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			params.Page = page
+		}
+	}
+
+	// Parse limit
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 && limit <= 100 {
+			params.Limit = limit
+		}
+	}
+
+	// Parse year
+	if yearStr := r.URL.Query().Get("year"); yearStr != "" {
+		if year, err := strconv.Atoi(yearStr); err == nil && year > 0 {
+			params.Year = year
+		}
+	}
+
+	// Parse other filters
+	params.Group = r.URL.Query().Get("group")
+	params.StudyProgram = r.URL.Query().Get("study_program")
+	params.TopicStatus = r.URL.Query().Get("topic_status")
+	params.Search = r.URL.Query().Get("search")
+
+	return params
+}
+
+// Role-based query methods using your StudentSummaryView model
+func (h *StudentListHandler) getStudentsForSupervisor(supervisorEmail string, filters *database.TemplateFilterParams) ([]database.StudentSummaryView, int, error) {
+	var students []database.StudentSummaryView
+	var args []interface{}
+
+	// Use your existing StudentSummaryView model
+	baseQuery := `
+		SELECT 
+			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+			sr.student_email, sr.final_project_title, sr.final_project_title_en,
+			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+			sr.study_program, sr.department, sr.current_year, sr.program_code,
+			sr.student_number, sr.is_favorite, sr.is_public_defense, 
+			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+			COALESCE(ptr.status, '') as topic_status, 
+			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+			ptr.approved_by, ptr.approved_at,
+			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+			spr.is_signed as supervisor_report_signed,
+			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+			rr.is_signed as reviewer_report_signed,
+			rr.grade as reviewer_grade,
+			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
+		FROM student_records sr
+		LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
+		LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
+		LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+		LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
+		WHERE sr.supervisor_email = ?`
+
+	args = append(args, supervisorEmail)
+
+	// Apply filters
+	whereClause, filterArgs := buildWhereClause(filters)
+	if whereClause != "" {
+		baseQuery += " AND " + whereClause
+		args = append(args, filterArgs...)
+	}
+
+	// Add ordering
+	baseQuery += " ORDER BY sr.student_lastname, sr.student_name"
+
+	// Count query
+	countQuery := strings.Replace(baseQuery,
+		`SELECT 
+			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+			sr.student_email, sr.final_project_title, sr.final_project_title_en,
+			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+			sr.study_program, sr.department, sr.current_year, sr.program_code,
+			sr.student_number, sr.is_favorite, sr.is_public_defense, 
+			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+			COALESCE(ptr.status, '') as topic_status, 
+			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+			ptr.approved_by, ptr.approved_at,
+			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+			spr.is_signed as supervisor_report_signed,
+			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+			rr.is_signed as reviewer_report_signed,
+			rr.grade as reviewer_grade,
+			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
+		"SELECT COUNT(*)", 1)
+	countQuery = strings.Replace(countQuery, " ORDER BY sr.student_lastname, sr.student_name", "", 1)
+
+	var total int
+	err := h.db.Get(&total, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Add pagination
+	baseQuery += " LIMIT ? OFFSET ?"
+	args = append(args, filters.Limit, (filters.Page-1)*filters.Limit)
+
+	// Execute main query
+	err = h.db.Select(&students, baseQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return students, total, nil
+}
+
+func (h *StudentListHandler) getStudentsForDepartmentHead(user *auth.AuthenticatedUser, filters *database.TemplateFilterParams) ([]database.StudentSummaryView, int, error) {
+	// For now, show all students for department head - you can refine this based on department
+	return h.getAllStudents(filters)
+}
+
+func (h *StudentListHandler) getStudentsForReviewer(reviewerEmail string, filters *database.TemplateFilterParams) ([]database.StudentSummaryView, int, error) {
+	var students []database.StudentSummaryView
+	var args []interface{}
+
+	baseQuery := `
+		SELECT 
+			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+			sr.student_email, sr.final_project_title, sr.final_project_title_en,
+			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+			sr.study_program, sr.department, sr.current_year, sr.program_code,
+			sr.student_number, sr.is_favorite, sr.is_public_defense, 
+			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+			COALESCE(ptr.status, '') as topic_status, 
+			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+			ptr.approved_by, ptr.approved_at,
+			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+			spr.is_signed as supervisor_report_signed,
+			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+			rr.is_signed as reviewer_report_signed,
+			rr.grade as reviewer_grade,
+			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
+		FROM student_records sr
+		LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
+		LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
+		LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+		LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
+		WHERE sr.reviewer_email = ?`
+
+	args = append(args, reviewerEmail)
+
+	// Apply filters
+	whereClause, filterArgs := buildWhereClause(filters)
+	if whereClause != "" {
+		baseQuery += " AND " + whereClause
+		args = append(args, filterArgs...)
+	}
+
+	// Add ordering
+	baseQuery += " ORDER BY sr.student_lastname, sr.student_name"
+
+	// Count query
+	countQuery := strings.Replace(baseQuery,
+		`SELECT 
+			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+			sr.student_email, sr.final_project_title, sr.final_project_title_en,
+			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+			sr.study_program, sr.department, sr.current_year, sr.program_code,
+			sr.student_number, sr.is_favorite, sr.is_public_defense, 
+			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+			COALESCE(ptr.status, '') as topic_status, 
+			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+			ptr.approved_by, ptr.approved_at,
+			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+			spr.is_signed as supervisor_report_signed,
+			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+			rr.is_signed as reviewer_report_signed,
+			rr.grade as reviewer_grade,
+			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
+		"SELECT COUNT(*)", 1)
+	countQuery = strings.Replace(countQuery, " ORDER BY sr.student_lastname, sr.student_name", "", 1)
+
+	var total int
+	err := h.db.Get(&total, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Add pagination
+	baseQuery += " LIMIT ? OFFSET ?"
+	args = append(args, filters.Limit, (filters.Page-1)*filters.Limit)
+
+	// Execute main query
+	err = h.db.Select(&students, baseQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return students, total, nil
+}
+
+func (h *StudentListHandler) getAllStudents(filters *database.TemplateFilterParams) ([]database.StudentSummaryView, int, error) {
+	var students []database.StudentSummaryView
+	var args []interface{}
+
+	baseQuery := `
+		SELECT 
+			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+			sr.student_email, sr.final_project_title, sr.final_project_title_en,
+			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+			sr.study_program, sr.department, sr.current_year, sr.program_code,
+			sr.student_number, sr.is_favorite, sr.is_public_defense, 
+			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+			COALESCE(ptr.status, '') as topic_status, 
+			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+			ptr.approved_by, ptr.approved_at,
+			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+			spr.is_signed as supervisor_report_signed,
+			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+			rr.is_signed as reviewer_report_signed,
+			rr.grade as reviewer_grade,
+			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
+		FROM student_records sr
+		LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
+		LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
+		LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+		LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
+		WHERE 1=1`
+
+	// Apply filters
+	whereClause, filterArgs := buildWhereClause(filters)
+	if whereClause != "" {
+		baseQuery += " AND " + whereClause
+		args = append(args, filterArgs...)
+	}
+
+	// Add ordering
+	baseQuery += " ORDER BY sr.student_lastname, sr.student_name"
+
+	// Count query
+	countQuery := strings.Replace(baseQuery,
+		`SELECT 
+			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+			sr.student_email, sr.final_project_title, sr.final_project_title_en,
+			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+			sr.study_program, sr.department, sr.current_year, sr.program_code,
+			sr.student_number, sr.is_favorite, sr.is_public_defense, 
+			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+			COALESCE(ptr.status, '') as topic_status, 
+			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+			ptr.approved_by, ptr.approved_at,
+			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+			spr.is_signed as supervisor_report_signed,
+			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+			rr.is_signed as reviewer_report_signed,
+			rr.grade as reviewer_grade,
+			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
+		"SELECT COUNT(*)", 1)
+	countQuery = strings.Replace(countQuery, " ORDER BY sr.student_lastname, sr.student_name", "", 1)
+
+	var total int
+	err := h.db.Get(&total, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Add pagination
+	baseQuery += " LIMIT ? OFFSET ?"
+	args = append(args, filters.Limit, (filters.Page-1)*filters.Limit)
+
+	// Execute main query
+	err = h.db.Select(&students, baseQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return students, total, nil
+}
+
+// Helper function to build WHERE clause for filters
+func buildWhereClause(filters *database.TemplateFilterParams) (string, []interface{}) {
+	var conditions []string
+	var args []interface{}
+
+	if filters.Group != "" {
+		conditions = append(conditions, "sr.student_group = ?")
+		args = append(args, filters.Group)
+	}
+
+	if filters.StudyProgram != "" {
+		conditions = append(conditions, "sr.study_program = ?")
+		args = append(args, filters.StudyProgram)
+	}
+
+	if filters.Year > 0 {
+		conditions = append(conditions, "sr.current_year = ?")
+		args = append(args, filters.Year)
+	}
+
+	if filters.TopicStatus != "" {
+		if filters.TopicStatus == "not_started" {
+			conditions = append(conditions, "(ptr.status IS NULL OR ptr.status = '')")
+		} else {
+			conditions = append(conditions, "ptr.status = ?")
+			args = append(args, filters.TopicStatus)
+		}
+	}
+
+	if filters.Search != "" {
+		conditions = append(conditions, `(
+            sr.student_name LIKE ? OR 
+            sr.student_lastname LIKE ? OR 
+            sr.student_email LIKE ? OR 
+            sr.final_project_title LIKE ? OR 
+            sr.final_project_title_en LIKE ?
+        )`)
+		searchPattern := "%" + filters.Search + "%"
+		for i := 0; i < 5; i++ {
+			args = append(args, searchPattern)
+		}
+	}
+
+	if len(conditions) == 0 {
+		return "", nil
+	}
+
+	return strings.Join(conditions, " AND "), args
+}
+
+// Keep your existing helper functions
 func DocumentsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	_, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
 	if !ok {
@@ -127,272 +477,117 @@ func canViewStudentList(role string) bool {
 	return false
 }
 
-func parseStudentFilter(r *http.Request) *database.StudentFilter {
-	filter := &database.StudentFilter{
-		Page:      1,
-		Limit:     10,
-		SortBy:    "student_name",
-		SortOrder: "asc",
-	}
-
-	// Parse page
-	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
-			filter.Page = page
-		}
-	}
-
-	// Parse limit
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 && limit <= 100 {
-			filter.Limit = limit
-		}
-	}
-
-	// Parse other filters
-	if dept := r.URL.Query().Get("department"); dept != "" {
-		filter.Department = &dept
-	}
-	if prog := r.URL.Query().Get("study_program"); prog != "" {
-		filter.StudyProgram = &prog
-	}
-	if yearStr := r.URL.Query().Get("year"); yearStr != "" {
-		if year, err := strconv.Atoi(yearStr); err == nil {
-			filter.Year = &year
-		}
-	}
-	if group := r.URL.Query().Get("group"); group != "" {
-		filter.Group = &group
-	}
-	if search := r.URL.Query().Get("search"); search != "" {
-		filter.Search = &search
-	}
-	if topicStatus := r.URL.Query().Get("topic_status"); topicStatus != "" {
-		filter.TopicStatus = &topicStatus
-	}
-
-	return filter
-}
-
-// Helper functions
-func getStringValue(ptr *string) string {
-	if ptr == nil {
-		return ""
-	}
-	return *ptr
-}
-
-//func getStudentsWithFilter(filter *database.StudentFilter) ([]database.StudentSummaryView, int, error) {
-//	students := getMockStudents()
-//	filteredStudents := applyFilters(students, filter)
-//
-//	// Apply pagination
-//	start := (filter.Page - 1) * filter.Limit
-//	end := start + filter.Limit
-//	if end > len(filteredStudents) {
-//		end = len(filteredStudents)
-//	}
-//
-//	if start >= len(filteredStudents) {
-//		return []database.StudentSummaryView{}, len(filteredStudents), nil
-//	}
-//
-//	return filteredStudents[start:end], len(filteredStudents), nil
-//}
-
-func (h *StudentListHandler) getStudentsWithFilter(filter *database.StudentFilter) ([]database.StudentSummaryView, int, error) {
-	var students []database.StudentSummaryView
-	var args []interface{}
-	where := []string{"1=1"}
-
-	// Search filter
-	if filter.Search != nil && *filter.Search != "" {
-		search := "%" + strings.ToLower(*filter.Search) + "%"
-		where = append(where, `(LOWER(student_name) LIKE ? OR LOWER(student_lastname) LIKE ? OR LOWER(final_project_title) LIKE ? OR LOWER(student_email) LIKE ?)`)
-		args = append(args, search, search, search, search)
-	}
-
-	// Group filter
-	if filter.Group != nil {
-		where = append(where, "student_group = ?")
-		args = append(args, *filter.Group)
-	}
-
-	// Study program filter
-	if filter.StudyProgram != nil {
-		where = append(where, "study_program = ?")
-		args = append(args, *filter.StudyProgram)
-	}
-
-	// Topic status filter
-	if filter.TopicStatus != nil {
-		if *filter.TopicStatus == "not_started" {
-			where = append(where, "(topic_status IS NULL OR topic_status = '')")
-		} else {
-			where = append(where, "topic_status = ?")
-			args = append(args, *filter.TopicStatus)
-		}
-	}
-
-	// Year filter
-	if filter.Year != nil {
-		where = append(where, "current_year = ?")
-		args = append(args, *filter.Year)
-	}
-
-	// Validate and sanitize sortBy
-	allowedSortFields := map[string]bool{
-		"student_name":        true,
-		"student_lastname":    true,
-		"final_project_title": true,
-		"student_email":       true,
-		"student_group":       true,
-		"study_program":       true,
-		"topic_status":        true,
-		"reviewer_grade":      true,
-		"current_year":        true,
-	}
-
-	sortBy := filter.SortBy
-	if !allowedSortFields[sortBy] {
-		sortBy = "student_name"
-	}
-
-	sortOrder := strings.ToUpper(filter.SortOrder)
-	if sortOrder != "ASC" && sortOrder != "DESC" {
-		sortOrder = "ASC"
-	}
-
-	// Ensure pagination safety
-	if filter.Page < 1 {
-		filter.Page = 1
-	}
-	if filter.Limit <= 0 || filter.Limit > 100 {
-		filter.Limit = 10
-	}
-	offset := (filter.Page - 1) * filter.Limit
-
-	// Build query
-	query := `
-		SELECT *
-		FROM student_summary_view
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY ` + sortBy + ` ` + sortOrder + `
-		LIMIT ? OFFSET ?`
-	args = append(args, filter.Limit, offset)
-
-	// Debug logging
-	log.Printf("Student query: %s", query)
-	log.Printf("Query args: %+v", args)
-
-	// Run main query
-	err := h.db.Select(&students, query, args...)
-	if err != nil {
-		log.Printf("Query failed: %v", err)
-		return nil, 0, err
-	}
-
-	// Count query (without limit/offset)
-	countQuery := `SELECT COUNT(*) FROM student_summary_view WHERE ` + strings.Join(where, " AND ")
-	var total int
-	err = h.db.Get(&total, countQuery, args[:len(args)-2]...)
-	if err != nil {
-		log.Printf("Count query failed: %v", err)
-		return nil, 0, err
-	}
-
-	return students, total, nil
-}
-
-func applyFilters(students []database.StudentSummaryView, filter *database.StudentFilter) []database.StudentSummaryView {
-	var filtered []database.StudentSummaryView
-
-	for _, student := range students {
-		// Apply search filter
-		if filter.Search != nil && *filter.Search != "" {
-			searchTerm := strings.ToLower(*filter.Search)
-			studentText := strings.ToLower(student.StudentName + " " + student.StudentLastname + " " + student.FinalProjectTitle + " " + student.StudentEmail)
-			if !strings.Contains(studentText, searchTerm) {
-				continue
-			}
-		}
-
-		// Apply group filter
-		if filter.Group != nil && *filter.Group != "" && student.StudentGroup != *filter.Group {
-			continue
-		}
-
-		// Apply study program filter
-		if filter.StudyProgram != nil && *filter.StudyProgram != "" && student.StudyProgram != *filter.StudyProgram {
-			continue
-		}
-
-		// Apply topic status filter
-		if filter.TopicStatus != nil && *filter.TopicStatus != "" {
-			switch *filter.TopicStatus {
-			case "not_started":
-				if getTopicStatus(student.TopicStatus) != "" {
-					continue
-				}
-			case "draft":
-				if getTopicStatus(student.TopicStatus) != "draft" {
-					continue
-				}
-			case "submitted":
-				if getTopicStatus(student.TopicStatus) != "submitted" {
-					continue
-				}
-			case "approved":
-				if !student.TopicApproved {
-					continue
-				}
-			case "rejected":
-				if getTopicStatus(student.TopicStatus) != "rejected" {
-					continue
-				}
-			default:
-				if getTopicStatus(student.TopicStatus) != *filter.TopicStatus {
-					continue
-				}
-			}
-		}
-
-		// Apply year filter
-		if filter.Year != nil && student.CurrentYear != *filter.Year {
-			continue
-		}
-
-		filtered = append(filtered, student)
-	}
-
-	return filtered
-}
-
 func getStudentDocuments(studentID int) ([]database.Document, error) {
 	documents := []database.Document{
 		{
 			ID:               1,
 			DocumentType:     "thesis",
 			OriginalFilename: database.NullableString("Baigiamasis_darbas.pdf"),
-			FileSize:         nullableInt64(1024000),
+			FileSize:         database.NullableInt64(1024000),
 		},
 		{
 			ID:               2,
 			DocumentType:     "video",
 			OriginalFilename: database.NullableString("Gynyba_video.mp4"),
-			FileSize:         nullableInt64(50240000),
+			FileSize:         database.NullableInt64(50240000),
 		},
 	}
 	return documents, nil
 }
 
-// Helper function to create nullable int64
-func nullableInt64(value int64) *int64 {
-	return &value
-}
 func getTopicStatus(status sql.NullString) string {
 	if status.Valid {
 		return status.String
 	}
 	return ""
+}
+
+// Get available groups for current user
+func (h *StudentListHandler) getAvailableGroups(userRole, userEmail string) ([]string, error) {
+	var groups []string
+	var query string
+	var args []interface{}
+
+	switch userRole {
+	case auth.RoleSupervisor:
+		query = `SELECT DISTINCT student_group FROM student_records WHERE supervisor_email = ? ORDER BY student_group`
+		args = []interface{}{userEmail}
+	case auth.RoleReviewer:
+		query = `SELECT DISTINCT student_group FROM student_records WHERE reviewer_email = ? ORDER BY student_group`
+		args = []interface{}{userEmail}
+	default:
+		query = `SELECT DISTINCT student_group FROM student_records ORDER BY student_group`
+		args = []interface{}{}
+	}
+
+	err := h.db.Select(&groups, query, args...)
+	return groups, err
+}
+
+// Get available study programs for current user
+func (h *StudentListHandler) getAvailableStudyPrograms(userRole, userEmail string) ([]string, error) {
+	var programs []string
+	var query string
+	var args []interface{}
+
+	switch userRole {
+	case auth.RoleSupervisor:
+		query = `SELECT DISTINCT study_program FROM student_records WHERE supervisor_email = ? ORDER BY study_program`
+		args = []interface{}{userEmail}
+	case auth.RoleReviewer:
+		query = `SELECT DISTINCT study_program FROM student_records WHERE reviewer_email = ? ORDER BY study_program`
+		args = []interface{}{userEmail}
+	default:
+		query = `SELECT DISTINCT study_program FROM student_records ORDER BY study_program`
+		args = []interface{}{}
+	}
+
+	err := h.db.Select(&programs, query, args...)
+	return programs, err
+}
+
+// Get available years for current user
+func (h *StudentListHandler) getAvailableYears(userRole, userEmail string) ([]int, error) {
+	var years []int
+	var query string
+	var args []interface{}
+
+	switch userRole {
+	case auth.RoleSupervisor:
+		query = `SELECT DISTINCT current_year FROM student_records WHERE supervisor_email = ? ORDER BY current_year DESC`
+		args = []interface{}{userEmail}
+	case auth.RoleReviewer:
+		query = `SELECT DISTINCT current_year FROM student_records WHERE reviewer_email = ? ORDER BY current_year DESC`
+		args = []interface{}{userEmail}
+	default:
+		query = `SELECT DISTINCT current_year FROM student_records ORDER BY current_year DESC`
+		args = []interface{}{}
+	}
+
+	err := h.db.Select(&years, query, args...)
+	return years, err
+}
+
+// Get all filter options for current user
+func (h *StudentListHandler) getFilterOptions(userRole, userEmail string) (*database.FilterOptions, error) {
+	groups, err := h.getAvailableGroups(userRole, userEmail)
+	if err != nil {
+		return nil, err
+	}
+
+	programs, err := h.getAvailableStudyPrograms(userRole, userEmail)
+	if err != nil {
+		return nil, err
+	}
+
+	years, err := h.getAvailableYears(userRole, userEmail)
+	if err != nil {
+		return nil, err
+	}
+
+	return &database.FilterOptions{
+		Groups:        groups,
+		StudyPrograms: programs,
+		Years:         years,
+	}, nil
 }

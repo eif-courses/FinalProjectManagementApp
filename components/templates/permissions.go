@@ -10,11 +10,13 @@ func canViewDocuments(role string) bool {
 }
 
 func canViewReviewer(role string) bool {
-	return role == "admin" || role == "department_head" || role == "supervisor"
+	// Only admins and department heads can see reviewer column
+	return role == "admin" || role == "department_head"
 }
 
 func canViewSupervisor(role string) bool {
-	return role == "admin" || role == "department_head"
+	// All these roles can see supervisor column
+	return role == "admin" || role == "department_head" || role == "supervisor"
 }
 
 func canPerformActions(role string) bool {
@@ -126,15 +128,6 @@ func canFilterByStatus(role string) bool {
 	return role == "admin" || role == "department_head"
 }
 
-//	func canEditSupervisorReport(role string, supervisorEmail string, userEmail string) bool {
-//		if role == "admin" || role == "department_head" {
-//			return true
-//		}
-//		if role == "supervisor" && supervisorEmail == userEmail {
-//			return true
-//		}
-//		return false
-//	}
 func canEditSupervisorReport(userRole, supervisorEmail, userEmail string) bool {
 	// Allow supervisors to edit their own reports, and admins to edit any
 	return userRole == "admin" || userRole == "department_head" ||

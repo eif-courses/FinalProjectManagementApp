@@ -1431,12 +1431,21 @@ func SaveSupervisorReport(data *SupervisorReportData) error {
 // ADDITIONAL FORM AND DATA MODELS
 // ================================
 
+// Create a struct to hold filter options
+type FilterOptions struct {
+	Groups        []string `json:"groups"`
+	StudyPrograms []string `json:"study_programs"`
+	Years         []int    `json:"years"`
+}
+
 // TemplateFilterParams for template filtering
 type TemplateFilterParams struct {
+	Page         int    `json:"page"` // Add this if missing
 	Limit        int    `json:"limit"`
 	Group        string `json:"group"`
 	StudyProgram string `json:"study_program"`
 	TopicStatus  string `json:"topic_status"`
+	Year         int    `json:"year"`
 	Search       string `json:"search"`
 }
 

@@ -65,6 +65,17 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 		r.Post("/auth/logout", authMiddleware.LogoutHandler)
 	})
 
+	//r.Route("/students", func(r chi.Router) {
+	//	r.Use(authMiddleware.RequireAuth)
+	//	r.Get("/list", studentListHandler.GetStudentsList) // Role-filtered
+	//})
+
+	r.Get("/students-list", studentListHandler.StudentTableDisplayHandler)
+	r.Get("/api/documents/{id}", handlers.DocumentsAPIHandler)
+
+	// Reviewer-specific route with token
+	r.Get("/reviewer/students", studentListHandler.ReviewerStudentsList)
+
 	// Protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
