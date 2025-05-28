@@ -1,5 +1,5 @@
 # ========================================
-# Railway-optimized Go Dockerfile
+# Railway-optimized Go Dockerfile (No CSS build)
 # ========================================
 
 # Build stage
@@ -9,8 +9,6 @@ FROM golang:1.24-alpine AS builder
 RUN apk add --no-cache \
     git \
     curl \
-    nodejs \
-    npm \
     make \
     gcc \
     musl-dev
@@ -19,9 +17,6 @@ WORKDIR /app
 
 # Install templ CLI
 RUN go install github.com/a-h/templ/cmd/templ@latest
-
-# Install TailwindCSS CLI
-RUN npm install -g tailwindcss
 
 # Copy go mod files first (better caching)
 COPY go.mod go.sum ./
@@ -33,10 +28,7 @@ COPY . .
 # Generate templ files
 RUN templ generate
 
-# Build TailwindCSS
-RUN tailwindcss -i ./assets/css/input.css -o ./assets/css/output.css --minify
-
-# Build the Go application with CGO enabled for MySQL driver
+# Build the Go application
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o main .
 
 # ========================================
@@ -59,7 +51,7 @@ WORKDIR /app
 # Copy built application
 COPY --from=builder /app/main .
 
-# Copy static assets and configuration
+# Copy static assets (CSS already built)
 COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/static ./static
 COPY --from=builder /app/locales ./locales
@@ -75,7 +67,7 @@ RUN chown -R appuser:appgroup /app
 # Switch to app user
 USER appuser
 
-# Expose port (Railway will set PORT env var)
+# Expose port
 EXPOSE $PORT
 
 # Health check
