@@ -26,14 +26,15 @@ type Config struct {
 }
 
 // LoadConfig loads MySQL configuration from environment variables
-func LoadConfig() *Config { // Fix: Return *Config, not Config
+func LoadConfig() *Config {
 	return &Config{
-		Host:     getEnv("DB_HOST", "localhost"), // Fix: Change "DBHOST" to "DB_HOST"
-		Port:     getEnv("DB_PORT", "3306"),
-		Database: getEnv("DB_NAME", "thesis_management"),
-		Username: getEnv("DB_USER", "root"),
-		Password: getEnv("DB_PASSWORD", ""),
+		Host:     getEnv("MYSQLHOST", "localhost"),
+		Port:     getEnv("MYSQLPORT", "3306"),
+		Database: getEnv("MYSQLDATABASE", "railway"), // Railway's default DB name
+		Username: getEnv("MYSQLUSER", "root"),
+		Password: getEnv("MYSQLPASSWORD", ""),
 
+		// Keep your connection pool settings
 		MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 25),
 		MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 5),
 		ConnMaxLifetime: time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME", 300)) * time.Second,
