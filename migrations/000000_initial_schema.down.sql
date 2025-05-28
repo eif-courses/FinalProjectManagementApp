@@ -1,6 +1,6 @@
 -- ================================================
 -- Migration DOWN: Drop Complete Initial Schema
--- File: 000001_initial_schema.down.sql
+-- File: 000000_initial_schema.down.sql
 -- ================================================
 
 -- Disable foreign key checks to avoid dependency issues

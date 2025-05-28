@@ -2,6 +2,6 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/handlers/student_list.go" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/migrations/000001_initial_schema.up.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/000000_initial_schema.up.sql" dialect="MariaDB" />
   </component>
 </project>

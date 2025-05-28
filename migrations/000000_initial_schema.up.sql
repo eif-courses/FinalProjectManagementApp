@@ -1,6 +1,6 @@
 -- ================================================
 -- Migration UP: Complete Initial Schema
--- File: 000001_initial_schema.up.sql
+-- File: 000000_initial_schema.up.sql
 -- ================================================
 
 -- Create department heads table
