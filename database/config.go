@@ -1,17 +1,19 @@
-// database/config.go - MySQL/MariaDB configuration
+// database/config.go
 package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" // Fix: Add underscore, remove asterisk
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
-type Config struct {
+// ===== DATABASE CONFIG =====
+type Config struct { // Changed back to original name for compatibility
 	Host     string
 	Port     string
 	Database string
@@ -26,15 +28,14 @@ type Config struct {
 }
 
 // LoadConfig loads MySQL configuration from environment variables
-func LoadConfig() *Config {
+func LoadConfig() *Config { // Changed back to original function name
 	return &Config{
 		Host:     getEnv("MYSQLHOST", "localhost"),
 		Port:     getEnv("MYSQLPORT", "3306"),
-		Database: getEnv("MYSQLDATABASE", "railway"), // Railway's default DB name
+		Database: getEnv("MYSQLDATABASE", "railway"),
 		Username: getEnv("MYSQLUSER", "root"),
 		Password: getEnv("MYSQLPASSWORD", ""),
 
-		// Keep your connection pool settings
 		MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 25),
 		MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 5),
 		ConnMaxLifetime: time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME", 300)) * time.Second,
@@ -67,7 +68,6 @@ func (c *Config) Connect() (*sqlx.DB, error) {
 
 // buildDSN creates MySQL data source name
 func (c *Config) buildDSN() string {
-	// Format: user:password@tcp(host:port)/dbname?param1=value1&param2=value2
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true",
 		c.Username, c.Password, c.Host, c.Port, c.Database)
 }
@@ -76,6 +76,91 @@ func (c *Config) buildDSN() string {
 func (c *Config) GetMigrationURL() string {
 	return fmt.Sprintf("mysql://%s:%s@tcp(%s:%s)/%s",
 		c.Username, c.Password, c.Host, c.Port, c.Database)
+}
+
+// Database interface for easier testing
+type Database interface {
+	sqlx.Queryer
+	sqlx.Execer
+	Get(dest interface{}, query string, args ...interface{}) error
+	Select(dest interface{}, query string, args ...interface{}) error
+	Close() error
+	Ping() error
+}
+
+// Ensure *sqlx.DB implements Database interface
+var _ Database = (*sqlx.DB)(nil)
+
+// ===== APPLICATION CONFIG =====
+type AppConfig struct {
+	Database *Config
+	GitHub   *GitHubConfig // CHANGED: From AzureDevOps to GitHub
+	Server   *ServerConfig
+}
+
+// CHANGED: Renamed from AzureDevOpsConfig to GitHubConfig
+type GitHubConfig struct {
+	Organization string
+	Project      string // Keep for compatibility, though not used much in GitHub
+	PAT          string
+}
+
+type ServerConfig struct {
+	Port        string
+	Environment string
+}
+
+// LoadAppConfig loads all application configuration
+func LoadAppConfig() *AppConfig {
+	config := &AppConfig{
+		Database: LoadConfig(), // Use the database config from same package
+
+		// CHANGED: GitHub configuration instead of Azure DevOps
+		GitHub: &GitHubConfig{
+			Organization: getEnv("GITHUB_ORG", ""),     // CHANGED: From AZURE_ORG
+			Project:      getEnv("GITHUB_PROJECT", ""), // CHANGED: From AZURE_PROJECT
+			PAT:          getEnv("GITHUB_PAT", ""),     // CHANGED: From AZURE_PAT
+		},
+
+		Server: &ServerConfig{
+			Port:        getEnv("PORT", "8080"),
+			Environment: getEnv("RAILWAY_ENVIRONMENT", "development"),
+		},
+	}
+
+	// Log configuration (without sensitive data)
+	config.logConfig()
+
+	return config
+}
+
+// CHANGED: Updated function name and logic for GitHub
+func (c *AppConfig) HasGitHub() bool {
+	return c.GitHub.Organization != "" && c.GitHub.PAT != ""
+}
+
+// CHANGED: Updated logging for GitHub
+func (c *AppConfig) logConfig() {
+	log.Printf("Configuration loaded:")
+	log.Printf("  Environment: %s", c.Server.Environment)
+	log.Printf("  Database Host: %s", c.Database.Host)
+	log.Printf("  Database Name: %s", c.Database.Database)
+	log.Printf("  Server Port: %s", c.Server.Port)
+
+	if c.GitHub.Organization != "" {
+		log.Printf("  GitHub Org: %s", c.GitHub.Organization)
+		log.Printf("  GitHub: ENABLED")
+	} else {
+		log.Printf("  GitHub: DISABLED")
+	}
+}
+
+func (c *AppConfig) IsProduction() bool {
+	return c.Server.Environment == "production" || c.Database.Host == "mysql.railway.internal"
+}
+
+func (c *AppConfig) IsLocal() bool {
+	return c.Database.Host == "localhost" || c.Database.Host == "127.0.0.1"
 }
 
 // Helper functions
@@ -94,16 +179,3 @@ func getEnvInt(key string, defaultValue int) int {
 	}
 	return defaultValue
 }
-
-// Database interface for easier testing
-type Database interface {
-	sqlx.Queryer
-	sqlx.Execer
-	Get(dest interface{}, query string, args ...interface{}) error
-	Select(dest interface{}, query string, args ...interface{}) error
-	Close() error
-	Ping() error
-}
-
-// Ensure *sqlx.DB implements Database interface
-var _ Database = (*sqlx.DB)(nil)

@@ -29,7 +29,7 @@ CREATE TABLE commission_members (
                                     department TEXT NOT NULL,
                                     study_program VARCHAR(255) NULL,
                                     year INT NULL,
-                                    description TEXT DEFAULT '',
+                                    description TEXT,
                                     is_active BOOLEAN DEFAULT TRUE,
                                     expires_at BIGINT NOT NULL,
                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -158,7 +158,7 @@ CREATE TABLE supervisor_reports (
                                     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                     updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                     grade INT NULL,
-                                    final_comments TEXT DEFAULT '',
+                                    final_comments TEXT,
 
                                     FOREIGN KEY (student_record_id) REFERENCES student_records(id) ON DELETE CASCADE,
                                     INDEX idx_student_record (student_record_id),
@@ -226,8 +226,8 @@ CREATE TABLE commission_evaluations (
                                         defense_score DECIMAL(3,1) DEFAULT 0.0,
                                         answers_score DECIMAL(3,1) DEFAULT 0.0,
                                         overall_score DECIMAL(3,1) DEFAULT 0.0,
-                                        comments TEXT DEFAULT '',
-                                        questions_asked TEXT DEFAULT '',
+                                        comments TEXT,
+                                        questions_asked TEXT,
                                         evaluation_status ENUM('pending', 'completed', 'approved') DEFAULT 'pending',
                                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -351,7 +351,7 @@ CREATE TABLE project_topic_registration_versions (
                                                      created_by VARCHAR(255) NOT NULL,
                                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                                      version_number INT NOT NULL,
-                                                     change_summary TEXT DEFAULT '',
+                                                     change_summary TEXT,
 
                                                      FOREIGN KEY (topic_registration_id) REFERENCES project_topic_registrations(id) ON DELETE CASCADE,
                                                      INDEX idx_topic_registration (topic_registration_id),
@@ -580,5 +580,3 @@ INSERT INTO department_heads (email, name, sure_name, department, department_en,
                                                                                                                  ('j.petraitis@viko.lt', 'Jonas', 'Petraitis', 'Informacijos technologijų katedra', 'Information Technology Department', 'Katedros vedėjas', 1, 1),
                                                                                                                  ('r.kazlauskiene@viko.lt', 'Rasa', 'Kazlauskienė', 'Verslo vadybos katedra', 'Business Management Department', 'Katedros vedėja', 1, 1),
                                                                                                                  ('m.gzegozevskis@eif.viko.lt', 'Maksim', 'Gžegožewski', 'Elektronikos ir informatikos fakultetas', 'Faculty of Electronics and Informatics', 'Sistemos administratorius', 0, 1);
-
--- Migration completed successfully

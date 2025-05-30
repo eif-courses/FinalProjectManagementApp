@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Source Code Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007cba; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+<h1>🎓 Test Source Code Upload</h1>
+
+<div style="background: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+    <h3>📋 Test Instructions:</h3>
+    <ol>
+        <li>Create a test ZIP file with some source code files</li>
+        <li>Fill in the form below with test student information</li>
+        <li>Upload the ZIP file and check the results</li>
+        <li>Check your Azure DevOps organization for the created repository</li>
+    </ol>
+</div>
+
+<form id="uploadForm" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="name">Student Name:</label>
+        <input type="text" id="name" name="name" value="John Doe" required>
+    </div>
+
+    <div class="form-group">
+        <label for="student_id">Student ID:</label>
+        <input type="text" id="student_id" name="student_id" value="CS2021001" required>
+    </div>
+
+    <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" value="john.doe@student.university.edu" required>
+    </div>
+
+    <div class="form-group">
+        <label for="thesis_title">Thesis Title:</label>
+        <input type="text" id="thesis_title" name="thesis_title"
+               value="Testing Source Code Upload System" required>
+    </div>
+
+    <div class="form-group">
+        <label for="source_code">Source Code (ZIP file):</label>
+        <input type="file" id="source_code" name="source_code" accept=".zip" required>
+        <small>Maximum file size: 100MB</small>
+    </div>
+
+    <button type="submit">📤 Upload Source Code</button>
+</form>
+
+<div id="result"></div>
+
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const resultDiv = document.getElementById('result');
+        const formData = new FormData(this);
+
+        // Show loading
+        resultDiv.innerHTML = `
+                <div class="result loading">
+                    <h3>⏳ Uploading...</h3>
+                    <p>Processing your submission. This may take a few minutes...</p>
+                </div>
+            `;
+
+        try {
+            const response = await fetch('/api/source-code/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Upload Successful!</h3>
+                            <p><strong>Submission ID:</strong> ${data.submission_id}</p>
+                            <p><strong>Repository:</strong> <a href="${data.repository_info.web_url}" target="_blank">${data.repository_info.name}</a></p>
+                            <p><strong>Files Uploaded:</strong> ${data.commit_info.files_count}</p>
+                            <p><strong>Commit ID:</strong> ${data.commit_info.commit_id}</p>
+                            ${data.validation.warnings.length > 0 ?
+                    `<p><strong>Warnings:</strong> ${data.validation.warnings.join(', ')}</p>` : ''}
+                        </div>
+                    `;
+            } else {
+                resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Upload Failed</h3>
+                            <p><strong>Error:</strong> ${data.error}</p>
+                            ${data.validation && data.validation.errors ?
+                    `<p><strong>Validation Issues:</strong> ${data.validation.errors.join(', ')}</p>` : ''}
+                        </div>
+                    `;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Network Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Please check if the server is running and try again.</p>
+                    </div>
+                `;
+        }
+    });
+</script>
+</body>
+</html>

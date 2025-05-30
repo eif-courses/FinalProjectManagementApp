@@ -2427,3 +2427,76 @@ func (sr *SupervisorReport) GetSimilarityColor() string {
 		return "text-red-600"
 	}
 }
+
+type SourceCodeUpload struct {
+	ID               int    `json:"id" db:"id"`
+	StudentRecordID  int    `json:"student_record_id" db:"student_record_id"`
+	SubmissionID     string `json:"submission_id" db:"submission_id"`
+	OriginalFilename string `json:"original_filename" db:"original_filename"`
+	FileSize         int64  `json:"file_size" db:"file_size"`
+
+	// Azure DevOps fields
+	RepositoryURL string  `json:"repository_url" db:"repository_url"`
+	RepositoryID  string  `json:"repository_id" db:"repository_id"`
+	CommitID      *string `json:"commit_id" db:"commit_id"`
+
+	// Status fields
+	ValidationStatus string  `json:"validation_status" db:"validation_status"`
+	UploadStatus     string  `json:"upload_status" db:"upload_status"`
+	ValidationErrors *string `json:"validation_errors" db:"validation_errors"`
+
+	// Timestamps
+	UploadedAt time.Time `json:"uploaded_at" db:"uploaded_date"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
+}
+
+type StudentInfo struct {
+	Name        string `json:"name" form:"name"`
+	StudentID   string `json:"student_id" form:"student_id"`
+	Email       string `json:"email" form:"email"`
+	ThesisTitle string `json:"thesis_title" form:"thesis_title"`
+}
+
+type ValidationResult struct {
+	Valid     bool     `json:"valid"`
+	Warnings  []string `json:"warnings"`
+	Errors    []string `json:"errors"`
+	FileCount int      `json:"file_count"`
+	TotalSize int64    `json:"total_size"`
+}
+
+type RepositoryInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	WebURL    string `json:"web_url"`
+	CloneURL  string `json:"clone_url"`
+	RemoteURL string `json:"remote_url"`
+}
+
+type CommitInfo struct {
+	Message    string    `json:"message"`
+	Timestamp  time.Time `json:"timestamp"`
+	FilesCount int       `json:"files_count"`
+	CommitID   string    `json:"commit_id"`
+}
+
+type FilterInfo struct {
+	TotalFilesInZip  int   `json:"total_files_in_zip"`
+	FilesAfterFilter int   `json:"files_after_filter"`
+	FilesSkipped     int   `json:"files_skipped"`
+	OriginalSize     int64 `json:"original_size"`
+	SizeAfterFilter  int64 `json:"size_after_filter"`
+}
+
+// Update SubmissionResult to include FilterInfo
+type SubmissionResult struct {
+	Success        bool              `json:"success"`
+	Message        string            `json:"message"`
+	Error          string            `json:"error,omitempty"`
+	RepositoryInfo *RepositoryInfo   `json:"repository_info,omitempty"`
+	Validation     *ValidationResult `json:"validation,omitempty"`
+	CommitInfo     *CommitInfo       `json:"commit_info,omitempty"`
+	SubmissionID   string            `json:"submission_id"`
+	DocumentID     int               `json:"document_id,omitempty"`
+	FilterInfo     *FilterInfo       `json:"filter_info,omitempty"`
+}

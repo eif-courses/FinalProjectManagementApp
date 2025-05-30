@@ -1,6 +1,8 @@
+// main.go
 package main
 
 import (
+	"FinalProjectManagementApp/handlers"
 	"FinalProjectManagementApp/i18n"
 	"FinalProjectManagementApp/notifications"
 	"github.com/joho/godotenv"
@@ -17,7 +19,6 @@ import (
 
 func main() {
 	// Load environment variables from .env file
-
 	translator := i18n.GetTranslator()
 	if err := translator.LoadTranslations(); err != nil {
 		log.Fatal("Failed to load translations:", err)
@@ -27,19 +28,21 @@ func main() {
 		log.Printf("Warning: .env file not found: %v", err)
 	}
 
-	// Register MIME types to fix the MIME type issues
+	// Register MIME types
 	mime.AddExtensionType(".css", "text/css")
 	mime.AddExtensionType(".js", "application/javascript")
 
-	// Database setup (your existing code)
-	dbConfig := database.LoadConfig()
-	db, err := dbConfig.Connect()
+	// Load application configuration
+	appConfig := database.LoadAppConfig()
+
+	// Database setup using new config structure
+	db, err := appConfig.Database.Connect()
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
 
-	// Migration code (your existing code)
+	// Migration code
 	migrator, err := database.NewMigrator(db, "migrations")
 	if err != nil {
 		log.Fatal("Failed to create migrator:", err)
@@ -67,7 +70,7 @@ func main() {
 	}
 	log.Println("Database migrations completed successfully")
 
-	// Auth setup (your existing code)
+	// Auth setup
 	authService, err := auth.NewAuthService(db)
 	if err != nil {
 		log.Fatal("Failed to initialize auth service:", err)
@@ -78,7 +81,7 @@ func main() {
 		log.Fatal("Failed to initialize auth middleware:", err)
 	}
 
-	// NEW: Initialize notification service
+	// Notification service
 	var notificationService *notifications.NotificationService
 	if authService.GetAppGraphClient() != nil {
 		notificationService = notifications.NewNotificationService(authService.GetAppGraphClient())
@@ -89,16 +92,54 @@ func main() {
 		notificationService = nil
 	}
 
-	// Setup routes (pass notification service to routes)
-	r := routes.SetupRoutes(db, authService, authMiddleware, notificationService)
-
-	// Get port from environment or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Initialize source code upload handler
+	var sourceCodeHandler *handlers.SourceCodeHandler
+	if appConfig.HasGitHub() {
+		sourceCodeHandler = handlers.NewSourceCodeHandler(db, appConfig.GitHub)
+	} else {
+		log.Println("Github DevOps configuration not found - source code upload will be disabled")
+		log.Println("Required environment variables: GITHUB_ORG, GITHUB_PROJECT, GITHUB_PAT")
+		sourceCodeHandler = nil
 	}
 
+	// Create uploads directory
+	if err := os.MkdirAll("uploads", 0755); err != nil {
+		log.Printf("Warning: Failed to create uploads directory: %v", err)
+		log.Println("Source code uploads may not work properly")
+	} else {
+		log.Println("Uploads directory created/verified successfully")
+	}
+
+	// Setup routes
+	r := routes.SetupRoutes(db, authService, authMiddleware, notificationService, sourceCodeHandler)
+
+	// Get port from environment or use config
+	port := appConfig.Server.Port
+
+	// Log startup information
+	log.Printf("=== Final Project Management App Starting ===")
 	log.Printf("Server starting on port %s", port)
+	log.Printf("Environment: %s", appConfig.Server.Environment)
+	log.Printf("Database: %s@%s:%s/%s",
+		appConfig.Database.Username, appConfig.Database.Host,
+		appConfig.Database.Port, appConfig.Database.Database)
+
+	if sourceCodeHandler != nil {
+		log.Printf("Github API active integration: ENABLED (%s/%s)",
+			appConfig.GitHub.Organization, appConfig.GitHub.Project)
+	} else {
+		log.Printf("Github API integration: DISABLED")
+	}
+
+	if notificationService != nil {
+		log.Printf("Email notifications: ENABLED")
+	} else {
+		log.Printf("Email notifications: DISABLED")
+	}
+
+	log.Printf("=== Server Ready ===")
+
+	// Start the server
 	if err := http.ListenAndServe("0.0.0.0:"+port, r); err != nil {
 		log.Fatal("Server failed to start:", err)
 	}

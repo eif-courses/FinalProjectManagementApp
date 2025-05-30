@@ -19,7 +19,11 @@ import (
 )
 
 // Updated function signature to accept database and notification service
-func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *auth.AuthMiddleware, notificationService *notifications.NotificationService) *chi.Mux {
+func SetupRoutes(db *sqlx.DB,
+	authService *auth.AuthService,
+	authMiddleware *auth.AuthMiddleware,
+	notificationService *notifications.NotificationService,
+	sourceCodeHandler *handlers.SourceCodeHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -62,6 +66,16 @@ func SetupRoutes(db *sqlx.DB, authService *auth.AuthService, authMiddleware *aut
 	// Favicon
 	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./static/favicon.ico")
+	})
+
+	// TEST FOR DEV OPS
+	r.Get("/test-upload", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/upload_test.html")
+	})
+
+	r.Route("/api/source-code", func(r chi.Router) {
+		r.Use(authMiddleware.RequireAuth)
+		r.Post("/upload", sourceCodeHandler.UploadSourceCode)
 	})
 
 	// Public routes
