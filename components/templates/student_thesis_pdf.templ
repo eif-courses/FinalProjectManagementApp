@@ -1,0 +1,117 @@
+// components/templates/student_thesis_pdf.templ
+package templates
+import (
+    "FinalProjectManagementApp/database"
+        "FinalProjectManagementApp/components/card"
+          "FinalProjectManagementApp/components/icon"
+           "FinalProjectManagementApp/components/button"
+          "fmt"
+)
+templ ThesisPDFSection(data *StudentDashboardData) {
+    @card.Card() {
+        @card.Header() {
+            @card.Title() {
+                📄 Thesis Document (PDF)
+            }
+            @card.Description() {
+                Your thesis PDF document (uploaded by administration).
+            }
+        }
+        @card.Content() {
+            if data.HasThesisPDF && data.ThesisDocument != nil {
+                @ThesisPDFViewer(data.ThesisDocument)
+            } else {
+                @ThesisPDFPending()
+            }
+        }
+    }
+}
+
+templ ThesisPDFViewer(doc *database.Document) {
+    <div class="space-y-4">
+        <!-- PDF Status -->
+        <div class="flex items-center space-x-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            @icon.FileText(icon.Props{Size: 20, Class: "text-gray-600"})
+            <div>
+                <p class="font-medium text-gray-800">Thesis PDF Available</p>
+                <p class="text-sm text-gray-600">Uploaded by administration • { doc.UploadedDate.Format("Jan 2, 2006") }</p>
+            </div>
+        </div>
+
+        <!-- PDF Preview/Viewer -->
+        <div class="border rounded-lg overflow-hidden">
+            <div class="bg-gray-100 p-3 border-b flex items-center justify-between">
+                <h4 class="font-medium">{ database.StringValue(doc.OriginalFilename) }</h4>
+                <div class="flex space-x-2">
+                    @button.Button(button.Props{
+                        Variant: button.VariantOutline,
+                        Size: button.SizeIcon,
+                        Attributes: templ.Attributes{
+                            "onclick": "openPDFFullscreen('" + fmt.Sprintf("%d", doc.ID) + "')",
+                        },
+                    }) {
+                        @icon.Maximize(icon.Props{Size: 16, Class: "mr-2"})
+                        Full Screen
+                    }
+                    @button.Button(button.Props{
+                        Variant: button.VariantOutline,
+                        Size: button.SizeIcon,
+                        Attributes: templ.Attributes{
+                            "onclick": "downloadPDF('" + fmt.Sprintf("%d", doc.ID) + "')",
+                        },
+                    }) {
+                        @icon.Download(icon.Props{Size: 16, Class: "mr-2"})
+                        Download
+                    }
+                </div>
+            </div>
+
+            <!-- PDF Embed -->
+            <div class="h-96">
+                <iframe
+                    src={ "/api/documents/" + fmt.Sprintf("%d", doc.ID) + "/preview" }
+                    class="w-full h-full"
+                    title="Thesis PDF Preview">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Document Info -->
+        <div class="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-3 rounded-lg">
+            if doc.FileSize != nil {
+                <div>
+                    <span class="text-muted-foreground">File Size:</span>
+                    <span class="ml-2 font-medium">{ formatFileSize(*doc.FileSize) }</span>
+                </div>
+            }
+            <div>
+                <span class="text-muted-foreground">Type:</span>
+                <span class="ml-2 font-medium">PDF Document</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openPDFFullscreen(docId) {
+            window.open('/api/documents/' + docId + '/preview', '_blank');
+        }
+
+        function downloadPDF(docId) {
+            window.location.href = '/api/documents/' + docId + '/download';
+        }
+    </script>
+}
+
+templ ThesisPDFPending() {
+    <div class="text-center py-8">
+        @icon.FileX(icon.Props{Size: 48, Class: "mx-auto text-gray-400 mb-4"})
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No PDF Available</h3>
+        <p class="text-muted-foreground mb-4">
+            Your thesis PDF will be uploaded by the administration once your work is submitted and processed.
+        </p>
+        <div class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-800">
+            @icon.Clock(icon.Props{Size: 16, Class: "mr-2"})
+            Pending Administration Upload
+        </div>
+    </div>
+}

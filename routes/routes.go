@@ -52,6 +52,10 @@ func SetupRoutes(db *sqlx.DB,
 	topicHandlers := handlers.NewTopicHandlers(db.DB)
 	supervisorReportHandler := handlers.NewSupervisorReportHandler(db)
 	studentListHandler := handlers.NewStudentListHandler(db)
+
+	// Initialize upload handlers - ADD THIS
+	uploadHandlers := handlers.NewUploadHandlers(db)
+
 	// Get app config for GitHub settings
 	appConfig := database.LoadAppConfig()
 
@@ -92,11 +96,6 @@ func SetupRoutes(db *sqlx.DB,
 		r.Get("/auth/logout", authHandlers.ShowLogoutPage)
 		r.Post("/auth/logout", authMiddleware.LogoutHandler)
 	})
-
-	//r.Route("/students", func(r chi.Router) {
-	//	r.Use(authMiddleware.RequireAuth)
-	//	r.Get("/list", studentListHandler.GetStudentsList) // Role-filtered
-	//})
 
 	r.Get("/students-list", studentListHandler.StudentTableDisplayHandler)
 	r.Get("/api/documents/{id}", handlers.DocumentsAPIHandler)
@@ -184,18 +183,9 @@ func SetupRoutes(db *sqlx.DB,
 			w.Write([]byte(html))
 		})
 
-		// UPDATE: Add the new endpoints
-		r.Route("/api/source-code", func(r chi.Router) {
-			r.Use(authMiddleware.RequireAuth)
-			r.Post("/upload", sourceCodeHandler.UploadSourceCode)
-			r.Get("/status", sourceCodeHandler.GetUploadStatus) // NEW
-			r.Get("/health", sourceCodeHandler.GetSystemHealth) // NEW
-		})
-
 		// Repository viewing routes (only if GitHub is configured)
 		if repositoryHandler != nil {
 			r.Route("/repository", func(r chi.Router) {
-				// Require supervisor, reviewer, department head, admin, or commission member
 				r.Use(authMiddleware.RequireRole(
 					auth.RoleSupervisor,
 					auth.RoleReviewer,
@@ -205,7 +195,8 @@ func SetupRoutes(db *sqlx.DB,
 
 				r.Get("/student/{studentId}", repositoryHandler.ViewStudentRepository)
 				r.Get("/student/{studentId}/download", repositoryHandler.DownloadRepository)
-				// NEW: File content viewing
+
+				// FIXED: Proper wildcard handling for file paths
 				r.Get("/student/{studentId}/browse/*", repositoryHandler.ViewStudentRepositoryPath)
 				r.Get("/student/{studentId}/file/*", repositoryHandler.ViewFileContent)
 				r.Get("/student/{studentId}/tree", repositoryHandler.GetRepositoryTree)
@@ -221,7 +212,6 @@ func SetupRoutes(db *sqlx.DB,
 					auth.RoleCommissionMember))
 
 				r.Get("/student/{studentId}", repositoryHandler.GetRepositoryAPI)
-				// NEW: File content API
 				r.Get("/student/{studentId}/browse", repositoryHandler.GetRepositoryPathAPI)
 				r.Get("/student/{studentId}/file", repositoryHandler.GetFileContentAPI)
 			})
@@ -229,20 +219,6 @@ func SetupRoutes(db *sqlx.DB,
 
 		r.Get("/supervisor-report/{id}/compact-modal", supervisorReportHandler.GetCompactSupervisorModal)
 
-		//r.Route("/supervisor-report", func(r chi.Router) {
-		//	// Only supervisors and admins can access
-		//	r.Use(authMiddleware.RequireRole(auth.RoleSupervisor, auth.RoleAdmin, auth.RoleDepartmentHead))
-		//	r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
-		//	r.Post("/submit/{id}", supervisorReportHandler.SubmitSupervisorReport)
-		//	r.Get("/button/{id}", supervisorReportHandler.GetSupervisorReportButton)
-		//
-		//	// Full page view
-		//	r.Get("/{id}", supervisorReportHandler.GetSupervisorReportPage)
-		//
-		//	// Modal for HTMX
-		//	r.Get("/modal/{id}", supervisorReportHandler.GetSupervisorReportModal)
-		//
-		//})
 		// Upload routes
 		r.Get("/upload", handlers.ShowUploadPage)
 		r.Post("/api/upload", handlers.UploadFileHandler)
@@ -251,8 +227,6 @@ func SetupRoutes(db *sqlx.DB,
 		r.Get("/api/auth/user", authMiddleware.UserInfoHandler)
 
 		// Dashboard
-		//r.Get("/dashboard", handlers.DashboardHandler)
-
 		r.Get("/dashboard", dashboardHandlers.DashboardHandler)
 
 		// You can also create specific role routes if needed
@@ -280,8 +254,26 @@ func SetupRoutes(db *sqlx.DB,
 			r.Get("/", topicHandlers.ShowTopicRegistrationForm) // Alternative route
 		})
 
-		// API routes
+		// API routes - UPDATED SECTION
 		r.Route("/api", func(r chi.Router) {
+			// Document operations - ADD THESE LINES
+			r.Get("/documents/{id}/preview", uploadHandlers.DocumentPreviewHandler)
+			r.Get("/documents/{id}/download", uploadHandlers.DocumentDownloadHandler)
+
+			// Student-only upload routes - ADD THIS SECTION
+			r.Group(func(r chi.Router) {
+				r.Use(authMiddleware.RequireRole(auth.RoleStudent))
+				r.Post("/recommendation/upload", uploadHandlers.RecommendationUploadHandler)
+				r.Post("/video/upload", uploadHandlers.VideoUploadHandler)
+			})
+
+			// Source code routes - ADD THIS SECTION
+			r.Route("/source-code", func(r chi.Router) {
+				r.Post("/upload", sourceCodeHandler.UploadSourceCode)
+				r.Get("/status", sourceCodeHandler.GetUploadStatus)
+				r.Get("/health", sourceCodeHandler.GetSystemHealth)
+			})
+
 			// Topic API endpoints
 			r.Post("/topic/submit", topicHandlers.SubmitTopic)
 			r.Post("/topic/save-draft", topicHandlers.SaveDraft)
@@ -345,14 +337,6 @@ func SetupRoutes(db *sqlx.DB,
 			r.Get("/topic", topicHandlers.ShowTopicRegistrationForm) // Redirect to topic registration
 			r.Post("/topic/submit", topicHandlers.SubmitTopic)       // Legacy route
 		})
-
-		// Supervisor routes
-		//r.Route("/supervisor", func(r chi.Router) {
-		//r.Use(authMiddleware.RequireRole(auth.RoleSupervisor, auth.RoleReviewer))
-		//r.Get("/", handlers.SupervisorDashboardHandler)
-		//r.Get("/students", handlers.SupervisorStudentsHandler)
-		//	r.Get("/reports", handlers.SupervisorReportsHandler)
-		//})
 
 		// Department head routes
 		r.Route("/department", func(r chi.Router) {

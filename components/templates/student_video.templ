@@ -1,0 +1,200 @@
+// components/templates/student_video.templ
+package templates
+import (
+    "FinalProjectManagementApp/database"
+        "FinalProjectManagementApp/components/card"
+         "FinalProjectManagementApp/components/button"
+          "FinalProjectManagementApp/components/icon"
+          "fmt"
+)
+templ VideoUploadSection(data *StudentDashboardData) {
+    @card.Card() {
+        @card.Header() {
+            @card.Title() {
+                🎥 Video Presentation
+            }
+            @card.Description() {
+                Upload an optional video presentation of your thesis (recommended for defense preparation).
+            }
+        }
+        @card.Content() {
+            if data.VideoPresentation != nil {
+                @VideoUploaded(data.VideoPresentation)
+            } else {
+                @VideoUploadForm()
+            }
+        }
+    }
+}
+
+templ VideoUploaded(video *database.Document) {
+    <div class="space-y-4">
+        <!-- Video Status -->
+        <div class="flex items-center space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            @icon.Video(icon.Props{Size: 20, Class: "text-blue-600"})
+            <div>
+                <p class="font-medium text-blue-800">Video Uploaded</p>
+                <p class="text-sm text-blue-600">{ video.UploadedDate.Format("Jan 2, 2006 15:04") }</p>
+            </div>
+        </div>
+
+        <!-- Video Player/Preview -->
+        <div class="border rounded-lg p-4">
+            <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+             if video.FilePath != "" {
+                 <video controls class="w-full h-full rounded-lg">
+                     <source src={ video.FilePath } type="video/mp4" />
+                     Your browser does not support the video tag.
+                 </video>
+             } else {
+                    <div class="text-center">
+                        @icon.Video(icon.Props{Size: 48, Class: "mx-auto text-gray-400 mb-2"})
+                        <p class="text-gray-500">Video processing...</p>
+                    </div>
+                }
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="text-muted-foreground">Filename:</span>
+                    <span class="ml-2 font-medium">{ database.StringValue(video.OriginalFilename) }</span>
+                </div>
+                if video.FileSize != nil {
+                    <div>
+                        <span class="text-muted-foreground">Size:</span>
+                        <span class="ml-2 font-medium">{ formatFileSize(*video.FileSize) }</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex space-x-3">
+            @button.Button(button.Props{
+                Variant: button.VariantOutline,
+                Size: button.SizeIcon,
+                Attributes: templ.Attributes{
+                    "onclick": "replaceVideo()",
+                },
+            }) {
+                @icon.RefreshCw(icon.Props{Size: 16, Class: "mr-2"})
+                Replace Video
+            }
+            
+           if video.FilePath != "" {
+               @button.Button(button.Props{
+                   Variant: button.VariantOutline,
+                   Size: button.SizeIcon,
+                   Attributes: templ.Attributes{
+                       "onclick": fmt.Sprintf("window.open('%s', '_blank')", video.FilePath),
+                   },
+               }) {
+                    @icon.ExternalLink(icon.Props{Size: 16, Class: "mr-2"})
+                    Open Full Screen
+                }
+            }
+        </div>
+    </div>
+}
+
+templ VideoUploadForm() {
+    <div id="video-upload-container">
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+            @icon.Video(icon.Props{Size: 32, Class: "mx-auto text-gray-400 mb-4"})
+            <h3 class="text-lg font-medium mb-2">Upload Video Presentation</h3>
+            <p class="text-muted-foreground mb-4">
+                Upload a video presentation of your thesis work (optional but recommended).
+            </p>
+            
+            <form id="video-form" class="space-y-4">
+                <div>
+                    <input type="file" name="video" accept="video/*" required
+                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
+                    <p class="text-xs text-muted-foreground mt-1">Video files (MP4, AVI, MOV). Max size: 500MB</p>
+                </div>
+                
+                @button.Button(button.Props{
+                    Type: "submit",
+                    Variant: button.VariantDefault,
+                    Attributes: templ.Attributes{
+                        "id": "upload-video-btn",
+                    },
+                }) {
+                    @icon.Upload(icon.Props{Size: 16, Class: "mr-2"})
+                    Upload Video
+                }
+            </form>
+            
+            <!-- Upload Progress -->
+            <div id="video-progress" class="hidden mt-4">
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div id="video-progress-bar" class="bg-purple-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="video-status" class="text-sm text-muted-foreground mt-2">Uploading...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('video-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const uploadBtn = document.getElementById('upload-video-btn');
+            const progressContainer = document.getElementById('video-progress');
+            const progressBar = document.getElementById('video-progress-bar');
+            const statusText = document.getElementById('video-status');
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            progressContainer.classList.remove('hidden');
+            
+            try {
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                        statusText.textContent = `Uploading... ${Math.round(percentComplete)}%`;
+                    }
+                };
+                
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const result = JSON.parse(xhr.responseText);
+                        if (result.success) {
+                            statusText.textContent = 'Upload completed! Processing video...';
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            throw new Error(result.error || 'Upload failed');
+                        }
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    throw new Error('Network error');
+                };
+                
+                xhr.open('POST', '/api/video/upload');
+                xhr.send(formData);
+                
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Video';
+                progressContainer.classList.add('hidden');
+            }
+        });
+        
+        function replaceVideo() {
+            if (confirm('Replace your current video presentation?')) {
+                window.location.reload();
+            }
+        }
+    </script>
+}

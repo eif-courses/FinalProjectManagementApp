@@ -1,0 +1,177 @@
+// components/templates/student_recommendation.templ
+package templates
+import (
+    "FinalProjectManagementApp/database"
+        "FinalProjectManagementApp/components/card"
+         "FinalProjectManagementApp/components/button"
+          "FinalProjectManagementApp/components/icon"
+          "fmt"
+)
+templ CompanyRecommendationSection(data *StudentDashboardData) {
+    @card.Card() {
+        @card.Header() {
+            @card.Title() {
+                🏢 Company Recommendation
+            }
+            @card.Description() {
+                Upload your company recommendation letter (PDF format only).
+            }
+        }
+        @card.Content() {
+            if data.CompanyRecommendation != nil {
+                @RecommendationUploaded(data.CompanyRecommendation)
+            } else {
+                @RecommendationUploadForm()
+            }
+        }
+    }
+}
+
+templ RecommendationUploaded(doc *database.Document) {
+    <div class="space-y-4">
+        <!-- Status -->
+        <div class="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            @icon.FileText(icon.Props{Size: 20, Class: "text-green-600"})
+            <div>
+                <p class="font-medium text-green-800">Recommendation Uploaded</p>
+                <p class="text-sm text-green-600">{ doc.UploadedDate.Format("Jan 2, 2006 15:04") }</p>
+            </div>
+        </div>
+
+        <!-- Document Preview -->
+        <div class="border rounded-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="font-medium">Document Details</h4>
+                <div class="flex space-x-2">
+                    @button.Button(button.Props{
+                        Variant: button.VariantOutline,
+                        Size: button.SizeIcon,
+                        Attributes: templ.Attributes{
+                            "onclick": "previewDocument('" + fmt.Sprintf("%d", doc.ID) + "')",
+                        },
+                    }) {
+                        @icon.Eye(icon.Props{Size: 16, Class: "mr-2"})
+                        Preview
+                    }
+                    @button.Button(button.Props{
+                        Variant: button.VariantOutline,
+                        Size: button.SizeIcon,
+                        Attributes: templ.Attributes{
+                            "onclick": "downloadDocument('" + fmt.Sprintf("%d", doc.ID) + "')",
+                        },
+                    }) {
+                        @icon.Download(icon.Props{Size: 16, Class: "mr-2"})
+                        Download
+                    }
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="text-muted-foreground">Filename:</span>
+                    <span class="ml-2 font-medium">{ database.StringValue(doc.OriginalFilename) }</span>
+                </div>
+                if doc.FileSize != nil {
+                    <div>
+                        <span class="text-muted-foreground">Size:</span>
+                        <span class="ml-2 font-medium">{ formatFileSize(*doc.FileSize) }</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Replace Option -->
+        <div class="pt-2 border-t">
+            @button.Button(button.Props{
+                Variant: button.VariantOutline,
+                Size: button.SizeIcon,
+                Attributes: templ.Attributes{
+                    "onclick": "showReplaceForm()",
+                },
+            }) {
+                @icon.RefreshCw(icon.Props{Size: 16, Class: "mr-2"})
+                Replace Document
+            }
+        </div>
+    </div>
+}
+
+templ RecommendationUploadForm() {
+    <div id="recommendation-upload-container">
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+            @icon.FileText(icon.Props{Size: 32, Class: "mx-auto text-gray-400 mb-4"})
+            <h3 class="text-lg font-medium mb-2">Upload Company Recommendation</h3>
+            <p class="text-muted-foreground mb-4">
+                Upload your company recommendation letter in PDF format.
+            </p>
+
+            <form id="recommendation-form" class="space-y-4">
+                <div>
+                    <input type="file" name="recommendation" accept=".pdf" required
+                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <p class="text-xs text-muted-foreground mt-1">PDF files only. Max size: 10MB</p>
+                </div>
+
+                @button.Button(button.Props{
+                    Type: "submit",
+                    Variant: button.VariantDefault,
+                    Attributes: templ.Attributes{
+                        "id": "upload-recommendation-btn",
+                    },
+                }) {
+                    @icon.Upload(icon.Props{Size: 16, Class: "mr-2"})
+                    Upload Recommendation
+                }
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('recommendation-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const uploadBtn = document.getElementById('upload-recommendation-btn');
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch('/api/recommendation/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show success message and reload
+                    alert('Recommendation uploaded successfully!');
+                    window.location.reload();
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Recommendation';
+            }
+        });
+
+        function previewDocument(docId) {
+            window.open('/api/documents/' + docId + '/preview', '_blank');
+        }
+
+        function downloadDocument(docId) {
+            window.location.href = '/api/documents/' + docId + '/download';
+        }
+
+        function showReplaceForm() {
+            if (confirm('Replace your current recommendation document?')) {
+                document.getElementById('recommendation-upload-container').innerHTML = `
+                    <!-- Replacement form content here -->
+                `;
+            }
+        }
+    </script>
+}

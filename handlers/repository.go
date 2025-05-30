@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -37,6 +38,8 @@ func NewRepositoryHandler(db *sqlx.DB, githubConfig *database.GitHubConfig) *Rep
 
 // ViewStudentRepository displays the repository page for supervisors/reviewers
 func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http.Request) {
+	log.Printf("DEBUG: Repository view requested for URL: %s", r.URL.Path)
+
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
@@ -44,8 +47,11 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 	}
 
 	studentIDStr := chi.URLParam(r, "studentId")
+	log.Printf("DEBUG: Student ID extracted: %s", studentIDStr)
+
 	studentID, err := strconv.Atoi(studentIDStr)
 	if err != nil {
+		log.Printf("ERROR: Invalid student ID: %s", studentIDStr)
 		http.Error(w, "Invalid student ID", http.StatusBadRequest)
 		return
 	}
@@ -951,8 +957,21 @@ func (h *RepositoryHandler) getFileIcon(filename, fileType string) string {
 		return "📁"
 	}
 
+	// Handle specific filenames first
+	lower := strings.ToLower(filename)
+	if strings.Contains(lower, "readme") {
+		return "📖"
+	}
+	if strings.Contains(lower, "submission") {
+		return "📋"
+	}
+
+	// Handle by extension
 	ext := strings.ToLower(filepath.Ext(filename))
 	icons := map[string]string{
+		".md":         "📝",
+		".markdown":   "📝",
+		".txt":        "📄",
 		".go":         "🐹",
 		".py":         "🐍",
 		".js":         "💛",
@@ -966,7 +985,6 @@ func (h *RepositoryHandler) getFileIcon(filename, fileType string) string {
 		".html":       "🌐",
 		".css":        "🎨",
 		".scss":       "🎨",
-		".md":         "📝",
 		".json":       "📋",
 		".xml":        "📄",
 		".yaml":       "📄",
@@ -974,8 +992,6 @@ func (h *RepositoryHandler) getFileIcon(filename, fileType string) string {
 		".sql":        "🗄️",
 		".dockerfile": "🐳",
 		".gitignore":  "🙈",
-		".txt":        "📄",
-		".log":        "📜",
 		".env":        "⚙️",
 		".config":     "⚙️",
 		".toml":       "📄",
@@ -993,21 +1009,6 @@ func (h *RepositoryHandler) getFileIcon(filename, fileType string) string {
 
 	if icon, exists := icons[ext]; exists {
 		return icon
-	}
-
-	// Special filename checks
-	lower := strings.ToLower(filename)
-	if strings.Contains(lower, "readme") {
-		return "📖"
-	}
-	if strings.Contains(lower, "license") {
-		return "📜"
-	}
-	if strings.Contains(lower, "makefile") {
-		return "🔧"
-	}
-	if strings.Contains(lower, "dockerfile") {
-		return "🐳"
 	}
 
 	return "📄"
@@ -1113,28 +1114,31 @@ func (h *RepositoryHandler) getStatusClass(status string) string {
 func (h *RepositoryHandler) generateRepositorySection(contents *RepositoryContents) string {
 	if contents.Error != "" {
 		return fmt.Sprintf(`
-			<div class="stat-card">
-				<h2 class="text-lg font-semibold mb-3 text-gray-900">📁 Repository Files</h2>
-				<div class="error-message">
-					<div class="flex items-center mb-2">
-						<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-						</svg>
-						<span class="font-medium">Unable to load repository contents</span>
-					</div>
-					<p class="text-sm">%s</p>
-					<p class="text-sm mt-2 opacity-75">The repository may be private or the access token may not have sufficient permissions.</p>
-				</div>
-			</div>`, contents.Error)
+            <div class="stat-card">
+                <h2 class="text-lg font-semibold mb-3 text-gray-900">📁 Repository Files</h2>
+                <div class="error-message">
+                    <div class="flex items-center mb-2">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="font-medium">Unable to load repository contents</span>
+                    </div>
+                    <p class="text-sm">%s</p>
+                    <p class="text-sm mt-2 opacity-75">The repository may be private or the access token may not have sufficient permissions.</p>
+                </div>
+            </div>`, contents.Error)
 	}
 
+	fileListHTML := h.generateFileListHTML(contents.Files)
+
 	return fmt.Sprintf(`
-		<div class="stat-card">
-			<h2 class="text-lg font-semibold mb-3 text-gray-900">📁 Repository Files</h2>
-			<div class="border rounded-lg file-tree overflow-hidden">
-				%s
-			</div>
-		</div>`, h.generateFileListHTML(contents.Files))
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-900">📁 Repository Files</h2>
+                <span class="text-sm text-gray-500">%d files</span>
+            </div>
+            %s
+        </div>`, len(contents.Files), fileListHTML)
 }
 
 func (h *RepositoryHandler) generateLanguagesSection(languages map[string]int) string {
@@ -1181,81 +1185,116 @@ func (h *RepositoryHandler) generateCommitsSection(commits []CommitInfo) string 
 func (h *RepositoryHandler) generateFileListHTML(files []RepositoryFile) string {
 	if len(files) == 0 {
 		return `<div class="p-6 text-center text-gray-500">
-			<svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-			</svg>
-			<p>No files found or unable to access repository</p>
-		</div>`
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p>No files found or unable to access repository</p>
+        </div>`
 	}
 
-	html := ""
-	for _, file := range files {
+	html := `<div class="border border-gray-300 rounded-lg overflow-hidden bg-white">`
+
+	for i, file := range files {
 		icon := h.getFileIcon(file.Name, file.Type)
 
 		sizeStr := ""
-		if file.Type != "dir" {
-			sizeStr = fmt.Sprintf(`<span class="text-gray-400 text-xs">%s</span>`, h.formatFileSize(file.Size))
+		if file.Type == "file" {
+			sizeStr = fmt.Sprintf(`<span class="text-xs text-gray-500 ml-auto">%s</span>`, h.formatFileSize(file.Size))
+		} else {
+			sizeStr = `<span class="text-xs text-gray-500 ml-auto">Directory</span>`
+		}
+
+		// Add border between items
+		borderClass := ""
+		if i > 0 {
+			borderClass = "border-t border-gray-200"
 		}
 
 		html += fmt.Sprintf(`
-			<div class="file-item flex items-center justify-between" data-file-path="%s" data-file-type="%s">
-				<div class="flex items-center flex-1 min-w-0">
-					<span class="mr-3 text-lg">%s</span>
-					%s
-				</div>
-				<div class="ml-4 flex items-center gap-2">
-					%s
-					<a href="%s" target="_blank" class="text-xs text-gray-500 hover:text-blue-600">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-						</svg>
-					</a>
-				</div>
-			</div>`,
-			file.Path, file.Type, icon,
-			h.generateFileLink(file),
-			sizeStr, file.URL)
+            <div class="file-item %s flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors" 
+                 data-file-path="%s" 
+                 data-file-type="%s"
+                 onclick="handleFileClick('%s', '%s')">
+                <div class="flex items-center flex-1 min-w-0">
+                    <span class="text-lg mr-3" title="%s">%s</span>
+                    <div class="flex-1 min-w-0">
+                        <span class="text-blue-600 hover:text-blue-800 font-medium truncate block">%s</span>
+                    </div>
+                    %s
+                </div>
+                <div class="flex items-center ml-4 space-x-2">
+                    <a href="%s" target="_blank" 
+                       class="text-gray-400 hover:text-blue-600 transition-colors" 
+                       onclick="event.stopPropagation();"
+                       title="View on GitHub">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>`,
+			borderClass,
+			file.Path,
+			file.Type,
+			file.Path,
+			file.Type,
+			file.Type,
+			icon,
+			file.Name,
+			sizeStr,
+			file.URL)
 	}
 
-	// Add JavaScript for file/directory navigation
+	html += `</div>`
+
+	// Add improved JavaScript
 	html += `
-	<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			// Get student ID from URL
-			const studentId = window.location.pathname.split('/')[3];
-			
-			// Make file items clickable
-			document.querySelectorAll('.file-item').forEach(item => {
-				item.style.cursor = 'pointer';
-				item.addEventListener('click', function(e) {
-					if (e.target.tagName === 'A') return; // Don't interfere with external links
-					
-					const filePath = this.dataset.filePath;
-					const fileType = this.dataset.fileType;
-					
-					if (fileType === 'dir') {
-						// Navigate to directory
-						window.location.href = '/repository/student/' + studentId + '/browse/' + filePath;
-					} else {
-						// View file content
-						window.open('/repository/student/' + studentId + '/file/' + filePath, '_blank');
-					}
-				});
-				
-				item.addEventListener('mouseenter', function() {
-					this.style.backgroundColor = '#f3f4f6';
-				});
-				
-				item.addEventListener('mouseleave', function() {
-					this.style.backgroundColor = '';
-				});
-			});
-		});
-	</script>`
+    <script>
+        function handleFileClick(filePath, fileType) {
+            console.log('File clicked:', {filePath, fileType});
+            
+            // Get student ID from current URL
+            const currentPath = window.location.pathname;
+            const pathParts = currentPath.split('/');
+            const studentId = pathParts[3]; // /repository/student/[ID]
+            
+            console.log('Current path:', currentPath);
+            console.log('Student ID:', studentId);
+            
+            if (!studentId) {
+                console.error('Could not extract student ID from path');
+                return;
+            }
+            
+            if (fileType === 'dir') {
+                // Navigate to directory
+                const newUrl = '/repository/student/' + studentId + '/browse/' + encodeURIComponent(filePath);
+                console.log('Navigating to directory:', newUrl);
+                window.location.href = newUrl;
+            } else {
+                // View file content in new tab
+                const fileUrl = '/repository/student/' + studentId + '/file/' + encodeURIComponent(filePath);
+                console.log('Opening file in new tab:', fileUrl);
+                window.open(fileUrl, '_blank');
+            }
+        }
+        
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Repository file list initialized');
+            console.log('Found file items:', document.querySelectorAll('.file-item').length);
+            
+            // Add keyboard navigation support
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.classList.contains('file-item')) {
+                    e.target.click();
+                }
+            });
+        });
+    </script>`
 
 	return html
 }
-
 func (h *RepositoryHandler) generateFileLink(file RepositoryFile) string {
 	if file.Type == "file" {
 		return fmt.Sprintf(`
@@ -1294,6 +1333,7 @@ func (h *RepositoryHandler) truncateString(s string, length int) string {
 }
 
 // ViewFileContent displays file content in the web interface
+// FIX 2: Update ViewFileContent method
 func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -1308,7 +1348,9 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	filePath := chi.URLParam(r, "*") // Capture the full file path
+	// FIXED: Proper wildcard parameter extraction
+	filePath := chi.URLParam(r, "*")
+	log.Printf("DEBUG: Extracted file path from wildcard: '%s'", filePath)
 
 	if !h.canViewRepository(user, studentID) {
 		http.Error(w, "Access denied", http.StatusForbidden)
@@ -1916,6 +1958,7 @@ func (h *RepositoryHandler) escapeHTML(content string) string {
 }
 
 // ViewStudentRepositoryPath displays a specific directory path
+// FIX 1: Update ViewStudentRepositoryPath method
 func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -1930,11 +1973,9 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 		return
 	}
 
-	// Get the directory path from the wildcard
+	// FIXED: Proper wildcard parameter extraction
 	dirPath := chi.URLParam(r, "*")
-	if dirPath == "" {
-		dirPath = ""
-	}
+	log.Printf("DEBUG: Extracted path from wildcard: '%s'", dirPath)
 
 	if !h.canViewRepository(user, studentID) {
 		http.Error(w, "Access denied", http.StatusForbidden)
@@ -1961,7 +2002,7 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 	// Get repository contents for specific path
 	repoContents, err := h.getRepositoryContentsForPath(repoInfo, dirPath)
 	if err != nil {
-		fmt.Printf("Warning: Could not fetch repository contents: %v\n", err)
+		log.Printf("Warning: Could not fetch repository contents for path '%s': %v", dirPath, err)
 		repoContents = &RepositoryContents{
 			Files:   []RepositoryFile{},
 			Commits: []CommitInfo{},
@@ -1975,6 +2016,8 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 }
 
 // GetRepositoryPathAPI returns repository data for a specific path as JSON
+
+// FIX 3: Update GetRepositoryPathAPI method
 func (h *RepositoryHandler) GetRepositoryPathAPI(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -1989,7 +2032,11 @@ func (h *RepositoryHandler) GetRepositoryPathAPI(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Get path from query parameter OR wildcard
 	dirPath := r.URL.Query().Get("path")
+	if dirPath == "" {
+		dirPath = chi.URLParam(r, "*")
+	}
 
 	if !h.canViewRepository(user, studentID) {
 		w.WriteHeader(http.StatusForbidden)
@@ -2022,6 +2069,7 @@ func (h *RepositoryHandler) GetRepositoryPathAPI(w http.ResponseWriter, r *http.
 		"path":       dirPath,
 	})
 }
+
 func (h *RepositoryHandler) getRepositoryContentsForPath(repoInfo *database.Document, dirPath string) (*RepositoryContents, error) {
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
 		return nil, fmt.Errorf("no repository URL available")
@@ -2029,18 +2077,24 @@ func (h *RepositoryHandler) getRepositoryContentsForPath(repoInfo *database.Docu
 
 	repoName := h.extractRepoName(*repoInfo.RepositoryURL)
 	if repoName == "" {
-		return nil, fmt.Errorf("could not extract repository name from URL")
+		return nil, fmt.Errorf("could not extract repository name from URL: %s", *repoInfo.RepositoryURL)
 	}
+
+	log.Printf("DEBUG: Fetching repository contents for repo '%s', path '%s'", repoName, dirPath)
 
 	// Get repository files for specific path
 	files, err := h.getRepositoryFilesForPath(repoName, dirPath)
 	if err != nil {
+		log.Printf("ERROR: Failed to get repository files: %v", err)
 		return nil, fmt.Errorf("failed to get repository files: %w", err)
 	}
+
+	log.Printf("DEBUG: Successfully fetched %d files from GitHub", len(files))
 
 	// Get recent commits (same as before)
 	commits, err := h.getRepositoryCommits(repoName)
 	if err != nil {
+		log.Printf("WARNING: Failed to get commits: %v", err)
 		commits = []CommitInfo{} // Don't fail on commits error
 	}
 
