@@ -73,9 +73,12 @@ func SetupRoutes(db *sqlx.DB,
 		http.ServeFile(w, r, "static/upload_test.html")
 	})
 
+	// UPDATE: Add the new endpoints
 	r.Route("/api/source-code", func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
 		r.Post("/upload", sourceCodeHandler.UploadSourceCode)
+		r.Get("/status", sourceCodeHandler.GetUploadStatus) // NEW
+		r.Get("/health", sourceCodeHandler.GetSystemHealth) // NEW
 	})
 
 	// Public routes

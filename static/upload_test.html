@@ -3,80 +3,466 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Source Code Upload</title>
+    <title>Thesis Source Code Upload - GitHub Integration</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        button { background: #007cba; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #005a87; }
-        .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
-        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .loading { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f8f9fa;
+            line-height: 1.6;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007cba;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2.2rem;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+
+        .info-box h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+        }
+
+        .info-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .info-box li {
+            margin-bottom: 8px;
+        }
+
+        .system-status {
+            display: flex;
+            justify-content: space-between;
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid #007cba;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007cba;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #007cba;
+            box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1);
+        }
+
+        .file-input {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input input[type=file] {
+            opacity: 0;
+            position: absolute;
+            z-index: -1;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px;
+            border: 2px dashed #007cba;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .file-input-label:hover {
+            background: #e9ecef;
+            border-color: #005a87;
+        }
+
+        .file-selected {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #007cba, #005a87);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 124, 186, 0.3);
+        }
+
+        .upload-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left-color: #17a2b8;
+        }
+
+        .queued {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        .result h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+        }
+
+        .result p {
+            margin: 8px 0;
+        }
+
+        .result strong {
+            font-weight: 600;
+        }
+
+        .result a {
+            color: #007cba;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .result a:hover {
+            text-decoration: underline;
+        }
+
+        .action-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007cba, #00a8cc);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .pulsing {
+            animation: pulse 2s infinite;
+        }
+
+        .small {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .github-info {
+            background: #f6f8fa;
+            border: 1px solid #d1d5da;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .github-info h4 {
+            margin: 0 0 10px 0;
+            color: #24292e;
+        }
     </style>
 </head>
 <body>
-<h1>🎓 Test Source Code Upload</h1>
+<div class="container">
+    <div class="header">
+        <h1>🎓 Thesis Source Code Upload</h1>
+        <p class="subtitle">GitHub Integration • Automatic Processing • Queue Management</p>
+    </div>
 
-<div style="background: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-    <h3>📋 Test Instructions:</h3>
-    <ol>
-        <li>Create a test ZIP file with some source code files</li>
-        <li>Fill in the form below with test student information</li>
-        <li>Upload the ZIP file and check the results</li>
-        <li>Check your Azure DevOps organization for the created repository</li>
-    </ol>
+    <div class="github-info">
+        <h4>🔗 GitHub Integration Active</h4>
+        <p>Your code will be uploaded to a private GitHub repository with automatic filtering and organization. Each student gets their own repository with version history.</p>
+    </div>
+
+    <div class="system-status" id="systemStatus">
+        <div class="status-item">
+            <div class="status-value" id="queueLength">--</div>
+            <div class="status-label">Queue Length</div>
+        </div>
+        <div class="status-item">
+            <div class="status-value" id="activeUploads">--</div>
+            <div class="status-label">Active Uploads</div>
+        </div>
+        <div class="status-item">
+            <div class="status-value" id="systemLoad">--</div>
+            <div class="status-label">System Load</div>
+        </div>
+        <div class="status-item">
+            <div class="status-value" id="systemHealth">--</div>
+            <div class="status-label">Status</div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h3>📋 Upload Instructions</h3>
+        <ul>
+            <li><strong>File Format:</strong> ZIP file containing your complete thesis source code</li>
+            <li><strong>Automatic Filtering:</strong> Dependencies, build artifacts, and cache files will be automatically removed</li>
+            <li><strong>One Repository Per Student:</strong> Updates existing repository if you've uploaded before</li>
+            <li><strong>Queue System:</strong> During busy periods, uploads are queued and processed automatically</li>
+            <li><strong>GitHub Repository:</strong> Creates private repository in the 'eifbd' organization</li>
+            <li><strong>Version History:</strong> All submissions are tracked with full Git history</li>
+        </ul>
+    </div>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="name">👤 Student Name:</label>
+            <input type="text" id="name" name="name" value="John Doe" required
+                   placeholder="Enter your full name">
+        </div>
+
+        <div class="form-group">
+            <label for="student_id">🆔 Student ID:</label>
+            <input type="text" id="student_id" name="student_id" value="CS2021001" required
+                   placeholder="e.g., CS2021001">
+        </div>
+
+        <div class="form-group">
+            <label for="email">📧 Email Address:</label>
+            <input type="email" id="email" name="email" value="john.doe@student.viko.lt" required
+                   placeholder="your.email@student.viko.lt">
+        </div>
+
+        <div class="form-group">
+            <label for="thesis_title">📝 Thesis Title:</label>
+            <input type="text" id="thesis_title" name="thesis_title"
+                   value="Advanced Web Application with Modern Technologies" required
+                   placeholder="Enter your thesis title">
+        </div>
+
+        <div class="form-group">
+            <label for="source_code">📁 Source Code (ZIP file):</label>
+            <div class="file-input">
+                <input type="file" id="source_code" name="source_code" accept=".zip" required>
+                <label for="source_code" class="file-input-label" id="fileLabel">
+                    📎 Click to select ZIP file or drag & drop here
+                    <div class="small">Maximum size: No limit • Automatic filtering applied</div>
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="upload-btn" id="uploadBtn">
+            🚀 Upload Thesis Source Code
+        </button>
+    </form>
+
+    <div id="result"></div>
 </div>
 
-<form id="uploadForm" enctype="multipart/form-data">
-    <div class="form-group">
-        <label for="name">Student Name:</label>
-        <input type="text" id="name" name="name" value="John Doe" required>
-    </div>
-
-    <div class="form-group">
-        <label for="student_id">Student ID:</label>
-        <input type="text" id="student_id" name="student_id" value="CS2021001" required>
-    </div>
-
-    <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" value="john.doe@student.university.edu" required>
-    </div>
-
-    <div class="form-group">
-        <label for="thesis_title">Thesis Title:</label>
-        <input type="text" id="thesis_title" name="thesis_title"
-               value="Testing Source Code Upload System" required>
-    </div>
-
-    <div class="form-group">
-        <label for="source_code">Source Code (ZIP file):</label>
-        <input type="file" id="source_code" name="source_code" accept=".zip" required>
-        <small>Maximum file size: 100MB</small>
-    </div>
-
-    <button type="submit">📤 Upload Source Code</button>
-</form>
-
-<div id="result"></div>
-
 <script>
+    // System status monitoring
+    async function updateSystemStatus() {
+        try {
+            const response = await fetch('/api/source-code/health');
+            const data = await response.json();
+
+            document.getElementById('queueLength').textContent = data.queue_length || 0;
+            document.getElementById('activeUploads').textContent = data.active_uploads || 0;
+            document.getElementById('systemLoad').textContent = data.load_percentage || '0%';
+
+            const healthElement = document.getElementById('systemHealth');
+            healthElement.textContent = data.status || 'Unknown';
+
+            // Color coding for system status
+            const statusColors = {
+                'healthy': '#28a745',
+                'busy': '#ffc107',
+                'overloaded': '#dc3545'
+            };
+
+            healthElement.style.color = statusColors[data.status] || '#6c757d';
+
+        } catch (error) {
+            console.log('Could not fetch system status');
+        }
+    }
+
+    // File input handling
+    const fileInput = document.getElementById('source_code');
+    const fileLabel = document.getElementById('fileLabel');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                alert('Please select a ZIP file only.');
+                e.target.value = '';
+                return;
+            }
+
+            const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+            fileLabel.innerHTML = `
+                    <span class="file-selected">✅ ${file.name}</span>
+                    <div class="small">Size: ${sizeMB} MB • Ready to upload</div>
+                `;
+            fileLabel.style.borderColor = '#28a745';
+            fileLabel.style.background = '#f8fff9';
+        }
+    });
+
+    // Form submission
     document.getElementById('uploadForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const resultDiv = document.getElementById('result');
+        const uploadBtn = document.getElementById('uploadBtn');
         const formData = new FormData(this);
 
-        // Show loading
+        // Disable form
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '⏳ Processing...';
+
+        // Show loading state
         resultDiv.innerHTML = `
-                <div class="result loading">
-                    <h3>⏳ Uploading...</h3>
-                    <p>Processing your submission. This may take a few minutes...</p>
+                <div class="result loading pulsing">
+                    <h3>⏳ Processing Your Upload</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <p>Uploading and filtering your source code...</p>
+                    <p class="small">This may take a few minutes depending on file size and system load.</p>
                 </div>
             `;
+
+        // Animate progress bar
+        let progress = 0;
+        const progressBar = document.querySelector('.progress-fill');
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            progressBar.style.width = progress + '%';
+        }, 500);
 
         try {
             const response = await fetch('/api/source-code/upload', {
@@ -84,40 +470,177 @@
                 body: formData
             });
 
+            clearInterval(progressInterval);
+            progressBar.style.width = '100%';
+
             const data = await response.json();
 
             if (data.success) {
-                resultDiv.innerHTML = `
-                        <div class="result success">
-                            <h3>✅ Upload Successful!</h3>
-                            <p><strong>Submission ID:</strong> ${data.submission_id}</p>
-                            <p><strong>Repository:</strong> <a href="${data.repository_info.web_url}" target="_blank">${data.repository_info.name}</a></p>
-                            <p><strong>Files Uploaded:</strong> ${data.commit_info.files_count}</p>
-                            <p><strong>Commit ID:</strong> ${data.commit_info.commit_id}</p>
-                            ${data.validation.warnings.length > 0 ?
-                    `<p><strong>Warnings:</strong> ${data.validation.warnings.join(', ')}</p>` : ''}
-                        </div>
-                    `;
+                if (data.status === 'queued') {
+                    // Upload was queued
+                    resultDiv.innerHTML = `
+                            <div class="result queued">
+                                <h3>📋 Upload Queued Successfully!</h3>
+                                <p><strong>Queue Position:</strong> #${data.queue_position}</p>
+                                <p><strong>Estimated Wait Time:</strong> ${data.estimated_wait}</p>
+                                <p><strong>Submission ID:</strong> <code>${data.submission_id}</code></p>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${Math.max(0, 100 - data.queue_position * 10)}%"></div>
+                                </div>
+                                <p>Your upload will be processed automatically. You can safely close this page or continue using the system.</p>
+                                <div class="action-buttons">
+                                    <button class="btn-secondary" onclick="checkStatus('${data.submission_id}')">🔍 Check Status</button>
+                                    <button class="btn-secondary" onclick="location.reload()">🔄 Upload Another</button>
+                                </div>
+                            </div>
+                        `;
+                } else {
+                    // Immediate success
+                    resultDiv.innerHTML = `
+                            <div class="result success">
+                                <h3>✅ Upload Completed Successfully!</h3>
+                                <p><strong>Repository:</strong> <a href="${data.repository_info.web_url}" target="_blank">${data.repository_info.name} 🔗</a></p>
+                                <p><strong>Files Processed:</strong> ${data.commit_info.files_count} files uploaded</p>
+                                <p><strong>Submission ID:</strong> <code>${data.submission_id}</code></p>
+
+                                ${data.filter_info ? `
+                                <div class="small" style="margin-top: 15px; padding: 10px; background: rgba(40, 167, 69, 0.1); border-radius: 4px;">
+                                    <strong>📊 Processing Summary:</strong><br>
+                                    Original: ${data.filter_info.total_files_in_zip} files (${(data.filter_info.original_size / 1024 / 1024).toFixed(1)} MB)<br>
+                                    Filtered: ${data.filter_info.files_after_filter} files (${(data.filter_info.size_after_filter / 1024 / 1024).toFixed(1)} MB)<br>
+                                    Removed: ${data.filter_info.files_skipped} files (dependencies, cache, etc.)
+                                </div>
+                                ` : ''}
+
+                                ${data.validation && data.validation.warnings && data.validation.warnings.length > 0 ? `
+                                <div class="small" style="margin-top: 10px;">
+                                    <strong>⚠️ Warnings:</strong> ${data.validation.warnings.join(', ')}
+                                </div>
+                                ` : ''}
+
+                                <div class="action-buttons">
+                                    <a href="${data.repository_info.web_url}" target="_blank" class="btn-secondary">👀 View Repository</a>
+                                    <button class="btn-secondary" onclick="location.reload()">📤 Upload Another</button>
+                                </div>
+                            </div>
+                        `;
+                }
             } else {
                 resultDiv.innerHTML = `
                         <div class="result error">
                             <h3>❌ Upload Failed</h3>
                             <p><strong>Error:</strong> ${data.error}</p>
-                            ${data.validation && data.validation.errors ?
-                    `<p><strong>Validation Issues:</strong> ${data.validation.errors.join(', ')}</p>` : ''}
+
+                            ${data.validation && data.validation.errors ? `
+                            <div class="small" style="margin-top: 10px;">
+                                <strong>Validation Issues:</strong>
+                                <ul style="margin: 5px 0; padding-left: 20px;">
+                                    ${data.validation.errors.map(error => `<li>${error}</li>`).join('')}
+                                </ul>
+                            </div>
+                            ` : ''}
+
+                            <div class="action-buttons">
+                                <button class="btn-secondary" onclick="location.reload()">🔄 Try Again</button>
+                                <button class="btn-secondary" onclick="updateSystemStatus()">📊 Check System Status</button>
+                            </div>
                         </div>
                     `;
             }
         } catch (error) {
+            clearInterval(progressInterval);
             resultDiv.innerHTML = `
                     <div class="result error">
                         <h3>❌ Network Error</h3>
                         <p><strong>Error:</strong> ${error.message}</p>
-                        <p>Please check if the server is running and try again.</p>
+                        <p>Please check your connection and ensure the server is running.</p>
+                        <div class="action-buttons">
+                            <button class="btn-secondary" onclick="location.reload()">🔄 Reload Page</button>
+                            <button class="btn-secondary" onclick="updateSystemStatus()">📊 Check System</button>
+                        </div>
                     </div>
                 `;
+        } finally {
+            // Re-enable form
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '🚀 Upload Thesis Source Code';
         }
     });
+
+    // Status checking function
+    async function checkStatus(submissionId) {
+        try {
+            const response = await fetch(`/api/source-code/status?id=${submissionId}`);
+            const data = await response.json();
+
+            alert(`📊 System Status Update:
+
+Queue Length: ${data.queue_length}
+Active Uploads: ${data.active_uploads}
+System Status: ${data.system_status}
+
+Your submission ID: ${submissionId}`);
+
+            // Refresh system status
+            updateSystemStatus();
+
+        } catch (error) {
+            alert('❌ Could not check status. Please try again.');
+        }
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSystemStatus();
+
+        // Update status every 30 seconds
+        setInterval(updateSystemStatus, 30000);
+
+        console.log('🎓 Thesis Upload System Ready');
+        console.log('📡 GitHub Integration: Active');
+        console.log('🔄 Auto-refresh: Every 30 seconds');
+    });
+
+    // Drag and drop support
+    const dropZone = document.querySelector('.file-input-label');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+        dropZone.style.background = '#e3f2fd';
+        dropZone.style.borderColor = '#2196f3';
+    }
+
+    function unhighlight() {
+        dropZone.style.background = '#f8f9fa';
+        dropZone.style.borderColor = '#007cba';
+    }
+
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            document.getElementById('source_code').files = files;
+            const event = new Event('change', { bubbles: true });
+            document.getElementById('source_code').dispatchEvent(event);
+        }
+    }
 </script>
 </body>
 </html>

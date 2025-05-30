@@ -2,10 +2,18 @@
 package handlers
 
 import (
+	"FinalProjectManagementApp/database"
 	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"io"
 	"log"
 	"mime/multipart"
@@ -14,48 +22,92 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
-
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
-
-	"FinalProjectManagementApp/database"
 )
 
+// Add these structs at the top after your existing imports
+type UploadRequest struct {
+	ID              string
+	ResponseChan    chan *database.SubmissionResult
+	StudentInfo     *database.StudentInfo
+	File            multipart.File
+	Header          *multipart.FileHeader
+	StudentRecordID int
+}
+
+// Update your existing SourceCodeHandler struct
 type SourceCodeHandler struct {
 	db           *sqlx.DB
 	githubConfig *database.GitHubConfig
 	client       *http.Client
+
+	// ADD these new fields:
+	uploadQueue   chan *UploadRequest
+	activeUploads sync.Map
+	maxConcurrent int
 }
 
+// UPDATE your existing NewSourceCodeHandler function
 func NewSourceCodeHandler(db *sqlx.DB, githubConfig *database.GitHubConfig) *SourceCodeHandler {
-	return &SourceCodeHandler{
+	handler := &SourceCodeHandler{
 		db:           db,
 		githubConfig: githubConfig,
-		client:       &http.Client{Timeout: 30 * time.Second},
+		client:       &http.Client{Timeout: 60 * time.Second},
+
+		// ADD these:
+		uploadQueue:   make(chan *UploadRequest, 50),
+		maxConcurrent: 5,
+	}
+
+	// ADD: Start upload workers
+	for i := 0; i < handler.maxConcurrent; i++ {
+		go handler.uploadWorker(i)
+	}
+
+	return handler
+}
+
+// ADD this new method
+func (h *SourceCodeHandler) uploadWorker(workerID int) {
+	log.Printf("Upload worker %d started", workerID)
+
+	for req := range h.uploadQueue {
+		log.Printf("Worker %d processing upload for student %s", workerID, req.StudentInfo.StudentID)
+
+		// Simple delay to avoid overwhelming GitHub
+		time.Sleep(10 * time.Second)
+
+		result := h.processSourceCodeUpload(req.StudentRecordID, req.ID, req.File, req.Header, req.StudentInfo)
+
+		req.ResponseChan <- result
+		close(req.ResponseChan)
+		h.activeUploads.Delete(req.ID)
+
+		log.Printf("Worker %d completed upload for student %s", workerID, req.StudentInfo.StudentID)
 	}
 }
 
-// ===== MAIN UPLOAD HANDLER =====
+// REPLACE your existing UploadSourceCode function with this:
 func (h *SourceCodeHandler) UploadSourceCode(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Parse form - handle large ZIPs before filtering
-	err := r.ParseMultipartForm(500 << 20)
+	// Check system load
+	queueLen := len(h.uploadQueue)
+	if queueLen >= 45 { // Near capacity
+		h.renderJSONError(w, fmt.Sprintf("System busy, please try again in 10 minutes. Queue length: %d", queueLen))
+		return
+	}
+
+	err := r.ParseMultipartForm(100 << 20)
 	if err != nil {
 		h.renderError(w, "Failed to parse form data", err)
 		return
 	}
 
-	// Extract student info
 	studentInfo := &database.StudentInfo{
 		Name:        strings.TrimSpace(r.FormValue("name")),
 		StudentID:   strings.TrimSpace(r.FormValue("student_id")),
@@ -63,13 +115,19 @@ func (h *SourceCodeHandler) UploadSourceCode(w http.ResponseWriter, r *http.Requ
 		ThesisTitle: strings.TrimSpace(r.FormValue("thesis_title")),
 	}
 
-	// Validate student info
 	if errors := h.validateStudentInfo(studentInfo); len(errors) > 0 {
 		h.renderJSONError(w, strings.Join(errors, "; "))
 		return
 	}
 
-	// Handle file upload
+	// Check for duplicate upload
+	uploadKey := fmt.Sprintf("%s-%s", studentInfo.StudentID, studentInfo.Email)
+	if _, exists := h.activeUploads.LoadOrStore(uploadKey, true); exists {
+		h.renderJSONError(w, "Upload already in progress for this student. Please wait.")
+		return
+	}
+	defer h.activeUploads.Delete(uploadKey) // Clean up on any early return
+
 	file, header, err := r.FormFile("source_code")
 	if err != nil {
 		h.renderError(w, "No file uploaded", err)
@@ -77,32 +135,76 @@ func (h *SourceCodeHandler) UploadSourceCode(w http.ResponseWriter, r *http.Requ
 	}
 	defer file.Close()
 
-	// Validate file type
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
 		h.renderJSONError(w, "Only ZIP files are accepted")
 		return
 	}
 
-	// Find student record
 	studentRecordID, err := h.findStudentRecordID(studentInfo)
 	if err != nil {
 		h.renderError(w, "Student not found", err)
 		return
 	}
 
-	// Process upload
-	submissionID := uuid.New().String()
-	result := h.processSourceCodeUpload(studentRecordID, submissionID, file, header, studentInfo)
+	uploadID := uuid.New().String()
 
-	h.renderJSONResult(w, result)
+	// For small queues, process immediately
+	if queueLen < 3 {
+		result := h.processSourceCodeUpload(studentRecordID, uploadID, file, header, studentInfo)
+		h.renderJSONResult(w, result)
+		return
+	}
+
+	// For larger queues, queue the request
+	responseChan := make(chan *database.SubmissionResult, 1)
+
+	uploadReq := &UploadRequest{
+		ID:              uploadID,
+		ResponseChan:    responseChan,
+		StudentInfo:     studentInfo,
+		File:            file,
+		Header:          header,
+		StudentRecordID: studentRecordID,
+	}
+
+	select {
+	case h.uploadQueue <- uploadReq:
+		queuePos := len(h.uploadQueue)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":        true,
+			"message":        fmt.Sprintf("Upload queued successfully. Position: %d", queuePos),
+			"submission_id":  uploadID,
+			"queue_position": queuePos,
+			"estimated_wait": fmt.Sprintf("%d minutes", queuePos*2),
+			"status":         "queued",
+		})
+
+		// Process in background
+		go func() {
+			select {
+			case result := <-responseChan:
+				log.Printf("Background upload completed for %s: success=%v", studentInfo.StudentID, result.Success)
+			case <-time.After(30 * time.Minute):
+				log.Printf("Upload timeout for student %s", studentInfo.StudentID)
+			}
+		}()
+
+	case <-time.After(5 * time.Second):
+		h.renderJSONError(w, "System overloaded. Please try again later.")
+	}
 }
 
 // ===== MAIN PROCESSING LOGIC =====
 func (h *SourceCodeHandler) processSourceCodeUpload(studentRecordID int, submissionID string, file multipart.File, header *multipart.FileHeader, studentInfo *database.StudentInfo) *database.SubmissionResult {
 	// Create temp directories
-	uploadDir := filepath.Join("uploads", submissionID)
-	extractDir := filepath.Join("uploads", submissionID+"_extracted")
+	// ADD: Create unique directories to avoid conflicts
+	timestamp := time.Now().UnixNano()
+	uniqueID := fmt.Sprintf("%s_%d", submissionID[:8], timestamp) // Shorter unique ID
 
+	uploadDir := filepath.Join("uploads", "upload_"+uniqueID)
+	extractDir := filepath.Join("uploads", "extract_"+uniqueID)
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		return &database.SubmissionResult{Success: false, Error: "Failed to create upload directory"}
 	}
@@ -719,6 +821,67 @@ func (h *SourceCodeHandler) countFiles(dirPath string) int {
 		return nil
 	})
 	return count
+}
+
+// ADD these new endpoint methods
+func (h *SourceCodeHandler) GetUploadStatus(w http.ResponseWriter, r *http.Request) {
+	submissionID := r.URL.Query().Get("id")
+	if submissionID == "" {
+		h.renderJSONError(w, "Missing submission ID")
+		return
+	}
+
+	queueLength := len(h.uploadQueue)
+	activeCount := 0
+	h.activeUploads.Range(func(key, value interface{}) bool {
+		activeCount++
+		return true
+	})
+
+	status := map[string]interface{}{
+		"submission_id":  submissionID,
+		"queue_length":   queueLength,
+		"active_uploads": activeCount,
+		"system_status":  "operational",
+	}
+
+	if queueLength > 40 {
+		status["system_status"] = "busy"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
+}
+
+func (h *SourceCodeHandler) GetSystemHealth(w http.ResponseWriter, r *http.Request) {
+	activeCount := 0
+	h.activeUploads.Range(func(key, value interface{}) bool {
+		activeCount++
+		return true
+	})
+
+	queueLen := len(h.uploadQueue)
+
+	health := map[string]interface{}{
+		"status":          "healthy",
+		"active_uploads":  activeCount,
+		"queue_length":    queueLen,
+		"max_concurrent":  h.maxConcurrent,
+		"queue_capacity":  cap(h.uploadQueue),
+		"load_percentage": fmt.Sprintf("%.1f%%", float64(activeCount)/float64(h.maxConcurrent)*100),
+		"timestamp":       time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	if activeCount >= h.maxConcurrent {
+		health["status"] = "busy"
+	}
+
+	if queueLen >= 40 {
+		health["status"] = "overloaded"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(health)
 }
 
 // ===== CONTENT GENERATION =====

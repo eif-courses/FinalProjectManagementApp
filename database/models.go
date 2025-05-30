@@ -2480,6 +2480,7 @@ type CommitInfo struct {
 	CommitID   string    `json:"commit_id"`
 }
 
+// Add to database/models.go if not present
 type FilterInfo struct {
 	TotalFilesInZip  int   `json:"total_files_in_zip"`
 	FilesAfterFilter int   `json:"files_after_filter"`
@@ -2488,7 +2489,7 @@ type FilterInfo struct {
 	SizeAfterFilter  int64 `json:"size_after_filter"`
 }
 
-// Update SubmissionResult to include FilterInfo
+// Update SubmissionResult if FilterInfo not included
 type SubmissionResult struct {
 	Success        bool              `json:"success"`
 	Message        string            `json:"message"`
