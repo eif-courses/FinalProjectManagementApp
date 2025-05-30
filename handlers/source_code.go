@@ -398,11 +398,11 @@ func (h *SourceCodeHandler) uploadToGit(repoInfo *database.RepositoryInfo, sourc
 		return nil, fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	// Create version-specific branch for this submission
+	// Create version-specific branch for this submission (for history)
 	submissionTime := time.Now().Format("20060102-150405")
 	branchName := fmt.Sprintf("submission-%s", submissionTime)
 
-	// Create new branch
+	// Create new branch from current main
 	branchRef := plumbing.NewBranchReferenceName(branchName)
 	headRef, err := repo.Head()
 	if err != nil {
@@ -439,7 +439,7 @@ func (h *SourceCodeHandler) uploadToGit(repoInfo *database.RepositoryInfo, sourc
 	submissionInfo := h.generateVersionedSubmissionInfo(studentInfo, submissionTime)
 	os.WriteFile(filepath.Join(tempDir, "SUBMISSION_INFO.md"), []byte(submissionInfo), 0644)
 
-	// Commit changes
+	// Commit changes to submission branch
 	err = worktree.AddGlob(".")
 	if err != nil {
 		return nil, fmt.Errorf("failed to add files: %w", err)
@@ -449,7 +449,7 @@ func (h *SourceCodeHandler) uploadToGit(repoInfo *database.RepositoryInfo, sourc
 	commitMessage := fmt.Sprintf("Thesis submission %s - %s (%s)",
 		submissionTime, studentInfo.Name, studentInfo.StudentID)
 
-	commit, err := worktree.Commit(commitMessage, &git.CommitOptions{
+	_, err = worktree.Commit(commitMessage, &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  studentInfo.Name,
 			Email: studentInfo.Email,
@@ -460,28 +460,60 @@ func (h *SourceCodeHandler) uploadToGit(repoInfo *database.RepositoryInfo, sourc
 		return nil, fmt.Errorf("failed to commit: %w", err)
 	}
 
-	// Push the new branch
+	// Push the submission branch (for history)
 	err = repo.Push(&git.PushOptions{
 		RemoteName: "origin",
 		Auth:       &githttp.BasicAuth{Username: h.githubConfig.PAT, Password: ""},
 		RefSpecs:   []config.RefSpec{config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branchName, branchName))},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to push branch: %w", err)
+		return nil, fmt.Errorf("failed to push submission branch: %w", err)
 	}
 
-	// Checkout main and merge the submission branch
+	// NOW UPDATE MAIN BRANCH WITH LATEST CONTENT
+	// Checkout main branch
 	err = worktree.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("main"),
+		Force:  true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to checkout main: %w", err)
 	}
 
-	// Merge submission branch to main
-	err = h.mergeToMain(repo, worktree, branchName, commitMessage)
+	// Clear main branch content (except .git)
+	h.clearRepositoryContent(tempDir)
+
+	// Copy the same source files to main
+	err = h.copyFiles(sourcePath, tempDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to merge to main: %w", err)
+		return nil, fmt.Errorf("failed to copy files to main: %w", err)
+	}
+
+	// Create main branch README (simpler, current version)
+	mainReadmeContent := h.generateMainBranchReadme(studentInfo)
+	os.WriteFile(filepath.Join(tempDir, "README.md"), []byte(mainReadmeContent), 0644)
+
+	// Add submission info to main as well
+	os.WriteFile(filepath.Join(tempDir, "SUBMISSION_INFO.md"), []byte(submissionInfo), 0644)
+
+	// Commit to main branch
+	err = worktree.AddGlob(".")
+	if err != nil {
+		return nil, fmt.Errorf("failed to add files to main: %w", err)
+	}
+
+	mainCommitMessage := fmt.Sprintf("Latest submission: %s (%s) - %s",
+		studentInfo.Name, studentInfo.StudentID, time.Now().Format("Jan 2, 2006 15:04"))
+
+	mainCommit, err := worktree.Commit(mainCommitMessage, &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  studentInfo.Name,
+			Email: studentInfo.Email,
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to commit to main: %w", err)
 	}
 
 	// Push main branch
@@ -493,14 +525,73 @@ func (h *SourceCodeHandler) uploadToGit(repoInfo *database.RepositoryInfo, sourc
 		return nil, fmt.Errorf("failed to push main: %w", err)
 	}
 
-	log.Printf("Successfully updated repository: %s", repoInfo.WebURL)
+	log.Printf("Successfully updated repository: %s (main + %s)", repoInfo.WebURL, branchName)
 
 	return &database.CommitInfo{
-		Message:    commitMessage,
+		Message:    mainCommitMessage,
 		Timestamp:  time.Now(),
 		FilesCount: fileCount,
-		CommitID:   commit.String(),
+		CommitID:   mainCommit.String(),
 	}, nil
+}
+
+// Add this method to your SourceCodeHandler
+func (h *SourceCodeHandler) generateMainBranchReadme(studentInfo *database.StudentInfo) string {
+	return fmt.Sprintf(`# %s
+
+> **Final Thesis Source Code Repository**
+
+## 👨‍🎓 Student Information
+- **Name:** %s
+- **Student ID:** %s
+- **Email:** %s
+- **Last Updated:** %s
+
+## 📚 Thesis Details
+**Title:** %s
+
+## 📂 Repository Structure
+This repository contains the **latest version** of the final thesis source code. 
+
+### 🗂️ What's Included:
+- ✅ **Latest source code files**
+- ✅ **Configuration files**  
+- ✅ **Documentation**
+- ✅ **Build scripts**
+- ❌ Dependencies (automatically filtered out)
+- ❌ Build artifacts (automatically filtered out)
+
+## 🔄 Version History
+- **Main branch:** Latest/current submission (this branch)
+- **Submission branches:** Historical submissions (submission-YYYYMMDD-HHMMSS)
+
+## 📊 Branch Information
+- This **main branch** always contains the most recent submission
+- Each submission also creates a dated branch for version history
+- Check the branch list to see all submission history
+
+## 📞 Contact
+For questions about this thesis implementation:
+- **Student:** %s
+- **Email:** %s
+
+---
+**Repository:** %s/%s  
+**Organization:** %s  
+*Always showing latest submission - Last updated: %s*
+`,
+		studentInfo.ThesisTitle,
+		studentInfo.Name,
+		studentInfo.StudentID,
+		studentInfo.Email,
+		time.Now().Format("January 2, 2006 at 15:04"),
+		studentInfo.ThesisTitle,
+		studentInfo.Name,
+		studentInfo.Email,
+		h.githubConfig.Organization,
+		h.generateRepoName(studentInfo),
+		h.githubConfig.Organization,
+		time.Now().Format("January 2, 2006 at 15:04"))
 }
 
 func (h *SourceCodeHandler) mergeToMain(repo *git.Repository, worktree *git.Worktree, branchName, commitMessage string) error {

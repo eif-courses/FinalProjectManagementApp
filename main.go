@@ -97,8 +97,7 @@ func main() {
 	if appConfig.HasGitHub() {
 		sourceCodeHandler = handlers.NewSourceCodeHandler(db, appConfig.GitHub)
 	} else {
-		log.Println("Github DevOps configuration not found - source code upload will be disabled")
-		log.Println("Required environment variables: GITHUB_ORG, GITHUB_PROJECT, GITHUB_PAT")
+		log.Println("Github configuration not found - source code upload will be disabled")
 		sourceCodeHandler = nil
 	}
 

@@ -627,6 +627,13 @@ type Document struct {
 	IsConfidential   bool      `json:"is_confidential" db:"is_confidential"`
 	AccessLevel      string    `json:"access_level" db:"access_level"`
 	WatermarkApplied bool      `json:"watermark_applied" db:"watermark_applied"`
+	RepositoryURL    *string   `json:"repository_url" db:"repository_url"`
+	RepositoryID     *string   `json:"repository_id" db:"repository_id"`
+	CommitID         *string   `json:"commit_id" db:"commit_id"`
+	SubmissionID     *string   `json:"submission_id" db:"submission_id"`
+	ValidationStatus string    `json:"validation_status" db:"validation_status"`
+	UploadStatus     string    `json:"upload_status" db:"upload_status"`
+	ValidationErrors *string   `json:"validation_errors" db:"validation_errors"`
 }
 
 // GetFileSizeFormatted returns formatted file size
@@ -2500,4 +2507,31 @@ type SubmissionResult struct {
 	SubmissionID   string            `json:"submission_id"`
 	DocumentID     int               `json:"document_id,omitempty"`
 	FilterInfo     *FilterInfo       `json:"filter_info,omitempty"`
+}
+
+func (d *Document) IsSourceCode() bool {
+	return d.DocumentType == "thesis_source_code" || d.DocumentType == "SOURCE_CODE"
+}
+
+// GetRepositoryDisplayInfo returns repository information for display
+func (d *Document) GetRepositoryDisplayInfo() map[string]string {
+	if !d.IsSourceCode() || d.RepositoryURL == nil {
+		return nil
+	}
+
+	info := make(map[string]string)
+	info["url"] = *d.RepositoryURL
+
+	if d.RepositoryID != nil {
+		info["id"] = *d.RepositoryID
+	}
+
+	if d.CommitID != nil {
+		info["commit"] = *d.CommitID
+	}
+
+	info["status"] = d.UploadStatus
+	info["validation"] = d.ValidationStatus
+
+	return info
 }
