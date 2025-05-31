@@ -4,5 +4,7 @@
     <file url="file://$PROJECT_DIR$/handlers/student_list.go" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/migrations/000000_initial_schema.up.sql" dialect="MariaDB" />
     <file url="file://$PROJECT_DIR$/migrations/000001_add_source_code_upload_support.up.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/000002_topic_registration_statuses.down.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/000002_topic_registration_statuses.up.sql" dialect="MariaDB" />
   </component>
 </project>

@@ -207,9 +207,18 @@ func (h *RepositoryHandler) canViewRepository(user *auth.AuthenticatedUser, stud
 	case auth.RoleCommissionMember:
 		// Commission members can view during defense period
 		return h.isCommissionPeriod()
+	case auth.RoleStudent: // ADD THIS CASE
+		return h.isStudentOwnRepository(user.Email, studentID)
 	default:
 		return false
 	}
+}
+
+func (h *RepositoryHandler) isStudentOwnRepository(email string, studentID int) bool {
+	var count int
+	query := "SELECT COUNT(*) FROM student_records WHERE id = ? AND student_email = ?"
+	h.db.Get(&count, query, studentID, email)
+	return count > 0
 }
 
 func (h *RepositoryHandler) canDownloadRepository(user *auth.AuthenticatedUser, studentID int) bool {

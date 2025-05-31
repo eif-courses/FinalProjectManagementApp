@@ -97,7 +97,7 @@ func (h *StudentListHandler) StudentTableDisplayHandler(w http.ResponseWriter, r
 		err = templates.StudentTableWithPagination(user, students, locale, pagination).Render(r.Context(), w)
 	} else {
 		// Pass filter options to template
-		err = templates.StudentListWithOptions(user, students, locale, pagination, searchValue, filterParams, filterOptions).Render(r.Context(), w)
+		err = templates.StudentList(user, students, locale, pagination, searchValue, filterParams, filterOptions).Render(r.Context(), w)
 	}
 
 	if err != nil {

@@ -38,7 +38,7 @@ templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
                     @LanguageDropdown(currentLocale)
 
                     <!-- User Menu -->
-                    @UserDropdown(user)
+                    @UserDropdown(user, currentLocale)
 
                     <!-- Mobile Menu Button - Only show if user has links -->
                     if hasNavLinks(user.Role) {
@@ -234,7 +234,7 @@ templ LanguageDropdown(currentLocale string) {
     </div>
 }
 
-templ UserDropdown(user *auth.AuthenticatedUser) {
+templ UserDropdown(user *auth.AuthenticatedUser, currentLocale string) {
     <div class="relative">
         @button.Button(button.Props{
             Variant: button.VariantGhost,
@@ -245,7 +245,7 @@ templ UserDropdown(user *auth.AuthenticatedUser) {
         }) {
             <div class="hidden sm:flex flex-col items-end">
                 <span class="text-sm font-medium text-foreground">{ user.Name }</span>
-                <span class="text-xs text-muted-foreground">{ getRoleDisplayName(user.Role) }</span>
+                <span class="text-xs text-muted-foreground">{ getRoleDisplayName(user.Role, currentLocale) }</span>
             </div>
             <div class="relative">
                 <div class="h-8 w-8 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center">
@@ -402,22 +402,7 @@ func getInitials(name string) string {
     return string(name[0])
 }
 
-func getRoleDisplayName(role string) string {
-    switch role {
-    case "admin":
-        return "Administratorius"
-    case "department_head":
-        return "Katedros vedėjas"
-    case "supervisor":
-        return "Vadovas"
-    case "reviewer":
-        return "Recenzentas"
-    case "student":
-        return "Studentas"
-    default:
-        return "Vartotojas"
-    }
-}
+
 
 func getLocaleClass(currentLocale, targetLocale string) string {
     baseClass := "flex items-center px-3 py-2 text-sm hover:bg-accent rounded-md transition-colors"

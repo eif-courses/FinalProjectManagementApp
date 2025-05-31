@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
+	"time"
 )
 
 type DashboardHandlers struct {
@@ -76,9 +77,9 @@ func (h *DashboardHandlers) renderStudentDashboard(w http.ResponseWriter, r *htt
 	}
 
 	// Render student dashboard with data
-	err = templates.StudentDashboard(user, data, locale).Render(r.Context(), w)
+	err = templates.CompactStudentDashboard(user, data, locale).Render(r.Context(), w)
 	if err != nil {
-		log.Printf("Error rendering student dashboard: %v", err)
+		log.Printf("Error rendering compact student dashboard: %v", err)
 		// Fall back to basic dashboard
 		err = templates.Dashboard(user, "Student Dashboard").Render(r.Context(), w)
 		if err != nil {
@@ -188,8 +189,8 @@ func (h *DashboardHandlers) renderCommissionDashboard(w http.ResponseWriter, r *
 // DATA RETRIEVAL METHODS
 // ================================
 
-func (h *DashboardHandlers) getStudentDashboardData(email string) (*templates.StudentDashboardData, error) {
-	data := &templates.StudentDashboardData{}
+func (h *DashboardHandlers) getStudentDashboardData(email string) (*database.StudentDashboardData, error) {
+	data := &database.StudentDashboardData{}
 
 	// Get student record
 	var studentRecord database.StudentRecord
@@ -206,18 +207,43 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*templates.St
 		"SELECT * FROM documents WHERE student_record_id = ? ORDER BY uploaded_date DESC",
 		studentRecord.ID)
 	if err == nil {
+		data.Documents = documents
+
+		// Process documents by type
 		for _, doc := range documents {
 			switch doc.DocumentType {
-			case "thesis_pdf", "thesis":
+			case "thesis_pdf", "thesis", "FINAL_THESIS.PDF":
 				data.HasThesisPDF = true
 				data.ThesisDocument = &doc
 			case "thesis_source_code", "SOURCE_CODE":
 				data.SourceCodeRepository = &doc
-				data.SourceCodeStatus = doc.UploadStatus
-			case "company_recommendation":
+				data.HasSourceCode = true
+				// Set source code status from document upload status
+				if doc.UploadStatus != "" {
+					data.SourceCodeStatus = doc.UploadStatus
+				} else {
+					data.SourceCodeStatus = "uploaded"
+				}
+			case "company_recommendation", "RECOMMENDATION.PDF":
 				data.CompanyRecommendation = &doc
-			case "video_presentation", "presentation":
-				data.VideoPresentation = &doc
+			}
+		}
+	}
+
+	// Get videos separately (not from documents table)
+	var videos []database.Video
+	err = h.db.Select(&videos,
+		"SELECT * FROM videos WHERE student_record_id = ? ORDER BY created_at DESC",
+		studentRecord.ID)
+	if err == nil {
+		data.Videos = videos
+
+		// Find the first ready video as presentation
+		for _, video := range videos {
+			if video.Status == "ready" {
+				data.VideoPresentation = &video // This is now *Video, not *Document
+				data.HasVideo = true
+				break
 			}
 		}
 	}
@@ -229,6 +255,7 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*templates.St
 		studentRecord.ID)
 	if err == nil {
 		data.SupervisorReport = &supervisorReport
+		data.HasSupervisorReport = true
 	}
 
 	// Get reviewer report
@@ -238,27 +265,131 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*templates.St
 		studentRecord.ID)
 	if err == nil {
 		data.ReviewerReport = &reviewerReport
+		data.HasReviewerReport = true
 	}
 
-	// Get topic status
-	var topicStatus string
-	err = h.db.Get(&topicStatus,
-		"SELECT status FROM project_topic_registrations WHERE student_record_id = ? ORDER BY created_at DESC LIMIT 1",
+	// Get topic registration and status
+	var topicRegistration database.ProjectTopicRegistration
+	err = h.db.Get(&topicRegistration,
+		"SELECT * FROM project_topic_registrations WHERE student_record_id = ? ORDER BY created_at DESC LIMIT 1",
 		studentRecord.ID)
 	if err == nil {
-		data.TopicStatus = topicStatus
+		data.TopicRegistration = &topicRegistration
+		data.TopicStatus = topicRegistration.Status
+		data.HasTopicApproved = topicRegistration.Status == "approved"
 	} else {
 		data.TopicStatus = "not_submitted"
+		data.HasTopicApproved = false
 	}
 
 	// Set defense info
 	data.DefenseScheduled = studentRecord.DefenseDate != nil
 	if data.DefenseScheduled && studentRecord.DefenseDate != nil {
 		data.DefenseDate = studentRecord.GetDefenseDateFormatted()
+		data.DefenseLocation = studentRecord.DefenseLocation
 	}
+
+	// Calculate completion status
+	data.CompletionPercentage = h.calculateProgress(data)
+	data.CurrentStage = h.getCurrentStage(data)
+	data.IsReadyForDefense = h.isReadyForDefense(data)
+
+	// Set academic info
+	data.AcademicYear = time.Now().Year()
+	data.Semester = h.getCurrentSemester()
 
 	return data, nil
 }
+
+// Helper methods for student dashboard
+func (h *DashboardHandlers) calculateProgress(data *database.StudentDashboardData) int {
+	total := 7 // Total requirements
+	completed := 0
+
+	// Topic approved
+	if data.TopicStatus == "approved" {
+		completed++
+	}
+
+	// Source code uploaded
+	if data.SourceCodeRepository != nil {
+		completed++
+	}
+
+	// Thesis PDF available
+	if data.HasThesisPDF {
+		completed++
+	}
+
+	// Supervisor report completed and signed
+	if data.SupervisorReport != nil && data.SupervisorReport.IsSigned {
+		completed++
+	}
+
+	// Reviewer report completed and signed
+	if data.ReviewerReport != nil && data.ReviewerReport.IsSigned {
+		completed++
+	}
+
+	// Company recommendation uploaded
+	if data.CompanyRecommendation != nil {
+		completed++
+	}
+
+	// Video presentation uploaded (optional, but counts toward progress)
+	if data.VideoPresentation != nil {
+		completed++
+	}
+
+	return (completed * 100) / total
+}
+
+func (h *DashboardHandlers) getCurrentStage(data *database.StudentDashboardData) string {
+	if !data.HasTopicApproved {
+		return "Topic Registration"
+	}
+	if !data.HasSupervisorReport {
+		return "Supervisor Evaluation"
+	}
+	if !data.HasReviewerReport {
+		return "Reviewer Evaluation"
+	}
+	if !data.HasThesisPDF {
+		return "Document Submission"
+	}
+	if !data.HasSourceCode {
+		return "Source Code Upload"
+	}
+	if !data.HasVideo {
+		return "Video Presentation"
+	}
+	if data.DefenseScheduled {
+		return "Defense Preparation"
+	}
+	return "Ready for Defense"
+}
+
+func (h *DashboardHandlers) isReadyForDefense(data *database.StudentDashboardData) bool {
+	return data.HasTopicApproved &&
+		data.HasSupervisorReport &&
+		data.HasReviewerReport &&
+		data.HasThesisPDF &&
+		data.HasSourceCode
+}
+
+func (h *DashboardHandlers) getCurrentSemester() string {
+	month := time.Now().Month()
+	if month >= 9 || month <= 1 {
+		return "Fall"
+	} else if month >= 2 && month <= 6 {
+		return "Spring"
+	}
+	return "Summer"
+}
+
+// ================================
+// OTHER DASHBOARD DATA METHODS
+// ================================
 
 type SupervisorDashboardData struct {
 	AssignedStudents []database.StudentRecord
@@ -339,7 +470,7 @@ func (h *DashboardHandlers) getDepartmentDashboardData(email string) (*Departmen
 	err = h.db.Get(&data.UpcomingDefenses,
 		`SELECT COUNT(*) FROM student_records 
          WHERE department LIKE ? AND defense_date IS NOT NULL 
-         AND defense_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 30 DAY)`,
+         AND defense_date BETWEEN UNIX_TIMESTAMP() AND UNIX_TIMESTAMP() + (30 * 24 * 60 * 60)`,
 		"%"+department+"%")
 	if err != nil {
 		data.UpcomingDefenses = 0

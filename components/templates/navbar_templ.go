@@ -74,7 +74,7 @@ func Navbar(user *auth.AuthenticatedUser, currentLocale string) templ.Component 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = UserDropdown(user).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = UserDropdown(user, currentLocale).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -624,7 +624,7 @@ func LanguageDropdown(currentLocale string) templ.Component {
 	})
 }
 
-func UserDropdown(user *auth.AuthenticatedUser) templ.Component {
+func UserDropdown(user *auth.AuthenticatedUser, currentLocale string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -679,9 +679,9 @@ func UserDropdown(user *auth.AuthenticatedUser) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var26 string
-			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(getRoleDisplayName(user.Role))
+			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(getRoleDisplayName(user.Role, currentLocale))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/navbar.templ`, Line: 248, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/navbar.templ`, Line: 248, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -1172,23 +1172,6 @@ func getInitials(name string) string {
 		return string(parts[0][0]) + string(parts[len(parts)-1][0])
 	}
 	return string(name[0])
-}
-
-func getRoleDisplayName(role string) string {
-	switch role {
-	case "admin":
-		return "Administratorius"
-	case "department_head":
-		return "Katedros vedėjas"
-	case "supervisor":
-		return "Vadovas"
-	case "reviewer":
-		return "Recenzentas"
-	case "student":
-		return "Studentas"
-	default:
-		return "Vartotojas"
-	}
 }
 
 func getLocaleClass(currentLocale, targetLocale string) string {

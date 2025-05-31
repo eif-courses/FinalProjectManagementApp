@@ -1,0 +1,1064 @@
+package templates
+
+import (
+	"FinalProjectManagementApp/auth"
+	"FinalProjectManagementApp/components/alert"
+	"FinalProjectManagementApp/components/badge"
+	"FinalProjectManagementApp/components/button"
+	"FinalProjectManagementApp/components/card"
+	"FinalProjectManagementApp/components/icon"
+	"FinalProjectManagementApp/components/input"
+	"FinalProjectManagementApp/components/label"
+	"FinalProjectManagementApp/components/modal"
+	"FinalProjectManagementApp/components/textarea"
+	"FinalProjectManagementApp/database"
+	"fmt"
+	"strconv"
+)
+
+templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, comments []database.TopicRegistrationComment, locale string) {
+	@modal.Modal(modal.Props{ID: "topic-registration-modal", Class: "w-[95vw] max-w-6xl mx-auto my-2"}) {
+		@modal.Header() {
+			<div class="relative px-6 py-2 border-b">
+				<button onclick="closeModal()" class="absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">
+					×
+				</button>
+				<div class="text-center pr-8">
+					<h2 class="text-lg font-bold text-gray-900 dark:text-white">
+						if locale == "en" {
+							TOPIC REGISTRATION FORM
+						} else {
+							TEMOS REGISTRAVIMO LAPAS
+						}
+					</h2>
+				</div>
+			</div>
+		}
+		@modal.Body() {
+			<div class="px-6 py-3" style="max-height: calc(90vh - 120px); overflow-y: auto;">
+				<!-- Status and Student Info - More compact -->
+				if topic != nil {
+					<div class="mb-3">
+						@TopicStatusAlert(topic, locale)
+					</div>
+				}
+
+				<!-- Student Information - Very compact inline -->
+				<div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
+					<span class="font-medium">
+						if locale == "en" {
+							Student:
+						} else {
+							Studentas(-ė):
+						}
+					</span>
+					<span class="mx-1">{ user.Name }</span>
+					<span class="mx-3">•</span>
+					<span class="font-medium">
+						if locale == "en" {
+							Department:
+						} else {
+							Katedra:
+						}
+					</span>
+					<span class="mx-1">{ user.Department }</span>
+					<span class="mx-3">•</span>
+					<span class="font-medium">
+						if locale == "en" {
+							Role:
+						} else {
+							Rolė:
+						}
+					</span>
+					<span class="mx-1">{ getRoleDisplayName(user.Role, locale) }</span>
+				</div>
+
+				<!-- Main Content -->
+				<div class="space-y-3">
+					<!-- FORM SECTION -->
+					if shouldShowForm(user, topic) {
+						@CompactFormSection(user, topic, locale)
+					}
+
+					<!-- VIEW SECTION -->
+					if shouldShowViewOnly(user, topic) {
+						@CompactViewSection(user, topic, locale)
+					}
+
+					<!-- No Topic Message -->
+					if topic == nil && user.Role != auth.RoleStudent {
+						@card.Card() {
+							<div class="p-6 text-center">
+								<div class="text-muted-foreground mb-2 text-4xl">📝</div>
+								<h3 class="text-lg font-medium mb-2">
+									if locale == "en" {
+										No Topic Submitted
+									} else {
+										Tema dar nepateikta
+									}
+								</h3>
+								<p class="text-sm text-muted-foreground">
+									if locale == "en" {
+										This student has not yet submitted a topic registration.
+									} else {
+										Šis studentas dar nepateikė temos registracijos.
+									}
+								</p>
+							</div>
+						}
+					}
+
+					<!-- APPROVAL SECTIONS -->
+					if topic != nil {
+						<div class="space-y-3">
+							if shouldShowSupervisorReview(user, topic) {
+								@SupervisorReviewSection(user, topic, locale)
+							}
+							if shouldShowDepartmentReview(user, topic) {
+								@DepartmentReviewSection(user, topic, locale)
+							}
+						</div>
+					}
+
+					<!-- Comments Section -->
+					if topic != nil && (len(comments) > 0 || canAddComments(user, topic)) {
+						<div class="mt-3">
+							@CommentsSection(user, topic, comments, locale)
+						</div>
+					}
+				</div>
+
+				<div id="modal-result" class="mt-3"></div>
+			</div>
+		}
+		@modal.Footer() {
+			<div class="border-t pt-2 px-6 pb-2">
+				<div class="flex flex-wrap justify-end gap-2">
+					@TopicModalFooter(user, topic, locale)
+				</div>
+			</div>
+		}
+	}
+	@TopicModalScripts()
+}
+
+
+// More compact form with better width utilization
+templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, locale string) {
+	@card.Card() {
+		<div class="p-4">
+			<h3 class="text-base font-semibold mb-3">
+				if locale == "en" {
+					Topic Information
+				} else {
+					Temos informacija
+				}
+			</h3>
+			<form id="topic-modal-form" class="space-y-3">
+				if topic != nil {
+					<input type="hidden" name="topic_id" value={ strconv.Itoa(topic.ID) }/>
+				}
+
+				<!-- Two column grid for supervisor and date -->
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+					<!-- Supervisor -->
+					<div>
+						@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+							if locale == "en" {
+								Supervisor *
+							} else {
+								Vadovas(-ė) *
+							}
+						}
+						@input.Input(input.Props{
+							Name:        "supervisor",
+							Value:       getSupervisorValue(topic),
+							Required:    true,
+							Class:       "text-sm h-9 w-full",
+							Placeholder: getSupervisorPlaceholder(locale),
+						})
+					</div>
+
+					<!-- Completion Date -->
+					<div>
+						@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+							if locale == "en" {
+								Completion Date
+							} else {
+								Užbaigimo data
+							}
+						}
+						@input.Input(input.Props{
+							Name:  "completion_date",
+							Type:  "date",
+							Value: getCompletionValue(topic),
+							Class: "text-sm h-9 w-full",
+						})
+					</div>
+				</div>
+
+				<!-- Title Lithuanian - Full width -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Title (Lithuanian) *
+						} else {
+							Tema (Lietuvių k.) *
+						}
+					}
+					@input.Input(input.Props{
+						Name:        "title",
+						Value:       getTitleValue(topic),
+						Required:    true,
+						Class:       "text-sm h-9 w-full",
+						Placeholder: getTitlePlaceholder(locale),
+					})
+				</div>
+
+				<!-- Title English - Full width -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Title (English) *
+						} else {
+							Tema (Anglų k.) *
+						}
+					}
+					@input.Input(input.Props{
+						Name:        "title_en",
+						Value:       getTitleEnValue(topic),
+						Required:    true,
+						Class:       "text-sm h-9 w-full",
+						Placeholder: getTitleEnPlaceholder(locale),
+					})
+				</div>
+
+				<!-- Problem Description -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Problem Description *
+						} else {
+							Problemos aprašymas *
+						}
+					}
+					@textarea.Textarea(textarea.Props{
+						Name:        "problem",
+						Value:       getProblemValue(topic),
+						Required:    true,
+						Class:       "text-sm w-full",
+						Rows:        2,
+						Placeholder: getProblemPlaceholder(locale),
+					})
+				</div>
+
+				<!-- Objective -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Objective *
+						} else {
+							Tikslas *
+						}
+					}
+					@textarea.Textarea(textarea.Props{
+						Name:        "objective",
+						Value:       getObjectiveValue(topic),
+						Required:    true,
+						Class:       "text-sm w-full",
+						Rows:        2,
+						Placeholder: getObjectivePlaceholder(locale),
+					})
+				</div>
+
+				<!-- Tasks -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Tasks and Content Plan *
+						} else {
+							Uždaviniai ir turinio planas *
+						}
+					}
+					@textarea.Textarea(textarea.Props{
+						Name:        "tasks",
+						Value:       getTasksValue(topic),
+						Required:    true,
+						Class:       "text-sm w-full",
+						Rows:        3,
+						Placeholder: getTasksPlaceholder(locale),
+					})
+				</div>
+			</form>
+		</div>
+	}
+}
+
+// COMPACT VIEW SECTION
+
+// Similarly update the View section
+templ CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, locale string) {
+	@card.Card() {
+		<div class="p-4">
+			<h3 class="text-base font-semibold mb-3">
+				if locale == "en" {
+					Topic Information
+				} else {
+					Temos informacija
+				}
+			</h3>
+			<div class="space-y-3">
+				<!-- Two column grid -->
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+					<!-- Supervisor -->
+					<div>
+						@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+							if locale == "en" {
+								Supervisor
+							} else {
+								Vadovas(-ė)
+							}
+						}
+						<div class="p-2 bg-muted border rounded text-sm">
+							{ getSupervisorValue(topic) }
+						</div>
+					</div>
+
+					<!-- Completion Date -->
+					if getCompletionValue(topic) != "" {
+						<div>
+							@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+								if locale == "en" {
+									Completion Date
+								} else {
+									Užbaigimo data
+								}
+							}
+							<div class="p-2 bg-muted border rounded text-sm">
+								{ getCompletionValue(topic) }
+							</div>
+						</div>
+					}
+				</div>
+
+				<!-- Rest of the fields remain full width -->
+				<!-- Title Lithuanian -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Title (Lithuanian)
+						} else {
+							Tema (Lietuvių k.)
+						}
+					}
+					<div class="p-2 bg-muted border rounded text-sm">
+						{ getTitleValue(topic) }
+					</div>
+				</div>
+
+				<!-- Title English -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Title (English)
+						} else {
+							Tema (Anglų k.)
+						}
+					}
+					<div class="p-2 bg-muted border rounded text-sm">
+						{ getTitleEnValue(topic) }
+					</div>
+				</div>
+
+				<!-- Problem Description -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Problem Description
+						} else {
+							Problemos aprašymas
+						}
+					}
+					<div class="p-2 bg-muted border rounded text-sm whitespace-pre-wrap">
+						{ getProblemValue(topic) }
+					</div>
+				</div>
+
+				<!-- Objective -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Objective
+						} else {
+							Tikslas
+						}
+					}
+					<div class="p-2 bg-muted border rounded text-sm whitespace-pre-wrap">
+						{ getObjectiveValue(topic) }
+					</div>
+				</div>
+
+				<!-- Tasks -->
+				<div>
+					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						if locale == "en" {
+							Tasks and Content Plan
+						} else {
+							Uždaviniai ir turinio planas
+						}
+					}
+					<div class="p-2 bg-muted border rounded text-sm whitespace-pre-wrap">
+						{ getTasksValue(topic) }
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+// COMMENTS SECTION
+templ CommentsSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, comments []database.TopicRegistrationComment, locale string) {
+	@card.Card() {
+		<div class="p-4">
+			<h3 class="text-base font-semibold mb-3 flex items-center gap-2">
+				@icon.MessageCircle(icon.Props{Size: 18})
+				if locale == "en" {
+					Comments
+				} else {
+					Komentarai
+				}
+				<span class="text-sm text-muted-foreground">({ fmt.Sprintf("%d", len(comments)) })</span>
+			</h3>
+			<!-- Add Comment Form -->
+			if canAddComments(user, topic) {
+				<form
+					hx-post={ fmt.Sprintf("/api/topic/%d/comment", topic.ID) }
+					hx-target="#comments-list"
+					hx-swap="beforeend"
+					hx-on::after-request="this.reset()"
+					class="mb-4"
+				>
+					@textarea.Textarea(textarea.Props{
+						Name:        "comment",
+						Required:    true,
+						Placeholder: getCommentPlaceholder(locale),
+						Rows:        2,
+						Class:       "text-sm mb-2",
+					})
+					<div class="flex justify-end">
+						@button.Button(button.Props{
+							Type:  button.TypeSubmit,
+							Class: "h-8 px-3 text-sm",
+						}) {
+							if locale == "en" {
+								💬 Add Comment
+							} else {
+								💬 Pridėti komentarą
+							}
+						}
+					</div>
+				</form>
+			}
+			<!-- Comments List -->
+			<div id="comments-list" class="space-y-2">
+				for _, comment := range comments {
+					@CommentCard(comment, locale)
+				}
+				if len(comments) == 0 {
+					<div class="text-center py-8 text-muted-foreground">
+						<div class="text-3xl mb-2">💬</div>
+						<p class="text-sm">
+							if locale == "en" {
+								No comments yet
+							} else {
+								Komentarų dar nėra
+							}
+						</p>
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+// COMMENT CARD
+templ CommentCard(comment database.TopicRegistrationComment, locale string) {
+	<div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+		<div class="flex items-start justify-between mb-2">
+			<div class="flex items-center gap-2">
+				<span class="font-medium text-sm">{ comment.AuthorName }</span>
+				@badge.Badge(badge.Props{Variant: badge.VariantSecondary, Class: "text-xs"}) {
+					{ getTopicRoleDisplayName(comment.AuthorRole, locale) }
+				}
+			</div>
+			<span class="text-xs text-muted-foreground">
+				{ comment.CreatedAt.Format("01-02 15:04") }
+			</span>
+		</div>
+		<p class="text-sm whitespace-pre-wrap">{ comment.CommentText }</p>
+	</div>
+}
+
+// SUPERVISOR REVIEW SECTION
+templ SupervisorReviewSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, locale string) {
+	@card.Card() {
+		<div class="p-4">
+			<h3 class="text-base font-semibold mb-3 flex items-center gap-2">
+				@icon.UserCheck(icon.Props{Size: 18})
+				if locale == "en" {
+					Supervisor Review
+				} else {
+					Vadovo vertinimas
+				}
+			</h3>
+			<div class="flex flex-wrap gap-2">
+				@button.Button(button.Props{
+					Variant: button.VariantDefault,
+					Class:   "h-9 px-4 text-sm",
+					Attributes: templ.Attributes{
+						"hx-post":    fmt.Sprintf("/api/topic/%d/supervisor-approve", topic.ID),
+						"hx-target":  "#modal-result",
+						"hx-confirm": getSupervisorConfirmMessage(locale),
+					},
+				}) {
+					@icon.Check(icon.Props{Size: 16})
+					<span class="ml-1">
+						if locale == "en" {
+							Approve
+						} else {
+							Patvirtinti
+						}
+					</span>
+				}
+				@button.Button(button.Props{
+					Variant: button.VariantDestructive,
+					Class:   "h-9 px-4 text-sm",
+					Attributes: templ.Attributes{
+						"onclick": "showRevisionModal(" + strconv.Itoa(topic.ID) + ")",
+					},
+				}) {
+					@icon.RotateCcw(icon.Props{Size: 16})
+					<span class="ml-1">
+						if locale == "en" {
+							Request Revision
+						} else {
+							Prašyti pataisymų
+						}
+					</span>
+				}
+			</div>
+		</div>
+	}
+}
+
+// DEPARTMENT REVIEW SECTION
+templ DepartmentReviewSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, locale string) {
+	@card.Card() {
+		<div class="p-4">
+			<h3 class="text-base font-semibold mb-3 flex items-center gap-2">
+				@icon.GraduationCap(icon.Props{Size: 18})
+				if locale == "en" {
+					Department Review
+				} else {
+					Katedros vertinimas
+				}
+			</h3>
+			<div class="flex flex-wrap gap-2">
+				@button.Button(button.Props{
+					Variant: button.VariantDefault,
+					Class:   "h-9 px-4 text-sm",
+					Attributes: templ.Attributes{
+						"hx-post":    fmt.Sprintf("/api/topic/%d/approve", topic.ID),
+						"hx-target":  "#modal-result",
+						"hx-confirm": getDepartmentConfirmMessage(locale),
+					},
+				}) {
+					@icon.CircleCheck(icon.Props{Size: 16})
+					<span class="ml-1">
+						if locale == "en" {
+							Final Approve
+						} else {
+							Galutinai patvirtinti
+						}
+					</span>
+				}
+				@button.Button(button.Props{
+					Variant: button.VariantDestructive,
+					Class:   "h-9 px-4 text-sm",
+					Attributes: templ.Attributes{
+						"onclick": "showRejectModal(" + strconv.Itoa(topic.ID) + ")",
+					},
+				}) {
+					@icon.CircleX(icon.Props{Size: 16})
+					<span class="ml-1">
+						if locale == "en" {
+							Reject
+						} else {
+							Atmesti
+						}
+					</span>
+				}
+			</div>
+		</div>
+	}
+}
+
+// MODAL FOOTER
+templ TopicModalFooter(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, locale string) {
+	@modal.Close(modal.CloseProps{ModalID: "topic-registration-modal"}) {
+		@button.Button(button.Props{
+			Variant: button.VariantGhost,
+			Class:   "h-9 px-4 text-sm",
+		}) {
+			if locale == "en" {
+				Close
+			} else {
+				Uždaryti
+			}
+		}
+	}
+	<!-- Student Action Buttons -->
+	if user.Role == auth.RoleStudent && shouldShowForm(user, topic) {
+		@button.Button(button.Props{
+			Variant: button.VariantOutline,
+			Class:   "h-9 px-4 text-sm",
+			Attributes: templ.Attributes{
+				"hx-post":    "/api/topic/save-draft",
+				"hx-include": "#topic-modal-form",
+				"hx-target":  "#modal-result",
+			},
+		}) {
+			if locale == "en" {
+				💾 Save Draft
+			} else {
+				💾 Išsaugoti juodraštį
+			}
+		}
+		if topic == nil || topic.CanSubmit() {
+			@button.Button(button.Props{
+				Variant: button.VariantDefault,
+				Class:   "h-9 px-4 text-sm",
+				Attributes: templ.Attributes{
+					"hx-post":    "/api/topic/submit-for-review",
+					"hx-include": "#topic-modal-form",
+					"hx-target":  "#modal-result",
+					"hx-confirm": getSubmitConfirmMessage(locale),
+				},
+			}) {
+				if locale == "en" {
+					📤 Submit for Review
+				} else {
+					📤 Pateikti peržiūrai
+				}
+			}
+		}
+	}
+}
+
+// STATUS ALERT
+templ TopicStatusAlert(topic *database.ProjectTopicRegistration, locale string) {
+	switch topic.Status {
+		case "draft":
+			@alert.Alert(alert.Props{Class: "py-1.5 px-3"}) {
+				@alert.Description() {
+					<div class="flex items-center gap-2 text-sm">
+						<div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+						<span class="font-medium">
+							if locale == "en" {
+								📝 Draft - Not submitted yet
+							} else {
+								📝 Juodraštis - Dar nepateikta
+							}
+						</span>
+					</div>
+				}
+			}
+		case "submitted":
+			@alert.Alert(alert.Props{Class: "py-1.5 px-3"}) {
+				@alert.Description() {
+					<div class="flex items-center gap-2 text-sm">
+						<div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+						<span class="font-medium text-yellow-700">
+							if locale == "en" {
+								📤 Submitted - Awaiting supervisor review
+							} else {
+								📤 Pateikta - Laukia vadovo vertinimo
+							}
+						</span>
+					</div>
+				}
+			}
+		case "supervisor_approved":
+			@alert.Alert(alert.Props{}) {
+				@alert.Description() {
+					<div class="flex items-center">
+						<div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+						<span class="font-medium text-blue-700">
+							if locale == "en" {
+								👨‍🏫 Supervisor Approved - Awaiting department review
+							} else {
+								👨‍🏫 Vadovas patvirtino - Laukia katedros vertinimo
+							}
+						</span>
+					</div>
+				}
+			}
+		case "approved":
+			@alert.Alert(alert.Props{}) {
+				@alert.Description() {
+					<div class="flex items-center">
+						<div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+						<span class="font-medium text-green-700">
+							if locale == "en" {
+								✅ Approved
+							} else {
+								✅ Patvirtinta
+							}
+						</span>
+					</div>
+				}
+			}
+		case "rejected":
+			@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+				@alert.Description() {
+					<div>
+						<div class="flex items-center mb-1">
+							<div class="w-2 h-2 bg-destructive rounded-full mr-2"></div>
+							<span class="font-medium">
+								if locale == "en" {
+									❌ Rejected - Requires revision
+								} else {
+									❌ Atmesta - Reikalauja pataisymų
+								}
+							</span>
+						</div>
+						if topic.RejectionReason != nil {
+							<p class="text-sm mt-1 pl-4">{ *topic.RejectionReason }</p>
+						}
+					</div>
+				}
+			}
+		case "revision_requested":
+			@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+				@alert.Description() {
+					<div>
+						<div class="flex items-center mb-1">
+							<div class="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+							<span class="font-medium text-orange-700">
+								if locale == "en" {
+									🔄 Revision Requested
+								} else {
+									🔄 Prašoma pataisymų
+								}
+							</span>
+						</div>
+						if topic.SupervisorRejectionReason != nil {
+							<p class="text-sm mt-1 pl-4">{ *topic.SupervisorRejectionReason }</p>
+						}
+					</div>
+				}
+			}
+	}
+}
+
+// SCRIPTS
+templ TopicModalScripts() {
+	<script>
+        // Modal opening logic
+        (function() {
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    const modal = document.getElementById('topic-registration-modal');
+                    if (modal) {
+                        if (window.modalState && window.modalState.openModalId) {
+                            const existingModal = document.getElementById(window.modalState.openModalId);
+                            if (existingModal && existingModal !== modal) {
+                                existingModal.style.display = 'none';
+                                existingModal.classList.add('opacity-0');
+                            }
+                        }
+
+                        if (!window.modalState) {
+                            window.modalState = { openModalId: null };
+                        }
+
+                        window.modalState.openModalId = 'topic-registration-modal';
+                        document.body.style.overflow = 'hidden';
+                        modal.style.display = 'flex';
+                        modal.offsetHeight;
+                        modal.classList.remove('opacity-0', 'hidden');
+                        modal.classList.add('opacity-100');
+
+                        const content = modal.querySelector('[data-modal-content]');
+                        if (content) {
+                            content.classList.remove('scale-95', 'opacity-0');
+                            content.classList.add('scale-100', 'opacity-100');
+                        }
+                    }
+                });
+            });
+        })();
+
+        // Handle modal close and form responses
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.successful && (
+                evt.target.closest('#modal-result') ||
+                evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated'
+            )) {
+                const modal = document.getElementById('topic-registration-modal');
+                if (modal && window.modalState) {
+                    setTimeout(() => {
+                        window.modalState.openModalId = null;
+                        document.body.style.overflow = '';
+                        // Refresh the student table if it exists
+                        const tableContainer = document.getElementById('student-table-container');
+                        if (tableContainer) {
+                            htmx.ajax('GET', '/students-list', {
+                                target: '#student-table-container',
+                                values: htmx.values('#filters-form')
+                            });
+                        }
+                    }, 300);
+                }
+            }
+        });
+
+        // Handle escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'topic-registration-modal') {
+                const modal = document.getElementById('topic-registration-modal');
+                if (modal) {
+                    modal.classList.remove('opacity-100');
+                    modal.classList.add('opacity-0');
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                        window.modalState.openModalId = null;
+                        document.body.style.overflow = '';
+                    }, 300);
+                }
+            }
+        });
+
+        // Functions for revision/rejection modals
+        function showRevisionModal(topicId) {
+            console.log('Show revision modal for topic:', topicId);
+            // TODO: Implement revision modal
+        }
+
+        function showRejectModal(topicId) {
+            console.log('Show reject modal for topic:', topicId);
+            // TODO: Implement rejection modal
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('topic-registration-modal');
+            if (modal) {
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                    if (window.modalState) {
+                        window.modalState.openModalId = null;
+                    }
+                }, 300);
+            }
+        }
+    </script>
+}
+
+// HELPER FUNCTIONS - All remain the same
+func shouldShowForm(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
+	if user.Role == auth.RoleStudent {
+		return topic == nil || topic.IsEditable()
+	}
+	return false
+}
+
+func shouldShowViewOnly(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
+	if user.Role != auth.RoleStudent {
+		return topic != nil
+	}
+	return topic != nil && !topic.IsEditable()
+}
+
+func shouldShowSupervisorReview(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
+	return user.Role == auth.RoleSupervisor && topic.CanSupervisorReview()
+}
+
+func shouldShowDepartmentReview(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
+	return (user.Role == auth.RoleDepartmentHead || user.Role == auth.RoleAdmin) && topic.CanDepartmentReview()
+}
+
+func canAddComments(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
+	if user.Role != auth.RoleStudent {
+		return true
+	}
+	return topic.Status == "submitted" || topic.Status == "supervisor_approved"
+}
+
+func getRoleDisplayName(role, locale string) string {
+	roleMap := map[string]map[string]string{
+		"en": {
+			"student":         "Student",
+			"supervisor":      "Supervisor",
+			"department_head": "Department Head",
+			"admin":           "Admin",
+		},
+		"lt": {
+			"student":         "Studentas",
+			"supervisor":      "Vadovas",
+			"department_head": "Katedros vedėjas",
+			"admin":           "Administratorius",
+		},
+	}
+
+	if roleMap[locale] != nil && roleMap[locale][role] != "" {
+		return roleMap[locale][role]
+	}
+	return role
+}
+
+// Data extraction functions
+func getSupervisorValue(topic *database.ProjectTopicRegistration) string {
+	if topic != nil {
+		return topic.Supervisor
+	}
+	return ""
+}
+
+func getTitleValue(topic *database.ProjectTopicRegistration) string {
+	if topic != nil {
+		return topic.Title
+	}
+	return ""
+}
+
+func getTitleEnValue(topic *database.ProjectTopicRegistration) string {
+	if topic != nil {
+		return topic.TitleEn
+	}
+	return ""
+}
+
+func getCompletionValue(topic *database.ProjectTopicRegistration) string {
+	if topic != nil && topic.CompletionDate != nil {
+		return *topic.CompletionDate
+	}
+	return ""
+}
+
+func getProblemValue(topic *database.ProjectTopicRegistration) string {
+	if topic != nil {
+		return topic.Problem
+	}
+	return ""
+}
+
+func getObjectiveValue(topic *database.ProjectTopicRegistration) string {
+	if topic != nil {
+		return topic.Objective
+	}
+	return ""
+}
+
+func getTasksValue(topic *database.ProjectTopicRegistration) string {
+	if topic != nil {
+		return topic.Tasks
+	}
+	return ""
+}
+
+// Placeholder functions
+func getSupervisorPlaceholder(locale string) string {
+	if locale == "en" {
+		return "Enter supervisor name"
+	}
+	return "Įveskite vadovo vardą"
+}
+
+func getTitlePlaceholder(locale string) string {
+	if locale == "en" {
+		return "Enter topic in Lithuanian"
+	}
+	return "Įveskite temą lietuvių kalba"
+}
+
+func getTitleEnPlaceholder(locale string) string {
+	if locale == "en" {
+		return "Enter topic in English"
+	}
+	return "Įveskite temą anglų kalba"
+}
+
+func getProblemPlaceholder(locale string) string {
+	if locale == "en" {
+		return "Brief problem description..."
+	}
+	return "Trumpas problemos aprašymas..."
+}
+
+func getObjectivePlaceholder(locale string) string {
+	if locale == "en" {
+		return "Main objective..."
+	}
+	return "Pagrindinis tikslas..."
+}
+
+func getTasksPlaceholder(locale string) string {
+	if locale == "en" {
+		return "Main tasks summary..."
+	}
+	return "Pagrindinių uždavinių santrauka..."
+}
+
+func getCommentPlaceholder(locale string) string {
+	if locale == "en" {
+		return "Add a comment..."
+	}
+	return "Pridėti komentarą..."
+}
+
+// Confirmation messages
+func getSubmitConfirmMessage(locale string) string {
+	if locale == "en" {
+		return "Are you sure you want to submit this topic for review? You won't be able to edit it until reviewed."
+	}
+	return "Ar tikrai norite pateikti šią temą vertinimui? Jūs negalėsite jos redaguoti, kol ji nebus peržiūrėta."
+}
+
+func getSupervisorConfirmMessage(locale string) string {
+	if locale == "en" {
+		return "Are you sure you want to approve this topic? It will be sent to the department head for final approval."
+	}
+	return "Ar tikrai norite patvirtinti šią temą? Ji bus nusiųsta katedros vedėjui galutiniam patvirtinimui."
+}
+
+func getDepartmentConfirmMessage(locale string) string {
+	if locale == "en" {
+		return "Are you sure you want to give final approval to this topic?"
+	}
+	return "Ar tikrai norite galutinai patvirtinti šią temą?"
+}
+
+func getTopicRoleDisplayName(role, locale string) string {
+	roleMap := map[string]map[string]string{
+		"en": {
+			"student":         "Student",
+			"supervisor":      "Supervisor",
+			"department_head": "Department Head",
+			"admin":           "Admin",
+		},
+		"lt": {
+			"student":         "Studentas",
+			"supervisor":      "Vadovas",
+			"department_head": "Katedros vedėjas",
+			"admin":           "Administratorius",
+		},
+	}
+
+	if roleMap[locale] != nil && roleMap[locale][role] != "" {
+		return roleMap[locale][role]
+	}
+	return role
+}

@@ -51,11 +51,12 @@ const (
 	UserRoleStudent          = "student"
 
 	// Topic statuses
-	TopicStatusDraft     = "draft"
-	TopicStatusSubmitted = "submitted"
-	TopicStatusApproved  = "approved"
-	TopicStatusRejected  = "rejected"
-
+	TopicStatusDraft              = "draft"
+	TopicStatusSubmitted          = "submitted"
+	TopicStatusSupervisorApproved = "supervisor_approved"
+	TopicStatusApproved           = "approved"
+	TopicStatusRejected           = "rejected"
+	TopicStatusRevisionRequested  = "revision_requested"
 	// Document types
 	DocumentTypeThesis       = "thesis"
 	DocumentTypePresentation = "presentation"
@@ -1147,6 +1148,7 @@ func (v *Video) IsReady() bool {
 // ================================
 
 // ProjectTopicRegistration represents a topic registration
+// ProjectTopicRegistration represents a topic registration
 type ProjectTopicRegistration struct {
 	ID              int       `json:"id" db:"id"`
 	StudentRecordID int       `json:"student_record_id" db:"student_record_id"`
@@ -1157,7 +1159,7 @@ type ProjectTopicRegistration struct {
 	Tasks           string    `json:"tasks" db:"tasks"`
 	CompletionDate  *string   `json:"completion_date" db:"completion_date"`
 	Supervisor      string    `json:"supervisor" db:"supervisor"`
-	Status          string    `json:"status" db:"status"` // draft, submitted, approved, rejected
+	Status          string    `json:"status" db:"status"` // draft, submitted, supervisor_approved, approved, rejected, revision_requested
 	CreatedAt       time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
 	SubmittedAt     *int64    `json:"submitted_at" db:"submitted_at"`
@@ -1165,6 +1167,11 @@ type ProjectTopicRegistration struct {
 	ApprovedBy      *string   `json:"approved_by" db:"approved_by"`
 	ApprovedAt      *int64    `json:"approved_at" db:"approved_at"`
 	RejectionReason *string   `json:"rejection_reason" db:"rejection_reason"`
+
+	// ADD THESE NEW SUPERVISOR APPROVAL FIELDS
+	SupervisorApprovedAt      *int64  `json:"supervisor_approved_at" db:"supervisor_approved_at"`
+	SupervisorApprovedBy      *string `json:"supervisor_approved_by" db:"supervisor_approved_by"`
+	SupervisorRejectionReason *string `json:"supervisor_rejection_reason" db:"supervisor_rejection_reason"`
 }
 
 // [Keep all existing methods for ProjectTopicRegistration unchanged...]
@@ -2294,9 +2301,9 @@ func (rwd *ReportWithDetails) IsComplete() bool {
 		rwd.BothReportsSigned
 }
 
-// IsEditable checks if the topic can be edited (keeping existing methods)
+// IsEditable checks if the topic can be edited
 func (ptr *ProjectTopicRegistration) IsEditable() bool {
-	return ptr.Status == "draft" || ptr.Status == "rejected"
+	return ptr.Status == "draft" || ptr.Status == "revision_requested"
 }
 
 // IsApproved checks if the topic is approved
@@ -2306,36 +2313,64 @@ func (ptr *ProjectTopicRegistration) IsApproved() bool {
 
 // IsSubmitted checks if the topic is submitted
 func (ptr *ProjectTopicRegistration) IsSubmitted() bool {
-	return ptr.Status == "submitted" || ptr.Status == "approved" || ptr.Status == "rejected"
+	return ptr.Status == "submitted" || ptr.Status == "supervisor_approved" || ptr.Status == "approved" || ptr.Status == "rejected"
 }
 
-// GetStatusDisplay returns user-friendly status
-func (ptr *ProjectTopicRegistration) GetStatusDisplay() string {
-	switch ptr.Status {
-	case "draft":
-		return "Draft"
-	case "submitted":
-		return "Submitted for Review"
-	case "approved":
-		return "Approved"
-	case "rejected":
-		return "Rejected"
-	default:
-		return "Unknown"
+// NEW WORKFLOW STATE METHODS
+func (ptr *ProjectTopicRegistration) CanSubmit() bool {
+	return ptr.Status == "draft" || ptr.Status == "revision_requested"
+}
+
+func (ptr *ProjectTopicRegistration) CanSupervisorReview() bool {
+	return ptr.Status == "submitted"
+}
+
+func (ptr *ProjectTopicRegistration) CanDepartmentReview() bool {
+	return ptr.Status == "supervisor_approved"
+}
+
+// UPDATED GetStatusDisplay method with new workflow states
+func (ptr *ProjectTopicRegistration) GetStatusDisplay(locale string) string {
+	statusMap := map[string]map[string]string{
+		"en": {
+			"draft":               "Draft",
+			"submitted":           "Submitted - Awaiting Supervisor Review",
+			"supervisor_approved": "Supervisor Approved - Awaiting Department Review",
+			"approved":            "Approved",
+			"rejected":            "Rejected",
+			"revision_requested":  "Revision Requested",
+		},
+		"lt": {
+			"draft":               "Juodraštis",
+			"submitted":           "Pateikta - Laukia vadovo vertinimo",
+			"supervisor_approved": "Vadovas patvirtino - Laukia katedros vertinimo",
+			"approved":            "Patvirtinta",
+			"rejected":            "Atmesta",
+			"revision_requested":  "Reikalauja pataisymų",
+		},
 	}
+
+	if statusMap[locale] != nil && statusMap[locale][ptr.Status] != "" {
+		return statusMap[locale][ptr.Status]
+	}
+	return ptr.Status
 }
 
-// GetStatusColor returns CSS color class for status
+// UPDATED GetStatusColor method with new workflow states
 func (ptr *ProjectTopicRegistration) GetStatusColor() string {
 	switch ptr.Status {
 	case "draft":
 		return "text-gray-500"
 	case "submitted":
 		return "text-yellow-600"
+	case "supervisor_approved":
+		return "text-blue-600"
 	case "approved":
 		return "text-green-600"
 	case "rejected":
 		return "text-red-600"
+	case "revision_requested":
+		return "text-orange-600"
 	default:
 		return "text-gray-500"
 	}
@@ -2534,4 +2569,474 @@ func (d *Document) GetRepositoryDisplayInfo() map[string]string {
 	info["validation"] = d.ValidationStatus
 
 	return info
+}
+
+// ================================
+// STUDENT DASHBOARD MODELS
+// ================================
+// StudentDashboardData represents comprehensive data for student dashboard
+
+//type StudentDashboardData struct {
+//	// Basic student information
+//	StudentRecord *StudentRecord `json:"student_record"`
+//
+//	// Topic registration information
+//	TopicRegistration *ProjectTopicRegistration  `json:"topic_registration,omitempty"`
+//	TopicStatus       string                     `json:"topic_status"`
+//	TopicComments     []TopicRegistrationComment `json:"topic_comments,omitempty"`
+//
+//	// Reports information
+//	SupervisorReport *SupervisorReport `json:"supervisor_report,omitempty"`
+//	ReviewerReport   *ReviewerReport   `json:"reviewer_report,omitempty"`
+//
+//	// Documents and uploads - using the specific field names your templates expect
+//	Documents             []Document `json:"documents,omitempty"`
+//	Videos                []Video    `json:"videos,omitempty"`
+//	HasThesisPDF          bool       `json:"has_thesis_pdf"`
+//	ThesisDocument        *Document  `json:"thesis_document,omitempty"` // Added this field
+//	CompanyRecommendation *Document  `json:"company_recommendation,omitempty"`
+//	VideoPresentation     *Video     `json:"video_presentation,omitempty"`
+//
+//	// Source code repository - this is what your templates are looking for
+//	SourceCodeRepository *Document `json:"source_code_repository,omitempty"`
+//
+//	// Status flags and progress
+//	HasTopicApproved    bool `json:"has_topic_approved"`
+//	HasSupervisorReport bool `json:"has_supervisor_report"`
+//	HasReviewerReport   bool `json:"has_reviewer_report"`
+//	HasAllDocuments     bool `json:"has_all_documents"`
+//	HasVideo            bool `json:"has_video"`
+//	IsReadyForDefense   bool `json:"is_ready_for_defense"`
+//	HasSourceCode       bool `json:"has_source_code"`
+//
+//	// Defense information
+//	DefenseScheduled bool   `json:"defense_scheduled"`
+//	DefenseDate      string `json:"defense_date,omitempty"` // Changed from *time.Time to string
+//	DefenseLocation  string `json:"defense_location,omitempty"`
+//
+//	// Progress tracking
+//	CompletionPercentage int      `json:"completion_percentage"`
+//	CurrentStage         string   `json:"current_stage"`
+//	NextActions          []string `json:"next_actions,omitempty"`
+//
+//	// Notifications and reminders
+//	Notifications []StudentNotification `json:"notifications,omitempty"`
+//	Reminders     []StudentReminder     `json:"reminders,omitempty"`
+//
+//	// Academic year and semester info
+//	AcademicYear int    `json:"academic_year"`
+//	Semester     string `json:"semester"`
+//
+//	// Supervisor and reviewer information
+//	SupervisorInfo *SupervisorInfo `json:"supervisor_info,omitempty"`
+//	ReviewerInfo   *ReviewerInfo   `json:"reviewer_info,omitempty"`
+//
+//	// Deadlines
+//	Deadlines []StudentDeadline `json:"deadlines,omitempty"`
+//
+//	// Source code upload information
+//	SourceCodeUploads []SourceCodeUpload `json:"source_code_uploads,omitempty"`
+//}
+
+type StudentDashboardData struct {
+	// Basic student information
+	StudentRecord *StudentRecord `json:"student_record"`
+
+	// Topic registration information
+	TopicRegistration *ProjectTopicRegistration  `json:"topic_registration,omitempty"`
+	TopicStatus       string                     `json:"topic_status"`
+	TopicComments     []TopicRegistrationComment `json:"topic_comments,omitempty"`
+
+	// Reports information
+	SupervisorReport *SupervisorReport `json:"supervisor_report,omitempty"`
+	ReviewerReport   *ReviewerReport   `json:"reviewer_report,omitempty"`
+
+	// Documents and uploads - using the specific field names your templates expect
+	Documents             []Document `json:"documents,omitempty"`
+	Videos                []Video    `json:"videos,omitempty"`
+	HasThesisPDF          bool       `json:"has_thesis_pdf"`
+	ThesisDocument        *Document  `json:"thesis_document,omitempty"`
+	CompanyRecommendation *Document  `json:"company_recommendation,omitempty"`
+	VideoPresentation     *Video     `json:"video_presentation,omitempty"`
+
+	// Source code repository - this is what your templates are looking for
+	SourceCodeRepository *Document `json:"source_code_repository,omitempty"`
+	SourceCodeStatus     string    `json:"source_code_status,omitempty"` // ADD THIS FIELD
+
+	// Status flags and progress
+	HasTopicApproved    bool `json:"has_topic_approved"`
+	HasSupervisorReport bool `json:"has_supervisor_report"`
+	HasReviewerReport   bool `json:"has_reviewer_report"`
+	HasAllDocuments     bool `json:"has_all_documents"`
+	HasVideo            bool `json:"has_video"`
+	IsReadyForDefense   bool `json:"is_ready_for_defense"`
+	HasSourceCode       bool `json:"has_source_code"`
+
+	// Defense information
+	DefenseScheduled bool   `json:"defense_scheduled"`
+	DefenseDate      string `json:"defense_date,omitempty"`
+	DefenseLocation  string `json:"defense_location,omitempty"`
+
+	// Progress tracking
+	CompletionPercentage int      `json:"completion_percentage"`
+	CurrentStage         string   `json:"current_stage"`
+	NextActions          []string `json:"next_actions,omitempty"`
+
+	// Notifications and reminders
+	Notifications []StudentNotification `json:"notifications,omitempty"`
+	Reminders     []StudentReminder     `json:"reminders,omitempty"`
+
+	// Academic year and semester info
+	AcademicYear int    `json:"academic_year"`
+	Semester     string `json:"semester"`
+
+	// Supervisor and reviewer information
+	SupervisorInfo *SupervisorInfo `json:"supervisor_info,omitempty"`
+	ReviewerInfo   *ReviewerInfo   `json:"reviewer_info,omitempty"`
+
+	// Deadlines
+	Deadlines []StudentDeadline `json:"deadlines,omitempty"`
+
+	// Source code upload information
+	SourceCodeUploads []SourceCodeUpload `json:"source_code_uploads,omitempty"`
+}
+
+// StudentNotification represents notifications for students
+type StudentNotification struct {
+	ID        int       `json:"id"`
+	Type      string    `json:"type"` // info, warning, success, error
+	Title     string    `json:"title"`
+	Message   string    `json:"message"`
+	IsRead    bool      `json:"is_read"`
+	CreatedAt time.Time `json:"created_at"`
+	ActionURL string    `json:"action_url,omitempty"`
+}
+
+// StudentReminder represents reminders for students
+type StudentReminder struct {
+	ID          int       `json:"id"`
+	Type        string    `json:"type"` // deadline, task, meeting
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	DueDate     time.Time `json:"due_date"`
+	Priority    string    `json:"priority"` // low, medium, high
+	IsCompleted bool      `json:"is_completed"`
+}
+
+// StudentDeadline represents important deadlines
+type StudentDeadline struct {
+	ID          int       `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	DueDate     time.Time `json:"due_date"`
+	Type        string    `json:"type"` // topic_submission, document_upload, defense
+	IsOverdue   bool      `json:"is_overdue"`
+	DaysLeft    int       `json:"days_left"`
+}
+
+// SupervisorInfo represents supervisor information
+type SupervisorInfo struct {
+	Name        string `json:"name"`
+	Email       string `json:"email"`
+	Department  string `json:"department"`
+	Position    string `json:"position"`
+	Office      string `json:"office,omitempty"`
+	Phone       string `json:"phone,omitempty"`
+	OfficeHours string `json:"office_hours,omitempty"`
+}
+
+// ReviewerInfo represents reviewer information
+type ReviewerInfo struct {
+	Name         string `json:"name"`
+	Email        string `json:"email"`
+	Institution  string `json:"institution,omitempty"`
+	Expertise    string `json:"expertise,omitempty"`
+	ContactInfo  string `json:"contact_info,omitempty"`
+	ReviewStatus string `json:"review_status"` // assigned, in_progress, completed
+}
+
+// Methods for StudentDashboardData
+
+// GetCompletionPercentage calculates completion percentage
+func (sdd *StudentDashboardData) GetCompletionPercentage() int {
+	totalSteps := 5 // topic, supervisor report, reviewer report, documents, video
+	completed := 0
+
+	if sdd.HasTopicApproved {
+		completed++
+	}
+	if sdd.HasSupervisorReport {
+		completed++
+	}
+	if sdd.HasReviewerReport {
+		completed++
+	}
+	if sdd.HasAllDocuments {
+		completed++
+	}
+	if sdd.HasVideo {
+		completed++
+	}
+
+	return (completed * 100) / totalSteps
+}
+
+// GetCurrentStage returns the current stage of thesis progress
+func (sdd *StudentDashboardData) GetCurrentStage() string {
+	if !sdd.HasTopicApproved {
+		return "Topic Registration"
+	}
+	if !sdd.HasSupervisorReport {
+		return "Supervisor Evaluation"
+	}
+	if !sdd.HasReviewerReport {
+		return "Reviewer Evaluation"
+	}
+	if !sdd.HasAllDocuments {
+		return "Document Submission"
+	}
+	if !sdd.HasVideo {
+		return "Video Presentation"
+	}
+	if sdd.DefenseScheduled {
+		return "Defense Preparation"
+	}
+	return "Ready for Defense"
+}
+
+// GetNextActions returns list of next actions for the student
+func (sdd *StudentDashboardData) GetNextActions() []string {
+	var actions []string
+
+	if !sdd.HasTopicApproved {
+		if sdd.TopicRegistration == nil {
+			actions = append(actions, "Submit topic registration")
+		} else if sdd.TopicRegistration.Status == "draft" {
+			actions = append(actions, "Complete and submit topic registration")
+		} else if sdd.TopicRegistration.Status == "submitted" {
+			actions = append(actions, "Wait for topic approval")
+		} else if sdd.TopicRegistration.Status == "rejected" {
+			actions = append(actions, "Revise and resubmit topic registration")
+		}
+	}
+
+	if sdd.HasTopicApproved && !sdd.HasSupervisorReport {
+		actions = append(actions, "Contact supervisor for evaluation")
+	}
+
+	if sdd.HasTopicApproved && !sdd.HasReviewerReport {
+		actions = append(actions, "Ensure reviewer has been assigned")
+	}
+
+	if sdd.HasTopicApproved && !sdd.HasAllDocuments {
+		actions = append(actions, "Upload required documents")
+	}
+
+	if sdd.HasTopicApproved && !sdd.HasVideo {
+		actions = append(actions, "Record and upload presentation video")
+	}
+
+	if sdd.HasTopicApproved && !sdd.HasSourceCode {
+		actions = append(actions, "Upload source code")
+	}
+
+	if sdd.IsReadyForDefense && !sdd.DefenseScheduled {
+		actions = append(actions, "Schedule defense date")
+	}
+
+	if len(actions) == 0 {
+		actions = append(actions, "All requirements completed")
+	}
+
+	return actions
+}
+
+// GetOverdueReminders returns overdue reminders
+func (sdd *StudentDashboardData) GetOverdueReminders() []StudentReminder {
+	var overdue []StudentReminder
+	now := time.Now()
+
+	for _, reminder := range sdd.Reminders {
+		if !reminder.IsCompleted && reminder.DueDate.Before(now) {
+			overdue = append(overdue, reminder)
+		}
+	}
+
+	return overdue
+}
+
+// GetUpcomingDeadlines returns deadlines within next 7 days
+func (sdd *StudentDashboardData) GetUpcomingDeadlines() []StudentDeadline {
+	var upcoming []StudentDeadline
+	now := time.Now()
+	weekFromNow := now.Add(7 * 24 * time.Hour)
+
+	for _, deadline := range sdd.Deadlines {
+		if deadline.DueDate.After(now) && deadline.DueDate.Before(weekFromNow) {
+			upcoming = append(upcoming, deadline)
+		}
+	}
+
+	return upcoming
+}
+
+// GetUnreadNotifications returns unread notifications
+func (sdd *StudentDashboardData) GetUnreadNotifications() []StudentNotification {
+	var unread []StudentNotification
+
+	for _, notification := range sdd.Notifications {
+		if !notification.IsRead {
+			unread = append(unread, notification)
+		}
+	}
+
+	return unread
+}
+
+// HasCriticalReminders checks if there are any high priority overdue reminders
+func (sdd *StudentDashboardData) HasCriticalReminders() bool {
+	overdue := sdd.GetOverdueReminders()
+	for _, reminder := range overdue {
+		if reminder.Priority == "high" {
+			return true
+		}
+	}
+	return false
+}
+
+// GetRecentSourceCodeUpload returns the most recent source code upload
+func (sdd *StudentDashboardData) GetRecentSourceCodeUpload() *SourceCodeUpload {
+	if len(sdd.SourceCodeUploads) == 0 {
+		return nil
+	}
+
+	// Assuming they're sorted by date, return the first one
+	// You might want to sort them in the query instead
+	return &sdd.SourceCodeUploads[0]
+}
+
+// GetTopicApprovalStatus returns topic approval status with details
+func (sdd *StudentDashboardData) GetTopicApprovalStatus() map[string]interface{} {
+	status := make(map[string]interface{})
+
+	if sdd.TopicRegistration == nil {
+		status["status"] = "not_submitted"
+		status["message"] = "Topic not yet submitted"
+		status["color"] = "gray"
+		return status
+	}
+
+	switch sdd.TopicRegistration.Status {
+	case "draft":
+		status["status"] = "draft"
+		status["message"] = "Topic saved as draft"
+		status["color"] = "gray"
+	case "submitted":
+		status["status"] = "pending"
+		status["message"] = "Topic submitted for review"
+		status["color"] = "yellow"
+	case "approved":
+		status["status"] = "approved"
+		status["message"] = "Topic approved"
+		status["color"] = "green"
+	case "rejected":
+		status["status"] = "rejected"
+		status["message"] = "Topic rejected - revisions needed"
+		status["color"] = "red"
+	default:
+		status["status"] = "unknown"
+		status["message"] = "Unknown status"
+		status["color"] = "gray"
+	}
+
+	return status
+}
+
+// GetDefenseReadiness returns defense readiness information
+func (sdd *StudentDashboardData) GetDefenseReadiness() map[string]interface{} {
+	readiness := make(map[string]interface{})
+
+	readiness["percentage"] = sdd.GetCompletionPercentage()
+	readiness["is_ready"] = sdd.IsReadyForDefense
+	readiness["current_stage"] = sdd.GetCurrentStage()
+	readiness["next_actions"] = sdd.GetNextActions()
+
+	if sdd.IsReadyForDefense {
+		readiness["status"] = "ready"
+		readiness["message"] = "Ready for defense scheduling"
+		readiness["color"] = "green"
+	} else {
+		readiness["status"] = "in_progress"
+		readiness["message"] = fmt.Sprintf("Progress: %d%% complete", sdd.GetCompletionPercentage())
+		readiness["color"] = "blue"
+	}
+
+	return readiness
+}
+
+// NewStudentDashboardData creates a new StudentDashboardData instance
+func NewStudentDashboardData(student *StudentRecord) *StudentDashboardData {
+	return &StudentDashboardData{
+		StudentRecord:        student,
+		TopicStatus:          "not_submitted",
+		CompletionPercentage: 0,
+		CurrentStage:         "Topic Registration",
+		NextActions:          []string{"Submit topic registration"},
+		AcademicYear:         time.Now().Year(),
+		Semester:             "Spring", // You might want to calculate this
+		Notifications:        []StudentNotification{},
+		Reminders:            []StudentReminder{},
+		Deadlines:            []StudentDeadline{},
+		SourceCodeUploads:    []SourceCodeUpload{},
+	}
+}
+
+// Workflow progress percentage
+func (ptr *ProjectTopicRegistration) GetWorkflowProgress() int {
+	switch ptr.Status {
+	case "draft":
+		return 0
+	case "submitted":
+		return 33
+	case "supervisor_approved":
+		return 66
+	case "approved":
+		return 100
+	case "rejected", "revision_requested":
+		return 0
+	default:
+		return 0
+	}
+}
+
+// Check if topic is in final state
+func (ptr *ProjectTopicRegistration) IsFinalState() bool {
+	return ptr.Status == "approved" || ptr.Status == "rejected"
+}
+
+// Get next action for student
+func (ptr *ProjectTopicRegistration) GetNextAction(locale string) string {
+	actionMap := map[string]map[string]string{
+		"en": {
+			"draft":               "Complete and submit for review",
+			"submitted":           "Wait for supervisor review",
+			"supervisor_approved": "Wait for department approval",
+			"approved":            "Topic approved - proceed to next phase",
+			"rejected":            "Review feedback and resubmit",
+			"revision_requested":  "Address feedback and resubmit",
+		},
+		"lt": {
+			"draft":               "Užpildyti ir pateikti vertinimui",
+			"submitted":           "Laukti vadovo vertinimo",
+			"supervisor_approved": "Laukti katedros patvirtinimo",
+			"approved":            "Tema patvirtinta - tęsti toliau",
+			"rejected":            "Peržiūrėti atsiliepimus ir pateikti iš naujo",
+			"revision_requested":  "Atsižvelgti į pastabas ir pateikti iš naujo",
+		},
+	}
+
+	if actionMap[locale] != nil && actionMap[locale][ptr.Status] != "" {
+		return actionMap[locale][ptr.Status]
+	}
+	return "Unknown status"
 }
