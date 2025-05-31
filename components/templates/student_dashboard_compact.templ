@@ -2,139 +2,519 @@
 package templates
 
 import (
-    "fmt"
-    "FinalProjectManagementApp/auth"
-    "FinalProjectManagementApp/database"
-    "FinalProjectManagementApp/components/card"
-    "FinalProjectManagementApp/components/icon"
-    "FinalProjectManagementApp/components/button"
+	"FinalProjectManagementApp/auth"
+	"FinalProjectManagementApp/components/button"
+	"FinalProjectManagementApp/components/card"
+	"FinalProjectManagementApp/components/icon"
+	"FinalProjectManagementApp/database"
+	"fmt"
 )
 
 templ CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.StudentDashboardData, currentLocale string) {
-    @Layout(user, currentLocale, "Dashboard") {
-        <div class="space-y-6">
-            <!-- Compact Header -->
-            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-xl font-bold">{ user.Name }</h1>
-                        <p class="text-sm opacity-90">{ data.StudentRecord.StudentNumber } • { data.StudentRecord.StudyProgram }</p>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-2xl font-bold">{ fmt.Sprintf("%d%%", calculateProgress(data)) }</div>
-                        <div class="text-xs opacity-90">Complete</div>
-                    </div>
-                </div>
-                <div class="mt-3 bg-white bg-opacity-20 rounded-full h-2">
-                    <div class="bg-white h-2 rounded-full transition-all duration-500"
-                         style={ "width: " + fmt.Sprintf("%d%%", calculateProgress(data)) }></div>
-                </div>
-            </div>
+	@Layout(user, currentLocale, "Dashboard") {
+		<div class="space-y-6">
+			<!-- Compact Header -->
+			<div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+				<div class="flex items-center justify-between">
+					<div>
+						<h1 class="text-xl font-bold">{ user.Name }</h1>
+						<p class="text-sm opacity-90">{ data.StudentRecord.StudentNumber } • { data.StudentRecord.StudyProgram }</p>
+					</div>
+					<div class="text-right">
+						<div class="text-2xl font-bold">{ fmt.Sprintf("%d%%", calculateProgress(data)) }</div>
+						<div class="text-xs opacity-90">Complete</div>
+					</div>
+				</div>
+				<div class="mt-3 bg-white bg-opacity-20 rounded-full h-2">
+					<div
+						class="bg-white h-2 rounded-full transition-all duration-500"
+						style={ "width: " + fmt.Sprintf("%d%%", calculateProgress(data)) }
+					></div>
+				</div>
+			</div>
+			<!-- Compact Grid -->
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				@CompactTopicSection(data, currentLocale)
+				@CompactSourceSection(data)
+				@CompactDocsSection(data)
+				@CompactEvalSection(data)
+				<!-- Defense Status -->
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							🎓 Defense
+						}
+					}
+					@card.Content() {
+						if data.DefenseScheduled {
+							<div class="text-center">
+								<div class="text-sm font-medium text-green-600">Scheduled</div>
+								<div class="text-xs text-gray-600">{ formatDefenseDate(data.DefenseDate) }</div>
+								<div class="text-xs text-gray-500 mt-1">{ data.StudentRecord.DefenseLocation }</div>
+							</div>
+						} else {
+							<div class="text-center">
+								<div class="text-sm text-gray-600">Not Scheduled</div>
+								<div class="text-xs text-gray-500">Complete all requirements</div>
+							</div>
+						}
+					}
+				}
+			</div>
+		</div>
+		<!-- Modal Container -->
+		<div id="modal-container" style="display: none;"></div>
+		<!-- JavaScript -->
+		<script src="/static/js/student-dashboard-compact.js"></script>
+		<script>
 
-            <!-- Compact Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                @CompactSourceSection(data)
-                @CompactDocsSection(data)
-                @CompactEvalSection(data)
+		  const currentUserData = {
+                name: "{{ user.Name }}",
+                email: "{{ user.Email }}",
+                studentId: "{{ data.StudentRecord.StudentNumber }}",
+                thesisTitle: "{{ data.StudentRecord.FinalProjectTitle }}"
+            };
 
-                <!-- Defense Status -->
-                @card.Card() {
-                    @card.Header() {
-                        @card.Title() {
-                            🎓 Defense
+            // Handle source code upload form
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('compact-source-form');
+                if (form) {
+                    form.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+
+                        const fileInput = form.querySelector('input[type="file"]');
+                        if (!fileInput.files[0]) {
+                            alert('Please select a file');
+                            return;
                         }
-                    }
-                    @card.Content() {
-                        if data.DefenseScheduled {
-                            <div class="text-center">
-                                <div class="text-sm font-medium text-green-600">Scheduled</div>
-                                <div class="text-xs text-gray-600">{ formatDefenseDate(data.DefenseDate) }</div>
-                                <div class="text-xs text-gray-500 mt-1">{ data.StudentRecord.DefenseLocation }</div>
-                            </div>
-                        } else {
-                            <div class="text-center">
-                                <div class="text-sm text-gray-600">Not Scheduled</div>
-                                <div class="text-xs text-gray-500">Complete all requirements</div>
-                            </div>
+
+                        // Debug log to check values
+                        console.log('Uploading with data:', currentUserData);
+
+                        const formData = new FormData();
+                        formData.append('source_code', fileInput.files[0]);
+                        // Automatically add user data
+                        formData.append('name', currentUserData.name);
+                        formData.append('student_id', currentUserData.studentId);
+                        formData.append('email', currentUserData.email);
+                        formData.append('thesis_title', currentUserData.thesisTitle || 'Final Thesis Project');
+
+                        const uploadBtn = document.getElementById('compact-upload-btn');
+                        const progressDiv = document.getElementById('compact-progress');
+                        const progressBar = document.getElementById('compact-progress-bar');
+                        const statusText = document.getElementById('compact-status');
+
+                        uploadBtn.disabled = true;
+                        uploadBtn.innerHTML = '<span class="animate-spin">⏳</span> Uploading...';
+                        progressDiv.classList.remove('hidden');
+
+                        try {
+                            // Simulate progress
+                            let progress = 0;
+                            const progressInterval = setInterval(() => {
+                                progress += Math.random() * 15;
+                                if (progress > 90) progress = 90;
+                                progressBar.style.width = progress + '%';
+                            }, 500);
+
+                            const response = await fetch('/api/source-code/upload', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            clearInterval(progressInterval);
+                            progressBar.style.width = '100%';
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                statusText.textContent = '✅ Upload complete!';
+                                statusText.classList.remove('text-gray-500');
+                                statusText.classList.add('text-green-600');
+
+                                // Show success message
+                                if (data.repository_info) {
+                                    setTimeout(() => {
+                                        alert(`Upload successful!\nRepository: ${data.repository_info.name}\nView at: ${data.repository_info.web_url}`);
+                                        location.reload();
+                                    }, 1500);
+                                } else {
+                                    setTimeout(() => {
+                                        location.reload();
+                                    }, 1500);
+                                }
+                            } else {
+                                throw new Error(data.error || 'Upload failed');
+                            }
+                        } catch (error) {
+                            statusText.textContent = '❌ ' + error.message;
+                            statusText.classList.remove('text-gray-500');
+                            statusText.classList.add('text-red-600');
+                            uploadBtn.disabled = false;
+                            uploadBtn.innerHTML = '<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg> Upload Source Code';
                         }
-                    }
+                    });
                 }
-            </div>
-        </div>
+            });
 
-        <!-- JavaScript -->
-        <script src="/static/js/student-dashboard-compact.js"></script>
-    }
+
+
+
+                const currentStudentId = {{ data.StudentRecord.ID }};
+            // Modal Functions
+        
+                      function openTopicModal() {
+                          console.log('openTopicModal called for student:', currentStudentId);
+                          htmx.ajax('GET', '/topic-registration/' + currentStudentId, {
+                              target: '#modal-container',
+                              swap: 'innerHTML'
+                          });
+                          showModal();
+                      }
+
+            function showModal() {
+                let modalContainer = document.getElementById('modal-container');
+                if (!modalContainer) {
+                    modalContainer = document.createElement('div');
+                    modalContainer.id = 'modal-container';
+                    modalContainer.className = 'fixed inset-0 z-50';
+                    document.body.appendChild(modalContainer);
+                }
+                modalContainer.style.display = 'block';
+
+                // Focus trap for accessibility
+                setTimeout(() => {
+                    const modal = modalContainer.querySelector('[role="dialog"]');
+                    if (modal) {
+                        modal.focus();
+                    }
+                }, 100);
+            }
+
+            function hideModal() {
+                const modalContainer = document.getElementById('modal-container');
+                if (modalContainer) {
+                    modalContainer.style.display = 'none';
+                    modalContainer.innerHTML = '';
+                }
+                // Reset modal state
+                if (window.modalState) {
+                    window.modalState.openModalId = null;
+                }
+                document.body.style.overflow = '';
+            }
+
+            // Other modal functions
+            function uploadNewVersion() {
+                console.log('Upload new version');
+                // Implementation for uploading new source code version
+            }
+
+            function uploadRecommendation() {
+                console.log('Upload recommendation');
+                // Implementation for uploading recommendation
+            }
+
+            function uploadVideo() {
+                console.log('Upload video');
+                // Implementation for uploading video
+            }
+
+            function playVideo() {
+                console.log('Play video');
+                // Implementation for playing video
+            }
+
+            function viewReport(type, reportId) {
+                console.log('View report:', type, reportId);
+                // Implementation for viewing reports
+            }
+
+            // Event Listeners
+            document.addEventListener('htmx:afterRequest', function(evt) {
+                if (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated') {
+                    hideModal();
+                    // Reload the page or update the topic section
+                    location.reload();
+                }
+            });
+
+            // Handle source code upload form
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('compact-source-form');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const formData = new FormData(form);
+                        const uploadBtn = document.getElementById('compact-upload-btn');
+                        const progressDiv = document.getElementById('compact-progress');
+                        const progressBar = document.getElementById('compact-progress-bar');
+                        const statusText = document.getElementById('compact-status');
+
+                        uploadBtn.disabled = true;
+                        progressDiv.classList.remove('hidden');
+
+                        // Simulate upload progress
+                        let progress = 0;
+                        const interval = setInterval(() => {
+                            progress += 10;
+                            progressBar.style.width = progress + '%';
+
+                            if (progress >= 100) {
+                                clearInterval(interval);
+                                statusText.textContent = 'Upload complete!';
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
+                            }
+                        }, 200);
+
+                        // Actual upload would go here
+                        // fetch('/api/upload/source', { method: 'POST', body: formData })
+                    });
+                }
+            });
+        </script>
+	}
+}
+
+// Topic Registration Section
+templ CompactTopicSection(data *database.StudentDashboardData, locale string) {
+	@card.Card() {
+		@card.Header() {
+			@card.Title() {
+				📝 Topic Registration
+			}
+			if data.TopicRegistration != nil {
+				<div class="flex items-center space-x-2 ml-auto">
+					switch data.TopicRegistration.Status {
+						case "draft":
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+								@icon.PencilLine(icon.Props{Size: 12, Class: "mr-1"})
+								Draft
+							</span>
+						case "submitted":
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+								@icon.Clock(icon.Props{Size: 12, Class: "mr-1"})
+								Submitted
+							</span>
+						case "supervisor_approved":
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+								@icon.UserCheck(icon.Props{Size: 12, Class: "mr-1"})
+								Supervisor OK
+							</span>
+						case "approved":
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+								@icon.CircleCheck(icon.Props{Size: 12, Class: "mr-1"})
+								Approved
+							</span>
+						case "rejected":
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
+								@icon.CircleX(icon.Props{Size: 12, Class: "mr-1"})
+								Rejected
+							</span>
+						case "revision_requested":
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-800">
+								@icon.RotateCcw(icon.Props{Size: 12, Class: "mr-1"})
+								Revision
+							</span>
+					}
+				</div>
+			}
+		}
+		@card.Content() {
+			if data.TopicRegistration != nil {
+				<!-- Topic exists - show preview -->
+				<div class="space-y-3">
+					<!-- Title Preview -->
+					<div class="space-y-1">
+						<p class="text-xs text-gray-500">
+							if locale == "en" {
+								Title
+							} else {
+								Tema
+							}
+						</p>
+						<p class="text-sm font-medium line-clamp-2" title={ data.TopicRegistration.Title }>
+							{ data.TopicRegistration.Title }
+						</p>
+					</div>
+					<!-- Supervisor -->
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-gray-500">
+							if locale == "en" {
+								Supervisor
+							} else {
+								Vadovas
+							}
+						</span>
+						<span class="text-sm">{ data.TopicRegistration.Supervisor }</span>
+					</div>
+					<!-- Action Buttons -->
+					<div class="flex space-x-2 pt-2">
+						@button.Button(button.Props{
+							Variant: button.VariantDefault,
+							Size:    button.SizeIcon,
+							Class:   "flex-1",
+							Attributes: templ.Attributes{
+								"onclick": "openTopicModal()",
+							},
+						}) {
+							@icon.Eye(icon.Props{Size: 14, Class: "mr-1"})
+							if locale == "en" {
+								View
+							} else {
+								Peržiūrėti
+							}
+						}
+						if data.TopicRegistration.IsEditable() {
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Class:   "flex-1",
+								Attributes: templ.Attributes{
+									"onclick": "openTopicModal()",
+								},
+							}) {
+								@icon.Pencil(icon.Props{Size: 14, Class: "mr-1"})
+								if locale == "en" {
+									Edit
+								} else {
+									Redaguoti
+								}
+							}
+						}
+					</div>
+					<!-- Comments indicator if any -->
+					if data.TopicCommentCount > 0 {
+						<div class="flex items-center justify-between pt-2 border-t">
+							<div class="flex items-center space-x-1 text-xs text-gray-500">
+								@icon.MessageCircle(icon.Props{Size: 12})
+								<span>
+									{ fmt.Sprintf("%d", data.TopicCommentCount) }
+									if data.TopicCommentCount == 1 {
+										if locale == "en" {
+											comment
+										} else {
+											komentaras
+										}
+									} else {
+										if locale == "en" {
+											comments
+										} else {
+											komentarai
+										}
+									}
+								</span>
+							</div>
+							if data.HasUnreadComments {
+								<span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+							}
+						</div>
+					}
+				</div>
+			} else {
+				<!-- No topic yet - show start button -->
+				<div class="text-center py-4">
+					<div class="mb-3">
+						@icon.PencilLine(icon.Props{Size: 32, Class: "mx-auto text-gray-400"})
+					</div>
+					<p class="text-sm text-gray-600 mb-3">
+						if locale == "en" {
+							Start your thesis journey by registering your topic
+						} else {
+							Pradėkite savo baigiamojo darbo kelionę registruodami temą
+						}
+					</p>
+					@button.Button(button.Props{
+						Variant: button.VariantDefault,
+						Size:    button.SizeIcon,
+						Class:   "w-full",
+						Attributes: templ.Attributes{
+							"onclick": "openTopicModal()",
+						},
+					}) {
+						@icon.Plus(icon.Props{Size: 14, Class: "mr-1"})
+						if locale == "en" {
+							Register Topic
+						} else {
+							Registruoti temą
+						}
+					}
+				</div>
+			}
+		}
+	}
 }
 
 // Source Code Section
 templ CompactSourceSection(data *database.StudentDashboardData) {
-    @card.Card() {
-        @card.Header() {
-            @card.Title() {
-                💻 Source Code
-            }
-            if data.SourceCodeRepository != nil {
-                <div class="flex items-center space-x-2 ml-auto">
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                        @icon.CircleCheck(icon.Props{Size: 12, Class: "mr-1"})
-                        Uploaded
-                    </span>
-                </div>
-            }
-        }
-        @card.Content() {
-            if data.SourceCodeRepository != nil {
-                <!-- Compact Preview -->
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div class="flex items-center space-x-2">
-                            @icon.Github(icon.Props{Size: 16, Class: "text-gray-600"})
-                            <span class="text-sm font-medium">Repository Ready</span>
-                        </div>
-                        <div class="flex space-x-1">
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Size: button.SizeIcon,
-                                Attributes: templ.Attributes{
-                                    "onclick": fmt.Sprintf("window.open('/repository/student/%d', '_blank')", data.StudentRecord.ID),
-                                },
-                            }) {
-                                @icon.Eye(icon.Props{Size: 14})
-                            }
-                            if data.SourceCodeRepository.RepositoryURL != nil {
-                                @button.Button(button.Props{
-                                    Variant: button.VariantOutline,
-                                    Size: button.SizeIcon,
-                                    Attributes: templ.Attributes{
-                                        "onclick": fmt.Sprintf("window.open('%s', '_blank')", *data.SourceCodeRepository.RepositoryURL),
-                                    },
-                                }) {
-                                    @icon.ExternalLink(icon.Props{Size: 14})
-                                }
-                            }
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Size: button.SizeIcon,
-                                Attributes: templ.Attributes{
-                                    "onclick": "uploadNewVersion()",
-                                    "title": "Upload new version",
-                                },
-                            }) {
-                                @icon.Upload(icon.Props{Size: 14})
-                            }
-                        </div>
-                    </div>
-                    <div class="text-xs text-gray-500">
-                        Uploaded: { data.SourceCodeRepository.UploadedDate.Format("Jan 2, 15:04") }
-                    </div>
-                </div>
-            } else {
-                <!-- Compact Upload Form -->
-                @SourceUploadFormCompact()
-            }
-        }
-    }
+	@card.Card() {
+		@card.Header() {
+			@card.Title() {
+				💻 Source Code
+			}
+			if data.SourceCodeRepository != nil {
+				<div class="flex items-center space-x-2 ml-auto">
+					<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+						@icon.CircleCheck(icon.Props{Size: 12, Class: "mr-1"})
+						Uploaded
+					</span>
+				</div>
+			}
+		}
+		@card.Content() {
+			if data.SourceCodeRepository != nil {
+				<!-- Compact Preview -->
+				<div class="space-y-3">
+					<div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+						<div class="flex items-center space-x-2">
+							@icon.Github(icon.Props{Size: 16, Class: "text-gray-600"})
+							<span class="text-sm font-medium">Repository Ready</span>
+						</div>
+						<div class="flex space-x-1">
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Attributes: templ.Attributes{
+									"onclick": fmt.Sprintf("window.open('/repository/student/%d', '_blank')", data.StudentRecord.ID),
+								},
+							}) {
+								@icon.Eye(icon.Props{Size: 14})
+							}
+							if data.SourceCodeRepository.RepositoryURL != nil {
+								@button.Button(button.Props{
+									Variant: button.VariantOutline,
+									Size:    button.SizeIcon,
+									Attributes: templ.Attributes{
+										"onclick": fmt.Sprintf("window.open('%s', '_blank')", *data.SourceCodeRepository.RepositoryURL),
+									},
+								}) {
+									@icon.ExternalLink(icon.Props{Size: 14})
+								}
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Attributes: templ.Attributes{
+									"onclick": "uploadNewVersion()",
+									"title":   "Upload new version",
+								},
+							}) {
+								@icon.Upload(icon.Props{Size: 14})
+							}
+						</div>
+					</div>
+					<div class="text-xs text-gray-500">
+						Uploaded: { data.SourceCodeRepository.UploadedDate.Format("Jan 2, 15:04") }
+					</div>
+				</div>
+			} else {
+				<!-- Compact Upload Form -->
+				@SourceUploadFormCompact()
+			}
+		}
+	}
 }
 
 // Source Upload Form
@@ -145,32 +525,24 @@ templ SourceUploadFormCompact() {
             <p class="text-sm text-gray-600 mb-3">Upload your thesis source code (ZIP)</p>
 
             <form id="compact-source-form" class="space-y-2">
-                <input type="file" name="source_code" accept=".zip" required
-                       class="block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700" />
-
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" name="name" placeholder="Full Name" required
-                           class="px-2 py-1 text-sm border rounded" />
-                    <input type="text" name="student_id" placeholder="Student ID" required
-                           class="px-2 py-1 text-sm border rounded" />
-                </div>
-
-                <input type="email" name="email" placeholder="Email" required
-                       class="w-full px-2 py-1 text-sm border rounded" />
-
-                <input type="text" name="thesis_title" placeholder="Thesis Title" required
-                       class="w-full px-2 py-1 text-sm border rounded" />
+                <input
+                    type="file"
+                    name="source_code"
+                    accept=".zip"
+                    required
+                    class="block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700"
+                />
 
                 @button.Button(button.Props{
-                    Type: "submit",
-                    Size: button.SizeIcon,
+                    Type:  "submit",
+                    Size:  button.SizeIcon,
                     Class: "w-full",
                     Attributes: templ.Attributes{
                         "id": "compact-upload-btn",
                     },
                 }) {
                     @icon.Upload(icon.Props{Size: 14, Class: "mr-1"})
-                    Upload
+                    Upload Source Code
                 }
             </form>
 
@@ -186,182 +558,231 @@ templ SourceUploadFormCompact() {
 
 // Documents Section
 templ CompactDocsSection(data *database.StudentDashboardData) {
-    @card.Card() {
-        @card.Header() {
-            @card.Title() {
-                📄 Documents
-            }
-        }
-        @card.Content() {
-            <div class="space-y-2">
-                <!-- Thesis PDF -->
-                <div class="flex items-center justify-between p-2 border rounded">
-                    <div class="flex items-center space-x-2">
-                        @icon.FileText(icon.Props{Size: 16, Class: "text-red-600"})
-                        <span class="text-sm">Thesis PDF</span>
-                    </div>
-                    if data.HasThesisPDF && data.ThesisDocument != nil {
-                        <div class="flex space-x-1">
-                            <span class="text-xs text-green-600">✓</span>
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Size: button.SizeIcon,
-                                Attributes: templ.Attributes{
-                                    "onclick": fmt.Sprintf("window.open('/api/documents/%d/preview', '_blank')", data.ThesisDocument.ID),
-                                },
-                            }) {
-                                @icon.Eye(icon.Props{Size: 12})
-                            }
-                        </div>
-                    } else {
-                        <span class="text-xs text-gray-500">Admin upload</span>
-                    }
-                </div>
-
-                <!-- Company Recommendation -->
-                <div class="flex items-center justify-between p-2 border rounded">
-                    <div class="flex items-center space-x-2">
-                        @icon.Building(icon.Props{Size: 16, Class: "text-blue-600"})
-                        <span class="text-sm">Recommendation</span>
-                    </div>
-                    if data.CompanyRecommendation != nil {
-                        <div class="flex space-x-1">
-                            <span class="text-xs text-green-600">✓</span>
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Size: button.SizeIcon,
-                                Attributes: templ.Attributes{
-                                    "onclick": fmt.Sprintf("window.open('/api/documents/%d/preview', '_blank')", data.CompanyRecommendation.ID),
-                                },
-                            }) {
-                                @icon.Eye(icon.Props{Size: 12})
-                            }
-                        </div>
-                    } else {
-                        @button.Button(button.Props{
-                            Variant: button.VariantOutline,
-                            Size: button.SizeIcon,
-                            Attributes: templ.Attributes{
-                                "onclick": "uploadRecommendation()",
-                            },
-                        }) {
-                            @icon.Upload(icon.Props{Size: 12})
-                        }
-                    }
-                </div>
-
-                <!-- Video Presentation -->
-                <div class="flex items-center justify-between p-2 border rounded">
-                    <div class="flex items-center space-x-2">
-                        @icon.Video(icon.Props{Size: 16, Class: "text-purple-600"})
-                        <span class="text-sm">Video (Optional)</span>
-                    </div>
-                    if data.VideoPresentation != nil {
-                        <div class="flex space-x-1">
-                            <span class="text-xs text-green-600">✓</span>
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Size: button.SizeIcon,
-                                Attributes: templ.Attributes{
-                                    "onclick": "playVideo()",
-                                },
-                            }) {
-                                @icon.Play(icon.Props{Size: 12})
-                            }
-                        </div>
-                    } else {
-                        @button.Button(button.Props{
-                            Variant: button.VariantOutline,
-                            Size: button.SizeIcon,
-                            Attributes: templ.Attributes{
-                                "onclick": "uploadVideo()",
-                            },
-                        }) {
-                            @icon.Upload(icon.Props{Size: 12})
-                        }
-                    }
-                </div>
-            </div>
-        }
-    }
+	@card.Card() {
+		@card.Header() {
+			@card.Title() {
+				📄 Documents
+			}
+		}
+		@card.Content() {
+			<div class="space-y-2">
+				<!-- Thesis PDF -->
+				<div class="flex items-center justify-between p-2 border rounded">
+					<div class="flex items-center space-x-2">
+						@icon.FileText(icon.Props{Size: 16, Class: "text-red-600"})
+						<span class="text-sm">Thesis PDF</span>
+					</div>
+					if data.HasThesisPDF && data.ThesisDocument != nil {
+						<div class="flex space-x-1">
+							<span class="text-xs text-green-600">✓</span>
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Attributes: templ.Attributes{
+									"onclick": fmt.Sprintf("window.open('/api/documents/%d/preview', '_blank')", data.ThesisDocument.ID),
+								},
+							}) {
+								@icon.Eye(icon.Props{Size: 12})
+							}
+						</div>
+					} else {
+						<span class="text-xs text-gray-500">Admin upload</span>
+					}
+				</div>
+				<!-- Company Recommendation -->
+				<div class="flex items-center justify-between p-2 border rounded">
+					<div class="flex items-center space-x-2">
+						@icon.Building(icon.Props{Size: 16, Class: "text-blue-600"})
+						<span class="text-sm">Recommendation</span>
+					</div>
+					if data.CompanyRecommendation != nil {
+						<div class="flex space-x-1">
+							<span class="text-xs text-green-600">✓</span>
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Attributes: templ.Attributes{
+									"onclick": fmt.Sprintf("window.open('/api/documents/%d/preview', '_blank')", data.CompanyRecommendation.ID),
+								},
+							}) {
+								@icon.Eye(icon.Props{Size: 12})
+							}
+						</div>
+					} else {
+						@button.Button(button.Props{
+							Variant: button.VariantOutline,
+							Size:    button.SizeIcon,
+							Attributes: templ.Attributes{
+								"onclick": "uploadRecommendation()",
+							},
+						}) {
+							@icon.Upload(icon.Props{Size: 12})
+						}
+					}
+				</div>
+				<!-- Video Presentation -->
+				<div class="flex items-center justify-between p-2 border rounded">
+					<div class="flex items-center space-x-2">
+						@icon.Video(icon.Props{Size: 16, Class: "text-purple-600"})
+						<span class="text-sm">Video (Optional)</span>
+					</div>
+					if data.VideoPresentation != nil {
+						<div class="flex space-x-1">
+							<span class="text-xs text-green-600">✓</span>
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Attributes: templ.Attributes{
+									"onclick": "playVideo()",
+								},
+							}) {
+								@icon.Play(icon.Props{Size: 12})
+							}
+						</div>
+					} else {
+						@button.Button(button.Props{
+							Variant: button.VariantOutline,
+							Size:    button.SizeIcon,
+							Attributes: templ.Attributes{
+								"onclick": "uploadVideo()",
+							},
+						}) {
+							@icon.Upload(icon.Props{Size: 12})
+						}
+					}
+				</div>
+			</div>
+		}
+	}
 }
 
 // Reports/Evaluation Section
 templ CompactEvalSection(data *database.StudentDashboardData) {
-    @card.Card() {
-        @card.Header() {
-            @card.Title() {
-                📋 Evaluation
-            }
-        }
-        @card.Content() {
-            <div class="space-y-2">
-                <!-- Supervisor Report -->
-                <div class="flex items-center justify-between p-2 border rounded">
-                    <div class="flex items-center space-x-2">
-                        @icon.User(icon.Props{Size: 16, Class: "text-green-600"})
-                        <span class="text-sm">Supervisor</span>
-                        if data.SupervisorReport != nil && data.SupervisorReport.Grade != nil {
-                            <span class="text-xs font-medium text-blue-600">
-                                Grade: { fmt.Sprintf("%d", *data.SupervisorReport.Grade) }
-                            </span>
-                        }
-                    </div>
-                    if data.SupervisorReport != nil {
-                        <div class="flex items-center space-x-1">
-                            if data.SupervisorReport.IsSigned {
-                                <span class="text-xs text-green-600">✓ Signed</span>
-                            } else {
-                                <span class="text-xs text-yellow-600">Draft</span>
-                            }
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Size: button.SizeIcon,
-                                Attributes: templ.Attributes{
-                                    "onclick": fmt.Sprintf("viewReport('supervisor', %d)", data.SupervisorReport.ID),
-                                },
-                            }) {
-                                @icon.Eye(icon.Props{Size: 12})
-                            }
-                        </div>
-                    } else {
-                        <span class="text-xs text-gray-500">Pending</span>
-                    }
-                </div>
+	@card.Card() {
+		@card.Header() {
+			@card.Title() {
+				📋 Evaluation
+			}
+		}
+		@card.Content() {
+			<div class="space-y-2">
+				<!-- Supervisor Report -->
+				<div class="flex items-center justify-between p-2 border rounded">
+					<div class="flex items-center space-x-2">
+						@icon.User(icon.Props{Size: 16, Class: "text-green-600"})
+						<span class="text-sm">Supervisor</span>
+						if data.SupervisorReport != nil && data.SupervisorReport.Grade != nil {
+							<span class="text-xs font-medium text-blue-600">
+								Grade: { fmt.Sprintf("%d", *data.SupervisorReport.Grade) }
+							</span>
+						}
+					</div>
+					if data.SupervisorReport != nil {
+						<div class="flex items-center space-x-1">
+							if data.SupervisorReport.IsSigned {
+								<span class="text-xs text-green-600">✓ Signed</span>
+							} else {
+								<span class="text-xs text-yellow-600">Draft</span>
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Attributes: templ.Attributes{
+									"onclick": fmt.Sprintf("viewReport('supervisor', %d)", data.SupervisorReport.ID),
+								},
+							}) {
+								@icon.Eye(icon.Props{Size: 12})
+							}
+						</div>
+					} else {
+						<span class="text-xs text-gray-500">Pending</span>
+					}
+				</div>
+				<!-- Reviewer Report -->
+				<div class="flex items-center justify-between p-2 border rounded">
+					<div class="flex items-center space-x-2">
+						@icon.UserCheck(icon.Props{Size: 16, Class: "text-blue-600"})
+						<span class="text-sm">Reviewer</span>
+						if data.ReviewerReport != nil {
+							<span class="text-xs font-medium text-blue-600">
+								Grade: { fmt.Sprintf("%.1f", data.ReviewerReport.Grade) }
+							</span>
+						}
+					</div>
+					if data.ReviewerReport != nil {
+						<div class="flex items-center space-x-1">
+							if data.ReviewerReport.IsSigned {
+								<span class="text-xs text-green-600">✓ Signed</span>
+							} else {
+								<span class="text-xs text-yellow-600">Draft</span>
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantOutline,
+								Size:    button.SizeIcon,
+								Attributes: templ.Attributes{
+									"onclick": fmt.Sprintf("viewReport('reviewer', %d)", data.ReviewerReport.ID),
+								},
+							}) {
+								@icon.Eye(icon.Props{Size: 12})
+							}
+						</div>
+					} else {
+						<span class="text-xs text-gray-500">Pending</span>
+					}
+				</div>
+			</div>
+		}
+	}
+}
 
-                <!-- Reviewer Report -->
-                <div class="flex items-center justify-between p-2 border rounded">
-                    <div class="flex items-center space-x-2">
-                        @icon.UserCheck(icon.Props{Size: 16, Class: "text-blue-600"})
-                        <span class="text-sm">Reviewer</span>
-                        if data.ReviewerReport != nil {
-                            <span class="text-xs font-medium text-blue-600">
-                                Grade: { fmt.Sprintf("%.1f", data.ReviewerReport.Grade) }
-                            </span>
-                        }
-                    </div>
-                    if data.ReviewerReport != nil {
-                        <div class="flex items-center space-x-1">
-                            if data.ReviewerReport.IsSigned {
-                                <span class="text-xs text-green-600">✓ Signed</span>
-                            } else {
-                                <span class="text-xs text-yellow-600">Draft</span>
-                            }
-                            @button.Button(button.Props{
-                                Variant: button.VariantOutline,
-                                Size: button.SizeIcon,
-                                Attributes: templ.Attributes{
-                                    "onclick": fmt.Sprintf("viewReport('reviewer', %d)", data.ReviewerReport.ID),
-                                },
-                            }) {
-                                @icon.Eye(icon.Props{Size: 12})
-                            }
-                        </div>
-                    } else {
-                        <span class="text-xs text-gray-500">Pending</span>
-                    }
-                </div>
-            </div>
-        }
-    }
+// Helper function to calculate progress
+func calculateProgress(data *database.StudentDashboardData) int {
+	progress := 0
+
+	// Topic registered and approved (25% total)
+	if data.TopicRegistration != nil {
+		progress += 15 // Draft or submitted
+		if data.TopicRegistration.Status == "approved" {
+			progress += 10 // Approved adds more
+		}
+	}
+
+	// Source code uploaded (25%)
+	if data.SourceCodeRepository != nil {
+		progress += 25
+	}
+
+	// Thesis PDF (25%)
+	if data.HasThesisPDF {
+		progress += 25
+	}
+
+	// Supervisor report (12.5%)
+	if data.SupervisorReport != nil && data.SupervisorReport.IsSigned {
+		progress += 12
+	}
+
+	// Reviewer report (12.5%)
+	if data.ReviewerReport != nil && data.ReviewerReport.IsSigned {
+		progress += 13
+	}
+
+	// OPTIONAL items (not included in progress):
+	// - Company recommendation
+	// - Video presentation
+
+	// Cap at 100%
+	if progress > 100 {
+		progress = 100
+	}
+
+	return progress
+}
+
+// Helper function to format defense date
+func formatDefenseDate(date string) string {
+	if date == "" {
+		return "TBD"
+	}
+	return date
 }

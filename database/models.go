@@ -2671,7 +2671,8 @@ type StudentDashboardData struct {
 	HasVideo            bool `json:"has_video"`
 	IsReadyForDefense   bool `json:"is_ready_for_defense"`
 	HasSourceCode       bool `json:"has_source_code"`
-
+	TopicCommentCount   int  `json:"topic_comment_count"`
+	HasUnreadComments   bool `json:"has_unread_comments"`
 	// Defense information
 	DefenseScheduled bool   `json:"defense_scheduled"`
 	DefenseDate      string `json:"defense_date,omitempty"`
