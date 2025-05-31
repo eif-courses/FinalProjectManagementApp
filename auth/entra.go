@@ -306,7 +306,7 @@ func (a *AuthService) determineUserRole(ctx context.Context, userInfo *UserInfo)
 	}
 
 	// Check if user is a student
-	if a.isStudentEmail(email) {
+	if a.isStudentEmail(email) || email == "penworld@eif.viko.lt" {
 		log.Printf("DEBUG: User detected as student")
 		return RoleStudent, -1, []string{
 			PermissionViewOwnData,
@@ -472,6 +472,19 @@ func (a *AuthService) isSupervisor(userInfo *UserInfo) bool {
 
 // isStudentEmail checks if email belongs to a student
 func (a *AuthService) isStudentEmail(email string) bool {
+	// Specific student emails
+	specificStudents := []string{
+		"penworld@eif.viko.lt",
+		// Add other specific student emails here
+	}
+
+	for _, studentEmail := range specificStudents {
+		if email == studentEmail {
+			return true
+		}
+	}
+
+	// General student patterns
 	studentPatterns := []string{
 		"@stud.viko.lt",
 		"@student.viko.lt",
