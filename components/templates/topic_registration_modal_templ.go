@@ -150,7 +150,7 @@ func TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Projec
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(user.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 55, Col: 35}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 54, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -178,7 +178,7 @@ func TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Projec
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(user.Department)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 64, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 63, Col: 41}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -206,7 +206,7 @@ func TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Projec
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(getRoleDisplayName(user.Role, locale))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 73, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 72, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -384,6 +384,12 @@ func TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Projec
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		if topic != nil && shouldShowSupervisorReview(user, topic) {
+			templ_7745c5c3_Err = RevisionModal(topic.ID, locale).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
 		templ_7745c5c3_Err = TopicModalScripts().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -453,7 +459,7 @@ func CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(topic.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 159, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 162, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -872,7 +878,7 @@ func CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(getSupervisorValue(topic))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 323, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 326, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
@@ -923,7 +929,7 @@ func CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(getCompletionValue(topic))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 338, Col: 35}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 341, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {
@@ -974,7 +980,7 @@ func CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(getTitleValue(topic))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 355, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 358, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -1020,7 +1026,7 @@ func CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(getTitleEnValue(topic))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 369, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 372, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -1066,7 +1072,7 @@ func CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(getProblemValue(topic))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 383, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 386, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -1112,7 +1118,7 @@ func CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(getObjectiveValue(topic))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 397, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 400, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -1158,7 +1164,7 @@ func CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTop
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(getTasksValue(topic))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 411, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 414, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -1238,7 +1244,7 @@ func CommentsSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicR
 			var templ_7745c5c3_Var38 string
 			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(comments)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 430, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 433, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
@@ -1256,7 +1262,7 @@ func CommentsSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicR
 				var templ_7745c5c3_Var39 string
 				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/api/topic/%d/comment", topic.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 435, Col: 61}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 438, Col: 61}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 				if templ_7745c5c3_Err != nil {
@@ -1391,7 +1397,7 @@ func CommentCard(comment database.TopicRegistrationComment, locale string) templ
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(comment.AuthorName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 489, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 492, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
@@ -1416,7 +1422,7 @@ func CommentCard(comment database.TopicRegistrationComment, locale string) templ
 			var templ_7745c5c3_Var44 string
 			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(getTopicRoleDisplayName(comment.AuthorRole, locale))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 491, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 494, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
@@ -1435,7 +1441,7 @@ func CommentCard(comment database.TopicRegistrationComment, locale string) templ
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(comment.CreatedAt.Format("01-02 15:04"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 495, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 498, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
@@ -1448,7 +1454,7 @@ func CommentCard(comment database.TopicRegistrationComment, locale string) templ
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(comment.CommentText)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 498, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 501, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 		if templ_7745c5c3_Err != nil {
@@ -2258,7 +2264,7 @@ func TopicStatusAlert(topic *database.ProjectTopicRegistration, locale string) t
 						var templ_7745c5c3_Var71 string
 						templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(*topic.RejectionReason)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 736, Col: 60}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 739, Col: 60}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 						if templ_7745c5c3_Err != nil {
@@ -2337,7 +2343,7 @@ func TopicStatusAlert(topic *database.ProjectTopicRegistration, locale string) t
 						var templ_7745c5c3_Var74 string
 						templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(*topic.SupervisorRejectionReason)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 756, Col: 70}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 759, Col: 70}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 						if templ_7745c5c3_Err != nil {
@@ -2391,7 +2397,7 @@ func TopicModalScripts() templ.Component {
 			templ_7745c5c3_Var75 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "<script>\r\n        // Modal opening logic\r\n        (function() {\r\n            requestAnimationFrame(function() {\r\n                requestAnimationFrame(function() {\r\n                    const modal = document.getElementById('topic-registration-modal');\r\n                    if (modal) {\r\n                        if (window.modalState && window.modalState.openModalId) {\r\n                            const existingModal = document.getElementById(window.modalState.openModalId);\r\n                            if (existingModal && existingModal !== modal) {\r\n                                existingModal.style.display = 'none';\r\n                                existingModal.classList.add('opacity-0');\r\n                            }\r\n                        }\r\n\r\n                        if (!window.modalState) {\r\n                            window.modalState = { openModalId: null };\r\n                        }\r\n\r\n                        window.modalState.openModalId = 'topic-registration-modal';\r\n                        document.body.style.overflow = 'hidden';\r\n                        modal.style.display = 'flex';\r\n                        modal.offsetHeight;\r\n                        modal.classList.remove('opacity-0', 'hidden');\r\n                        modal.classList.add('opacity-100');\r\n\r\n                        const content = modal.querySelector('[data-modal-content]');\r\n                        if (content) {\r\n                            content.classList.remove('scale-95', 'opacity-0');\r\n                            content.classList.add('scale-100', 'opacity-100');\r\n                        }\r\n                    }\r\n                });\r\n            });\r\n        })();\r\n\r\n        // Handle modal close and form responses\r\n        document.addEventListener('htmx:afterRequest', function(evt) {\r\n            if (evt.detail.successful && (\r\n                evt.target.closest('#modal-result') ||\r\n                evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated'\r\n            )) {\r\n                const modal = document.getElementById('topic-registration-modal');\r\n                if (modal && window.modalState) {\r\n                    setTimeout(() => {\r\n                        window.modalState.openModalId = null;\r\n                        document.body.style.overflow = '';\r\n                        // Refresh the student table if it exists\r\n                        const tableContainer = document.getElementById('student-table-container');\r\n                        if (tableContainer) {\r\n                            htmx.ajax('GET', '/students-list', {\r\n                                target: '#student-table-container',\r\n                                values: htmx.values('#filters-form')\r\n                            });\r\n                        }\r\n                    }, 300);\r\n                }\r\n            }\r\n        });\r\n\r\n        // Handle escape key\r\n        document.addEventListener('keydown', function(e) {\r\n            if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'topic-registration-modal') {\r\n                const modal = document.getElementById('topic-registration-modal');\r\n                if (modal) {\r\n                    modal.classList.remove('opacity-100');\r\n                    modal.classList.add('opacity-0');\r\n                    setTimeout(() => {\r\n                        modal.style.display = 'none';\r\n                        window.modalState.openModalId = null;\r\n                        document.body.style.overflow = '';\r\n                    }, 300);\r\n                }\r\n            }\r\n        });\r\n\r\n        // Functions for revision/rejection modals\r\n        function showRevisionModal(topicId) {\r\n            console.log('Show revision modal for topic:', topicId);\r\n            // TODO: Implement revision modal\r\n        }\r\n\r\n        function showRejectModal(topicId) {\r\n            console.log('Show reject modal for topic:', topicId);\r\n            // TODO: Implement rejection modal\r\n        }\r\n\r\n        function closeModal() {\r\n            const modal = document.getElementById('topic-registration-modal');\r\n            if (modal) {\r\n                modal.classList.remove('opacity-100');\r\n                modal.classList.add('opacity-0');\r\n                setTimeout(() => {\r\n                    modal.style.display = 'none';\r\n                    document.body.style.overflow = '';\r\n                    if (window.modalState) {\r\n                        window.modalState.openModalId = null;\r\n                    }\r\n                }, 300);\r\n            }\r\n        }\r\n    </script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "<script>\r\n        // Modal opening logic\r\n        (function() {\r\n            requestAnimationFrame(function() {\r\n                requestAnimationFrame(function() {\r\n                    const modal = document.getElementById('topic-registration-modal');\r\n                    if (modal) {\r\n                        if (window.modalState && window.modalState.openModalId) {\r\n                            const existingModal = document.getElementById(window.modalState.openModalId);\r\n                            if (existingModal && existingModal !== modal) {\r\n                                existingModal.style.display = 'none';\r\n                                existingModal.classList.add('opacity-0');\r\n                            }\r\n                        }\r\n\r\n                        if (!window.modalState) {\r\n                            window.modalState = { openModalId: null };\r\n                        }\r\n\r\n                        window.modalState.openModalId = 'topic-registration-modal';\r\n                        document.body.style.overflow = 'hidden';\r\n                        modal.style.display = 'flex';\r\n                        modal.offsetHeight;\r\n                        modal.classList.remove('opacity-0', 'hidden');\r\n                        modal.classList.add('opacity-100');\r\n\r\n                        const content = modal.querySelector('[data-modal-content]');\r\n                        if (content) {\r\n                            content.classList.remove('scale-95', 'opacity-0');\r\n                            content.classList.add('scale-100', 'opacity-100');\r\n                        }\r\n                    }\r\n                });\r\n            });\r\n        })();\r\n\r\n        // Handle modal close and form responses\r\n        document.addEventListener('htmx:afterRequest', function(evt) {\r\n            if (evt.detail.successful && (\r\n                evt.target.closest('#modal-result') ||\r\n                evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated'\r\n            )) {\r\n                const modal = document.getElementById('topic-registration-modal');\r\n                if (modal && window.modalState) {\r\n                    setTimeout(() => {\r\n                        window.modalState.openModalId = null;\r\n                        document.body.style.overflow = '';\r\n                        // Refresh the student table if it exists\r\n                        const tableContainer = document.getElementById('student-table-container');\r\n                        if (tableContainer) {\r\n                            htmx.ajax('GET', '/students-list', {\r\n                                target: '#student-table-container',\r\n                                values: htmx.values('#filters-form')\r\n                            });\r\n                        }\r\n                    }, 300);\r\n                }\r\n            }\r\n        });\r\n\r\n        // Handle escape key\r\n        document.addEventListener('keydown', function(e) {\r\n            if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'topic-registration-modal') {\r\n                const modal = document.getElementById('topic-registration-modal');\r\n                if (modal) {\r\n                    modal.classList.remove('opacity-100');\r\n                    modal.classList.add('opacity-0');\r\n                    setTimeout(() => {\r\n                        modal.style.display = 'none';\r\n                        window.modalState.openModalId = null;\r\n                        document.body.style.overflow = '';\r\n                    }, 300);\r\n                }\r\n            }\r\n        });\r\n\r\n        // Functions for revision/rejection modals\r\n        // Update the revision modal function\r\n               // Revision Modal Functions\r\n                     // Set up HTMX event listeners when the modal loads\r\n                         document.addEventListener('DOMContentLoaded', function() {\r\n                             setupRevisionModalEvents();\r\n                         });\r\n\r\n                         function setupRevisionModalEvents() {\r\n                             const revisionForm = document.getElementById('revision-form');\r\n                             if (revisionForm) {\r\n                                 // Listen for HTMX after request event\r\n                                 revisionForm.addEventListener('htmx:afterRequest', function(event) {\r\n                                     handleRevisionResponse(event);\r\n                                 });\r\n                             }\r\n                         }\r\n\r\n                         // Revision Modal Functions\r\n                         function showRevisionModal(topicId) {\r\n                             console.log('Show revision modal for topic:', topicId);\r\n                             const modal = document.getElementById('revision-modal');\r\n                             if (modal) {\r\n                                 // Show modal with animation\r\n                                 modal.classList.remove('hidden');\r\n\r\n                                 // Force reflow\r\n                                 modal.offsetHeight;\r\n\r\n                                 // Add opacity and scale\r\n                                 modal.classList.remove('opacity-0');\r\n                                 modal.classList.add('opacity-100');\r\n\r\n                                 const content = document.getElementById('revision-modal-content');\r\n                                 if (content) {\r\n                                     content.classList.remove('scale-95');\r\n                                     content.classList.add('scale-100');\r\n                                 }\r\n\r\n                                 // Set up event listeners for this modal instance\r\n                                 setupRevisionModalEvents();\r\n\r\n                                 // Focus on textarea after animation\r\n                                 setTimeout(() => {\r\n                                     const textarea = modal.querySelector('textarea[name=\"revision_reason\"]');\r\n                                     if (textarea) {\r\n                                         textarea.focus();\r\n                                     }\r\n                                 }, 100);\r\n\r\n                                 // Prevent body scroll\r\n                                 document.body.style.overflow = 'hidden';\r\n                             }\r\n                         }\r\n\r\n                         function closeRevisionModal() {\r\n                             const modal = document.getElementById('revision-modal');\r\n                             if (modal) {\r\n                                 // Animate out\r\n                                 modal.classList.remove('opacity-100');\r\n                                 modal.classList.add('opacity-0');\r\n\r\n                                 const content = document.getElementById('revision-modal-content');\r\n                                 if (content) {\r\n                                     content.classList.remove('scale-100');\r\n                                     content.classList.add('scale-95');\r\n                                 }\r\n\r\n                                 // Hide after animation\r\n                                 setTimeout(() => {\r\n                                     modal.classList.add('hidden');\r\n                                     document.body.style.overflow = '';\r\n\r\n                                     // Clear the form\r\n                                     const form = document.getElementById('revision-form');\r\n                                     if (form) {\r\n                                         form.reset();\r\n                                     }\r\n                                 }, 300);\r\n                             }\r\n                         }\r\n\r\n                         function handleRevisionResponse(event) {\r\n                             console.log('Handling revision response:', event);\r\n                             const xhr = event.detail.xhr;\r\n\r\n                             if (xhr.status >= 200 && xhr.status < 300) {\r\n                                 console.log('Revision request successful');\r\n\r\n                                 // Close modal after a short delay to show success message\r\n                                 setTimeout(() => {\r\n                                     closeRevisionModal();\r\n                                 }, 1500);\r\n\r\n                                 // Refresh the student table if it exists\r\n                                 setTimeout(() => {\r\n                                     const tableContainer = document.getElementById('student-table-container');\r\n                                     if (tableContainer) {\r\n                                         htmx.ajax('GET', '/students-list', {\r\n                                             target: '#student-table-container',\r\n                                             values: htmx.values('#filters-form') || {}\r\n                                         });\r\n                                     }\r\n\r\n                                     // Close the main modal\r\n                                     closeModal();\r\n                                 }, 2000);\r\n                             } else {\r\n                                 console.log('Revision request failed');\r\n                                 // Error is already displayed in #modal-result, so just log it\r\n                             }\r\n                         }\r\n\r\n                         // Close revision modal on escape key\r\n                         document.addEventListener('keydown', function(e) {\r\n                             if (e.key === 'Escape') {\r\n                                 const revisionModal = document.getElementById('revision-modal');\r\n                                 if (revisionModal && !revisionModal.classList.contains('hidden')) {\r\n                                     closeRevisionModal();\r\n                                     e.preventDefault();\r\n                                 }\r\n                             }\r\n                         });\r\n\r\n\r\n\r\n\r\n        function showRejectModal(topicId) {\r\n            console.log('Show reject modal for topic:', topicId);\r\n            // TODO: Implement rejection modal\r\n        }\r\n\r\n        function closeModal() {\r\n            const modal = document.getElementById('topic-registration-modal');\r\n            if (modal) {\r\n                modal.classList.remove('opacity-100');\r\n                modal.classList.add('opacity-0');\r\n                setTimeout(() => {\r\n                    modal.style.display = 'none';\r\n                    document.body.style.overflow = '';\r\n                    if (window.modalState) {\r\n                        window.modalState.openModalId = null;\r\n                    }\r\n                }, 300);\r\n            }\r\n        }\r\n    </script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2415,7 +2421,9 @@ func shouldShowViewOnly(user *auth.AuthenticatedUser, topic *database.ProjectTop
 }
 
 func shouldShowSupervisorReview(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
-	return user.Role == auth.RoleSupervisor && topic.CanSupervisorReview()
+
+	return user.Role == "supervisor" && topic.Status == "submitted"
+	//return user.Role == auth.RoleSupervisor && topic.CanSupervisorReview()
 }
 
 func shouldShowDepartmentReview(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
@@ -2593,6 +2601,200 @@ func getTopicRoleDisplayName(role, locale string) string {
 		return roleMap[locale][role]
 	}
 	return role
+}
+
+// Add this revision modal template
+func RevisionModal(topicID int, locale string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var76 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var76 == nil {
+			templ_7745c5c3_Var76 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "<div id=\"revision-modal\" class=\"fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300\"><div class=\"fixed inset-0 bg-black bg-opacity-50\" onclick=\"closeRevisionModal()\"></div><div class=\"fixed inset-0 flex items-center justify-center p-4\"><div class=\"bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform scale-95 transition-transform duration-300\" id=\"revision-modal-content\"><div class=\"p-6\"><h3 class=\"text-lg font-semibold mb-4 text-gray-900\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if locale == "en" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "Request Revision")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "Prašyti pataisymų")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "</h3><form id=\"revision-form\" hx-post=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var77 string
+		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/api/topic/%d/supervisor-revision", topicID))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/topic_registration_modal.templ`, Line: 1207, Col: 76}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "\" hx-target=\"#modal-result\"><div class=\"mb-4\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Var78 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			if locale == "en" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "Reason for revision *")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "Pataisymų priežastis *")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = label.Label(label.Props{Class: "text-sm font-medium mb-2 block text-gray-700"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var78), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = textarea.Textarea(textarea.Props{
+			Name:        "revision_reason",
+			Required:    true,
+			Class:       "text-sm w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500",
+			Rows:        4,
+			Placeholder: getRevisionPlaceholder(locale),
+		}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "</div><div class=\"flex justify-end gap-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Var79 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			if locale == "en" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, "Cancel")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "Atšaukti")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = button.Button(button.Props{
+			Variant: button.VariantGhost,
+			Type:    "button",
+			Class:   "h-9 px-4 text-sm",
+			Attributes: templ.Attributes{
+				"onclick": "closeRevisionModal()",
+			},
+		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var79), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Var80 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = icon.RotateCcw(icon.Props{Size: 16}).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, " <span class=\"ml-1\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if locale == "en" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "Request Revision")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, "Prašyti pataisymų")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 203, "</span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = button.Button(button.Props{
+			Variant: button.VariantDestructive,
+			Type:    button.TypeSubmit,
+			Class:   "h-9 px-4 text-sm",
+		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var80), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, "</div></form></div></div></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// Add helper function for revision placeholder
+func getRevisionPlaceholder(locale string) string {
+	if locale == "en" {
+		return "Please explain what needs to be revised..."
+	}
+	return "Paaiškinkite, ko reikia pataisyti..."
 }
 
 var _ = templruntime.GeneratedTemplate

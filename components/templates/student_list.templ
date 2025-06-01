@@ -116,6 +116,56 @@ templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSumma
          }
 
 
+// STUDENTU LISTO ATNAUJINIMAS UZPILDZIUS VADOVO ATSILIEPIMA
+// Add this to your main page where the student list is displayed
+document.addEventListener('supervisorReportSaved', function(event) {
+    console.log('Supervisor report saved, refreshing...');
+
+    // Close any open modals
+    const modal = document.getElementById('supervisor-modal');
+    if (modal && window.modalState) {
+        modal.style.display = 'none';
+        window.modalState.openModalId = null;
+        document.body.style.overflow = '';
+    }
+
+    // Show success notification
+    showSuccessNotification('Supervisor report saved successfully!');
+
+    // Refresh the student table
+    setTimeout(function() {
+        window.location.reload(); // Simple and reliable
+    }, 1500);
+});
+
+function showSuccessNotification(message) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.id = 'success-notification';
+    notification.className = 'fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm';
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="text-green-600 text-sm font-medium">${message}</div>
+        </div>
+    `;
+
+    // Add to page
+    document.body.appendChild(notification);
+
+    // Remove after 3 seconds
+    setTimeout(function() {
+        if (notification && notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+///========================================================================================
+
+
 
             function approveRegistration(studentId) {
                 console.log('approveRegistration called with:', studentId);
@@ -127,50 +177,67 @@ templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSumma
             }
 
             // Supervisor Report Functions
-            function viewSupervisorReport(studentId) {
-                htmx.ajax('GET', `/supervisor-report/modal/${studentId}?mode=view`, {
-                    target: '#modal-container',
-                    swap: 'innerHTML'
-                });
-                showModal();
-            }
+ // Update editSupervisorReport to check if editing is allowed
+ function editSupervisorReport(studentId) {
+     console.log('DEBUG: editSupervisorReport called for student:', studentId);
 
-            function createSupervisorReport(studentId) {
-                htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {
-                    target: '#modal-container',
-                    swap: 'innerHTML'
-                });
-                showModal();
-            }
+     // Don't include mode parameter for edit - let the handler decide based on status
+     htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {
+         target: '#modal-container',
+         swap: 'innerHTML'
+     });
+     showModal();
+ }
 
-            function editSupervisorReport(studentId) {
-                htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {
-                    target: '#modal-container',
-                    swap: 'innerHTML'
-                });
-                showModal();
-            }
+ // View function always passes mode=view
+ function viewSupervisorReport(studentId) {
+     console.log('DEBUG: viewSupervisorReport called for student:', studentId);
 
-            // Modal Functions
-          // Update showModal to work with TemplUI modals
-                  function showModal() {
-                      let modalContainer = document.getElementById('modal-container');
-                      if (!modalContainer) {
-                          modalContainer = document.createElement('div');
-                          modalContainer.id = 'modal-container';
-                          modalContainer.className = 'fixed inset-0 z-50';
-                          document.body.appendChild(modalContainer);
+     htmx.ajax('GET', '/supervisor-report/' + studentId + '/compact-modal?mode=view', {
+         target: '#modal-container',
+         swap: 'innerHTML'
+     }).then(() => {
+         console.log('DEBUG: HTMX request completed');
+         showModal();
+     }).catch((error) => {
+         console.error('DEBUG: HTMX request failed:', error);
+     });
+ }
+
+    // Update createSupervisorReport to not include mode (allows editing)
+    function createSupervisorReport(studentId) {
+        htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {
+            target: '#modal-container',
+            swap: 'innerHTML'
+        });
+        showModal();
+    }
+
+
+
+      function showModal() {
+          let modalContainer = document.getElementById('modal-container');
+          if (!modalContainer) {
+              modalContainer = document.createElement('div');
+              modalContainer.id = 'modal-container';
+              modalContainer.className = 'fixed inset-0 z-50';
+              document.body.appendChild(modalContainer);
+          }
+          modalContainer.style.display = 'block';
+
+          // Add event listener for HTMX after content loads
+          document.addEventListener('htmx:afterSwap', function(evt) {
+              if (evt.detail.target.id === 'modal-container') {
+                  // Focus trap for accessibility
+                  setTimeout(() => {
+                      const modal = modalContainer.querySelector('[role="dialog"]');
+                      if (modal) {
+                          modal.focus();
                       }
-                      modalContainer.style.display = 'block';
-
-                      // Focus trap for accessibility
-                      setTimeout(() => {
-                          const modal = modalContainer.querySelector('[role="dialog"]');
-                          if (modal) {
-                              modal.focus();
-                          }
-                      }, 100);
-                  }
+                  }, 100);
+              }
+          });
+      }
 
                   // Update hideModal to work with TemplUI modals
                   function hideModal() {
@@ -439,6 +506,10 @@ templ StudentListFilters(pagination *database.PaginationInfo, filters *database.
 										Juodraštis
 									case "submitted":
 										Pateikta
+									case "supervisor_approved":
+										Vadovas patvirtino
+									case "revision_requested":
+										Prašoma pataisymų
 									case "approved":
 										Patvirtinta
 									case "rejected":
@@ -451,22 +522,29 @@ templ StudentListFilters(pagination *database.PaginationInfo, filters *database.
 					}
 					@selectbox.Content() {
 						@selectbox.Item(selectbox.ItemProps{Value: "", Selected: filters == nil || filters.TopicStatus == ""}) {
-							Visos 
+							Visos
 						}
 						@selectbox.Item(selectbox.ItemProps{Value: "not_started", Selected: filters != nil && filters.TopicStatus == "not_started"}) {
-							Nepradėta 
+							Nepradėta
 						}
 						@selectbox.Item(selectbox.ItemProps{Value: "draft", Selected: filters != nil && filters.TopicStatus == "draft"}) {
-							Juodraštis 
+							Juodraštis
 						}
 						@selectbox.Item(selectbox.ItemProps{Value: "submitted", Selected: filters != nil && filters.TopicStatus == "submitted"}) {
-							Pateikta 
+							Pateikta
+						}
+						// ADD THESE NEW OPTIONS:
+						@selectbox.Item(selectbox.ItemProps{Value: "supervisor_approved", Selected: filters != nil && filters.TopicStatus == "supervisor_approved"}) {
+							Vadovas patvirtino
+						}
+						@selectbox.Item(selectbox.ItemProps{Value: "revision_requested", Selected: filters != nil && filters.TopicStatus == "revision_requested"}) {
+							Prašoma pataisymų
 						}
 						@selectbox.Item(selectbox.ItemProps{Value: "approved", Selected: filters != nil && filters.TopicStatus == "approved"}) {
-							Patvirtinta 
+							Patvirtinta
 						}
 						@selectbox.Item(selectbox.ItemProps{Value: "rejected", Selected: filters != nil && filters.TopicStatus == "rejected"}) {
-							Atmesta 
+							Atmesta
 						}
 					}
 				}
@@ -575,7 +653,8 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
 					}
 					if canViewSupervisor(user.Role) {
 						@table.Cell() {
-							@SupervisorStatus(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned.Valid && student.SupervisorReportSigned.Bool, student.ID)
+							// Pass the topic status as the last parameter
+							@SupervisorStatus(user, student.SupervisorEmail, student.HasSupervisorReport, student.SupervisorReportSigned.Valid && student.SupervisorReportSigned.Bool, student.ID, getTopicStatus(student.TopicStatus))
 						}
 					}
 				}
@@ -586,6 +665,7 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
 
 templ RegistrationStatus(user *auth.AuthenticatedUser, status string, approved bool, studentID int) {
 	if approved {
+		// Topic is fully approved by department head
 		<div class="space-y-1">
 			<div class="text-xs text-green-700 dark:text-green-400 font-medium">Patvirtinta katedros vedėjo</div>
 			<div class="flex gap-1">
@@ -594,8 +674,9 @@ templ RegistrationStatus(user *auth.AuthenticatedUser, status string, approved b
 			</div>
 		</div>
 	} else if status == "submitted" {
+		// Student submitted for review - supervisor/department can review
 		<div class="space-y-1">
-			<div class="text-xs text-blue-600 font-medium">studentas pateikė peržiūrai</div>
+			<div class="text-xs text-blue-600 font-medium">Studentas pateikė peržiūrai</div>
 			@button.Button(button.Props{
 				Variant: button.VariantDefault,
 				Class:   "h-7 px-3 text-xs",
@@ -607,14 +688,36 @@ templ RegistrationStatus(user *auth.AuthenticatedUser, status string, approved b
 				Peržiūrėti
 			}
 		</div>
+	} else if status == "supervisor_approved" {
+		// Supervisor approved, waiting for department head
+		<div class="space-y-1">
+			<div class="text-xs text-blue-600 font-medium">Vadovas patvirtino - Laukia katedros</div>
+			<div class="flex gap-1">
+				@CompactIconButton("eye", "viewTopicRegistration("+strconv.Itoa(studentID)+")", "Žiūrėti registraciją")
+			</div>
+		</div>
+	} else if status == "revision_requested" {
+		// Revision requested - only allow viewing
+		<div class="space-y-1">
+			<div class="text-xs text-orange-600 font-medium">Prašoma pataisymų</div>
+			<div class="flex gap-1">
+				@CompactIconButton("eye", "viewTopicRegistration("+strconv.Itoa(studentID)+")", "Žiūrėti registraciją")
+			</div>
+		</div>
 	} else if status == "draft" {
+		// Draft - no actions available
 		<div class="text-xs text-muted-foreground">Juodraštis</div>
-	} else if status == "needs_revision" {
-		<div class="text-xs text-yellow-600">Reikia pataisymų</div>
 	} else if status == "rejected" {
-		<div class="text-xs text-red-600">Atmesta</div>
+		// Rejected - only allow viewing
+		<div class="space-y-1">
+			<div class="text-xs text-red-600">Atmesta</div>
+			<div class="flex gap-1">
+				@CompactIconButton("eye", "viewTopicRegistration("+strconv.Itoa(studentID)+")", "Žiūrėti registraciją")
+			</div>
+		</div>
 	} else {
-		<div class="text-xs text-muted-foreground">nepradėtas pildyti</div>
+		// Not started
+		<div class="text-xs text-muted-foreground">Nepradėtas pildyti</div>
 	}
 }
 
@@ -661,12 +764,13 @@ templ ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasRepor
 	}
 }
 
-templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasReport bool, isSigned bool, studentID int) {
+templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasReport bool, isSigned bool, studentID int, topicStatus string) {
 	<div class="space-y-1">
 		<div class="text-xs text-muted-foreground">
 			{ supervisorEmail }
 		</div>
 		if hasReport {
+			// Report exists - show status and ONLY view button
 			if isSigned {
 				<div class="flex items-center gap-1">
 					<div class="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -679,16 +783,17 @@ templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, has
 				</div>
 			}
 			<div class="flex gap-1">
+				// Only show VIEW button when report exists
 				@CompactIconButton("eye", "viewSupervisorReport("+strconv.Itoa(studentID)+")", "Žiūrėti")
-				if canEditSupervisorReport(user.Role, supervisorEmail, user.Email) {
-					@CompactSupervisorButton(studentID, "edit", "Redaguoti")
-				}
+				// NO EDIT BUTTON - once report is filled, it can only be viewed
 			</div>
 		} else {
+			// Report doesn't exist - show create option
 			<div class="flex items-center gap-1">
 				<div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
 				<span class="text-xs text-yellow-700">Neužpildyta</span>
 			</div>
+			// Show create button if user can create
 			if canCreateSupervisorReport(user.Role, supervisorEmail, user.Email) {
 				@CompactSupervisorButton(studentID, "create", "Pildyti atsiliepimą")
 			}

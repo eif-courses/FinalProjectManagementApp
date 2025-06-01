@@ -6,8 +6,10 @@ import (
 	"FinalProjectManagementApp/components/templates"
 	"FinalProjectManagementApp/database"
 	"database/sql"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,13 +36,26 @@ func (h *SupervisorReportHandler) GetCompactSupervisorModal(w http.ResponseWrite
 		return
 	}
 
+	// Check the mode parameter
+	mode := r.URL.Query().Get("mode")
+	isReadOnly := mode == "view"
+
 	student, err := h.getStudentRecord(studentID)
 	if err != nil {
 		http.Error(w, "Student not found", http.StatusNotFound)
 		return
 	}
 
-	existingReport, _ := h.getSupervisorReport(studentID)
+	// Get the existing report
+	existingReport, err := h.getSupervisorReport(studentID)
+	hasReport := err == nil && existingReport != nil
+
+	// SIMPLE RULE: If report exists, it's always read-only
+	if hasReport {
+		isReadOnly = true
+		log.Printf("DEBUG: Report exists for student %d - forcing read-only mode", studentID)
+	}
+
 	formData := database.NewSupervisorReportFormData(existingReport)
 	language := h.getLanguageFromRequest(r)
 	user := auth.GetUserFromContext(r.Context())
@@ -58,6 +73,7 @@ func (h *SupervisorReportHandler) GetCompactSupervisorModal(w http.ResponseWrite
 		FormVariant:            language,
 		CurrentSupervisorName:  supervisorName,
 		CurrentSupervisorEmail: supervisorEmail,
+		IsReadOnly:             isReadOnly,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -65,269 +81,135 @@ func (h *SupervisorReportHandler) GetCompactSupervisorModal(w http.ResponseWrite
 	component.Render(r.Context(), w)
 }
 
-//// Add a new handler for the full page
-//func (h *SupervisorReportHandler) GetSupervisorReportPage(w http.ResponseWriter, r *http.Request) {
-//	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
-//	if err != nil {
-//		http.Error(w, "Invalid student ID", http.StatusBadRequest)
-//		return
-//	}
-//
-//	// Get student record
-//	student, err := h.getStudentRecord(studentID)
-//	if err != nil {
-//		http.Error(w, "Student not found", http.StatusNotFound)
-//		return
-//	}
-//
-//	// Get existing supervisor report if any
-//	existingReport, _ := h.getSupervisorReport(studentID)
-//
-//	// Create form data
-//	formData := database.NewSupervisorReportFormData(existingReport)
-//
-//	// Get language and user info from context
-//	language := h.getLanguageFromRequest(r)
-//	user := auth.GetUserFromContext(r.Context())
-//
-//	supervisorName := ""
-//	supervisorEmail := ""
-//	if user != nil {
-//		supervisorName = user.Name
-//		supervisorEmail = user.Email
-//	}
-//
-//	// Create props
-//	props := database.SupervisorReportFormProps{
-//		StudentRecord:          *student,
-//		InitialReport:          existingReport,
-//		ButtonLabel:            h.getButtonLabel(language, existingReport != nil),
-//		ModalTitle:             h.getModalTitle(language),
-//		FormVariant:            language,
-//		IsModalOpen:            true,
-//		IsSaving:               false,
-//		CurrentSupervisorName:  supervisorName,
-//		CurrentSupervisorEmail: supervisorEmail,
-//	}
-//
-//	// Set content type
-//	w.Header().Set("Content-Type", "text/html")
-//
-//	title := h.getModalTitle(language)
-//	component := templates.SupervisorReportPage(user, language, title, props, formData)
-//
-//	if err := component.Render(r.Context(), w); err != nil {
-//		http.Error(w, "Failed to render template", http.StatusInternalServerError)
-//		return
-//	}
-//}
-
-// GetSupervisorReportModal returns the modal for editing supervisor report
-// Keep your existing modal handler for HTMX
-//func (h *SupervisorReportHandler) GetSupervisorReportModal(w http.ResponseWriter, r *http.Request) {
-//	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
-//	if err != nil {
-//		http.Error(w, "Invalid student ID", http.StatusBadRequest)
-//		return
-//	}
-//
-//	mode := r.URL.Query().Get("mode") // view, edit, or create
-//
-//	// Get student record
-//	student, err := h.getStudentRecord(studentID)
-//	if err != nil {
-//		http.Error(w, "Student not found", http.StatusNotFound)
-//		return
-//	}
-//
-//	// Get existing supervisor report if any
-//	existingReport, _ := h.getSupervisorReport(studentID)
-//
-//	// Create form data
-//	formData := database.NewSupervisorReportFormData(existingReport)
-//
-//	// Get language and user info from context
-//	language := h.getLanguageFromRequest(r)
-//	user := auth.GetUserFromContext(r.Context())
-//
-//	supervisorName := ""
-//	supervisorEmail := ""
-//	if user != nil {
-//		supervisorName = user.Name
-//		supervisorEmail = user.Email
-//	}
-//
-//	// Modify props based on mode
-//	isReadOnly := mode == "view"
-//
-//	// Create props
-//	props := database.SupervisorReportFormProps{
-//		StudentRecord:          *student,
-//		InitialReport:          existingReport,
-//		ButtonLabel:            h.getButtonLabel(language, existingReport != nil),
-//		ModalTitle:             h.getModalTitle(language),
-//		FormVariant:            language,
-//		IsModalOpen:            true,
-//		IsSaving:               false,
-//		IsReadOnly:             isReadOnly, // Add this field to your props if it doesn't exist
-//		CurrentSupervisorName:  supervisorName,
-//		CurrentSupervisorEmail: supervisorEmail,
-//	}
-//
-//	// Set content type for HTMX
-//	w.Header().Set("Content-Type", "text/html")
-//
-//	// Render modal only (for HTMX)
-//	component := templates.SupervisorReportModal(props, formData)
-//	if err := component.Render(r.Context(), w); err != nil {
-//		http.Error(w, "Failed to render template", http.StatusInternalServerError)
-//		return
-//	}
+//func (h *SupervisorReportHandler) getTopicStatus(studentID int) (string, error) {
+//	var status string
+//	query := `
+//		SELECT COALESCE(status, '')
+//		FROM project_topic_registrations
+//		WHERE student_record_id = ?
+//	`
+//	err := h.db.Get(&status, query, studentID)
+//	return status, err
 //}
 
 // SubmitSupervisorReport handles form submission
-//func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, r *http.Request) {
-//	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
-//	if err != nil {
-//		http.Error(w, "Invalid student ID", http.StatusBadRequest)
-//		return
-//	}
-//
-//	// Parse form data
-//	if err := r.ParseForm(); err != nil {
-//		h.renderFormWithErrors(w, r, studentID, nil, map[string]string{
-//			"general": "Failed to parse form data",
-//		})
-//		return
-//	}
-//
-//	formData, err := h.parseFormData(r)
-//	if err != nil {
-//		h.renderFormWithErrors(w, r, studentID, formData, map[string]string{
-//			"general": err.Error(),
-//		})
-//		return
-//	}
-//
-//	// Get supervisor info from session/context
-//	supervisorName := h.getSupervisorNameFromRequest(r)
-//	if supervisorName == "" {
-//		h.renderFormWithErrors(w, r, studentID, formData, map[string]string{
-//			"general": "Supervisor information not found",
-//		})
-//		return
-//	}
-//
-//	// Convert to database model
-//	reportData := formData.ToSupervisorReportData(studentID, supervisorName)
-//
-//	// Validate
-//	if err := reportData.Validate(); err != nil {
-//		validationErrors := h.parseValidationErrors(err)
-//		h.renderFormWithErrors(w, r, studentID, formData, validationErrors)
-//		return
-//	}
-//
-//	// Save to database
-//	if err := h.saveSupervisorReport(reportData); err != nil {
-//		h.renderFormWithErrors(w, r, studentID, formData, map[string]string{
-//			"general": "Failed to save report: " + err.Error(),
-//		})
-//		return
-//	}
-//
-//	// TODO NEED REVIEW HERE
-//	action := "supervisor_report_action" // or whatever action this represents
-//	formVariant := "create"              // or "update", "view", etc.
-//
-//	// Create audit log
-//	userEmail := h.getUserEmailFromRequest(r)
-//	h.createAuditLog(database.AuditLog{
-//		UserEmail:    userEmail,
-//		UserRole:     "supervisor",
-//		Action:       "create_supervisor_report",
-//		ResourceType: "supervisor_report",
-//		ResourceID:   database.NullableString(fmt.Sprintf("%d", studentID)),
-//		Details: func() *string {
-//			detailsMap := map[string]interface{}{
-//				"student_id":    studentID,
-//				"report_action": action,
-//				"supervisor":    supervisorName,
-//				"form_variant":  formVariant,
-//			}
-//			detailsJSON, _ := json.Marshal(detailsMap)
-//			detailsStr := string(detailsJSON)
-//			return &detailsStr
-//		}(),
-//		IPAddress: database.NullableString(h.getClientIP(r)),
-//		UserAgent: database.NullableString(r.UserAgent()),
-//		Success:   true,
-//	})
-//
-//	// Return success response (close modal and trigger refresh)
-//	w.Header().Set("HX-Trigger", "reportSaved")
-//	w.Header().Set("HX-Refresh", "true")
-//	w.WriteHeader(http.StatusOK)
-//
-//	// Send success message
-//	successHTML := `
-//		<div class="p-4 bg-green-50 border border-green-200 rounded-lg">
-//			<div class="flex items-center">
-//				<svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-//				</svg>
-//				<div class="text-green-600 text-sm font-medium">Report saved successfully!</div>
-//			</div>
-//		</div>
-//		<script>
-//			setTimeout(function() {
-//				document.getElementById('modal-container').innerHTML = '';
-//				window.location.reload();
-//			}, 2000);
-//		</script>
-//	`
-//	w.Write([]byte(successHTML))
-//}
+func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, r *http.Request) {
+	log.Printf("DEBUG: Starting supervisor report submission")
 
-// GetSupervisorReportButton returns just the button (for initial page load)
-//func (h *SupervisorReportHandler) GetSupervisorReportButton(w http.ResponseWriter, r *http.Request) {
-//	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
-//	if err != nil {
-//		http.Error(w, "Invalid student ID", http.StatusBadRequest)
-//		return
-//	}
-//
-//	// Get student record
-//	student, err := h.getStudentRecord(studentID)
-//	if err != nil {
-//		http.Error(w, "Student not found", http.StatusNotFound)
-//		return
-//	}
-//
-//	// Check if report exists
-//	existingReport, _ := h.getSupervisorReport(studentID)
-//
-//	language := h.getLanguageFromRequest(r)
-//
-//	props := database.SupervisorReportFormProps{
-//		StudentRecord: *student,
-//		InitialReport: existingReport,
-//		ButtonLabel:   h.getButtonLabel(language, existingReport != nil),
-//		FormVariant:   language,
-//		IsModalOpen:   false,
-//		IsSaving:      false,
-//	}
-//
-//	// Set content type
-//	w.Header().Set("Content-Type", "text/html")
-//
-//	// Render just the button
-//	component := templates.SupervisorReportForm(props, nil)
-//	if err := component.Render(r.Context(), w); err != nil {
-//		http.Error(w, "Failed to render template", http.StatusInternalServerError)
-//		return
-//	}
-//}
+	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		log.Printf("ERROR: Invalid student ID: %v", err)
+		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse form data
+	if err := r.ParseForm(); err != nil {
+		log.Printf("ERROR: Failed to parse form: %v", err)
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
+
+	// Get supervisor info from context
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		log.Printf("ERROR: No user in context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	supervisorName := user.Name
+	if supervisorName == "" {
+		log.Printf("ERROR: Empty supervisor name")
+		http.Error(w, "Supervisor information not found", http.StatusBadRequest)
+		return
+	}
+
+	formData, err := h.parseFormData(r)
+	if err != nil {
+		log.Printf("ERROR: Failed to parse form data: %v", err)
+		http.Error(w, "Invalid form data: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Convert to database model
+	reportData := formData.ToSupervisorReportData(studentID, supervisorName)
+
+	// Validate
+	if err := reportData.Validate(); err != nil {
+		log.Printf("ERROR: Validation failed: %v", err)
+		http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Save to database
+	if err := h.saveSupervisorReport(reportData); err != nil {
+		log.Printf("ERROR: Failed to save report: %v", err)
+		http.Error(w, "Failed to save report: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("DEBUG: Report saved successfully")
+
+	// Create audit log
+	h.createAuditLog(database.AuditLog{
+		UserEmail:    user.Email,
+		UserRole:     "supervisor",
+		Action:       "create_supervisor_report",
+		ResourceType: "supervisor_report",
+		ResourceID:   database.NullableString(fmt.Sprintf("%d", studentID)),
+		Details: func() *string {
+			detailsStr := fmt.Sprintf(`{"student_id":%d,"supervisor":"%s"}`, studentID, supervisorName)
+			return &detailsStr
+		}(),
+		IPAddress: database.NullableString(h.getClientIP(r)),
+		UserAgent: database.NullableString(r.UserAgent()),
+		Success:   true,
+	})
+
+	// Return success response with proper modal closing and refresh
+	//w.Header().Set("Content-Type", "text/html")
+	//w.Header().Set("HX-Trigger", "closeModal,refreshStudentList") // Multiple triggers
+	//w.WriteHeader(http.StatusOK)
+	//
+
+	// Return success response with HTMX trigger
+	//w.Header().Set("Content-Type", "text/html")
+	//w.Header().Set("HX-Trigger", "closeModal,refreshStudentTable") // Custom trigger
+	//w.WriteHeader(http.StatusOK)
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("HX-Trigger", "supervisorReportSaved")
+	w.WriteHeader(http.StatusNoContent) // 204 No Content
+
+	successHTML := `
+    <div id="success-notification" class="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm">
+        <div class="flex items-center">
+            <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="text-green-600 text-sm font-medium">Supervisor report saved successfully!</div>
+        </div>
+    </div>
+    <script>
+        // Close modal immediately
+        const modal = document.getElementById('supervisor-modal');
+        if (modal && window.modalState) {
+            modal.style.display = 'none';
+            window.modalState.openModalId = null;
+            document.body.style.overflow = '';
+        }
+
+        // Remove success notification after 3 seconds
+        setTimeout(function() {
+            const notification = document.getElementById('success-notification');
+            if (notification) {
+                notification.remove();
+            }
+        }, 3000);
+    </script>`
+	w.Write([]byte(successHTML))
+}
 
 // Database helper methods using sqlx
 func (h *SupervisorReportHandler) getStudentRecord(studentID int) (*database.StudentRecord, error) {

@@ -890,7 +890,7 @@ func (h *TopicHandlers) ShowTopicRegistrationModal(w http.ResponseWriter, r *htt
 		return
 	}
 
-	mode := r.URL.Query().Get("mode") // "view", "edit", "review"
+	mode := r.URL.Query().Get("mode")
 	if mode == "" {
 		mode = "view"
 	}
@@ -923,16 +923,9 @@ func (h *TopicHandlers) ShowTopicRegistrationModal(w http.ResponseWriter, r *htt
 		}
 	}
 
-	// Create a temporary user context for the student (for template rendering)
-	studentUser := &auth.AuthenticatedUser{
-		Email:      studentRecord.StudentEmail,
-		Name:       studentRecord.GetFullName(),
-		Role:       auth.RoleStudent,
-		Department: studentRecord.Department,
-	}
-
+	// ✅ PASS THE REAL AUTHENTICATED USER (SUPERVISOR), NOT A FAKE STUDENT USER
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = templates.TopicRegistrationModal(studentUser, topic, comments, locale).Render(r.Context(), w)
+	err = templates.TopicRegistrationModal(user, topic, comments, locale).Render(r.Context(), w)
 	if err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 	}

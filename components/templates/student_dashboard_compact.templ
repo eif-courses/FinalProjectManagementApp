@@ -8,58 +8,41 @@ import (
 	"FinalProjectManagementApp/components/icon"
 	"FinalProjectManagementApp/database"
 	"fmt"
+	"time"
 )
 
 templ CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.StudentDashboardData, currentLocale string) {
-	@Layout(user, currentLocale, "Dashboard") {
+	@Layout(user, currentLocale, getDashboardTitle(currentLocale)) {
 		<div class="space-y-6">
-			<!-- Compact Header -->
-			<div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-				<div class="flex items-center justify-between">
+			<!-- Simplified Header with integrated progress -->
+			<div class="bg-white rounded-lg border p-4 shadow-sm">
+				<div class="flex items-center justify-between mb-3">
 					<div>
-						<h1 class="text-xl font-bold">{ user.Name }</h1>
-						<p class="text-sm opacity-90">{ data.StudentRecord.StudentNumber } • { data.StudentRecord.StudyProgram }</p>
+						<h1 class="text-xl font-semibold text-gray-900">{ user.Name }</h1>
+						<p class="text-sm text-gray-500">{ data.StudentRecord.StudentNumber } • { data.StudentRecord.StudentGroup } • { data.StudentRecord.StudyProgram }</p>
 					</div>
 					<div class="text-right">
-						<div class="text-2xl font-bold">{ fmt.Sprintf("%d%%", calculateProgress(data)) }</div>
-						<div class="text-xs opacity-90">Complete</div>
+						<div class="text-3xl font-bold text-blue-600">{ fmt.Sprintf("%d%%", calculateProgress(data)) }</div>
+						<div class="text-sm text-gray-500">
+							if currentLocale == "en" {
+								Progress
+							} else {
+								Progresas
+							}
+						</div>
 					</div>
 				</div>
-				<div class="mt-3 bg-white bg-opacity-20 rounded-full h-2">
-					<div
-						class="bg-white h-2 rounded-full transition-all duration-500"
-						style={ "width: " + fmt.Sprintf("%d%%", calculateProgress(data)) }
-					></div>
-				</div>
+
+				<!-- Horizontal Progress Steps -->
+				@HorizontalProgressSteps(data, currentLocale)
 			</div>
-			<!-- Compact Grid -->
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+			<!-- Main Content Grid -->
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
 				@CompactTopicSection(data, currentLocale)
-				@CompactSourceSection(data)
-				@CompactDocsSection(data)
-				@CompactEvalSection(data)
-				<!-- Defense Status -->
-				@card.Card() {
-					@card.Header() {
-						@card.Title() {
-							🎓 Defense
-						}
-					}
-					@card.Content() {
-						if data.DefenseScheduled {
-							<div class="text-center">
-								<div class="text-sm font-medium text-green-600">Scheduled</div>
-								<div class="text-xs text-gray-600">{ formatDefenseDate(data.DefenseDate) }</div>
-								<div class="text-xs text-gray-500 mt-1">{ data.StudentRecord.DefenseLocation }</div>
-							</div>
-						} else {
-							<div class="text-center">
-								<div class="text-sm text-gray-600">Not Scheduled</div>
-								<div class="text-xs text-gray-500">Complete all requirements</div>
-							</div>
-						}
-					}
-				}
+				@CompactSourceSection(data, currentLocale)
+				@CompactDocsSection(data, currentLocale)
+				@CompactEvalSection(data, currentLocale)
 			</div>
 		</div>
 		<!-- Modal Container -->
@@ -67,278 +50,319 @@ templ CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.Stude
 		<!-- JavaScript -->
 		<script src="/static/js/student-dashboard-compact.js"></script>
 		<script>
+			const currentUserData = {
+				name: "{{ user.Name }}",
+				email: "{{ user.Email }}",
+				studentId: "{{ data.StudentRecord.StudentNumber }}",
+				thesisTitle: "{{ data.StudentRecord.FinalProjectTitle }}"
+			};
 
-		  const currentUserData = {
-                name: "{{ user.Name }}",
-                email: "{{ user.Email }}",
-                studentId: "{{ data.StudentRecord.StudentNumber }}",
-                thesisTitle: "{{ data.StudentRecord.FinalProjectTitle }}"
-            };
+			// Handle source code upload form
+			document.addEventListener('DOMContentLoaded', function() {
+				const form = document.getElementById('compact-source-form');
+				if (form) {
+					form.addEventListener('submit', async function(e) {
+						e.preventDefault();
 
-            // Handle source code upload form
-            document.addEventListener('DOMContentLoaded', function() {
-                const form = document.getElementById('compact-source-form');
-                if (form) {
-                    form.addEventListener('submit', async function(e) {
-                        e.preventDefault();
+						const fileInput = form.querySelector('input[type="file"]');
+						if (!fileInput.files[0]) {
+							alert('Please select a file');
+							return;
+						}
 
-                        const fileInput = form.querySelector('input[type="file"]');
-                        if (!fileInput.files[0]) {
-                            alert('Please select a file');
-                            return;
-                        }
+						// Debug log to check values
+						console.log('Uploading with data:', currentUserData);
 
-                        // Debug log to check values
-                        console.log('Uploading with data:', currentUserData);
+						const formData = new FormData();
+						formData.append('source_code', fileInput.files[0]);
+						// Automatically add user data
+						formData.append('name', currentUserData.name);
+						formData.append('student_id', currentUserData.studentId);
+						formData.append('email', currentUserData.email);
+						formData.append('thesis_title', currentUserData.thesisTitle || 'Final Thesis Project');
 
-                        const formData = new FormData();
-                        formData.append('source_code', fileInput.files[0]);
-                        // Automatically add user data
-                        formData.append('name', currentUserData.name);
-                        formData.append('student_id', currentUserData.studentId);
-                        formData.append('email', currentUserData.email);
-                        formData.append('thesis_title', currentUserData.thesisTitle || 'Final Thesis Project');
+						const uploadBtn = document.getElementById('compact-upload-btn');
+						const progressDiv = document.getElementById('compact-progress');
+						const progressBar = document.getElementById('compact-progress-bar');
+						const statusText = document.getElementById('compact-status');
 
-                        const uploadBtn = document.getElementById('compact-upload-btn');
-                        const progressDiv = document.getElementById('compact-progress');
-                        const progressBar = document.getElementById('compact-progress-bar');
-                        const statusText = document.getElementById('compact-status');
+						uploadBtn.disabled = true;
+						uploadBtn.innerHTML = '<span class="animate-spin">⏳</span> Uploading...';
+						progressDiv.classList.remove('hidden');
 
-                        uploadBtn.disabled = true;
-                        uploadBtn.innerHTML = '<span class="animate-spin">⏳</span> Uploading...';
-                        progressDiv.classList.remove('hidden');
+						try {
+							// Simulate progress
+							let progress = 0;
+							const progressInterval = setInterval(() => {
+								progress += Math.random() * 15;
+								if (progress > 90) progress = 90;
+								progressBar.style.width = progress + '%';
+							}, 500);
 
-                        try {
-                            // Simulate progress
-                            let progress = 0;
-                            const progressInterval = setInterval(() => {
-                                progress += Math.random() * 15;
-                                if (progress > 90) progress = 90;
-                                progressBar.style.width = progress + '%';
-                            }, 500);
+							const response = await fetch('/api/source-code/upload', {
+								method: 'POST',
+								body: formData
+							});
 
-                            const response = await fetch('/api/source-code/upload', {
-                                method: 'POST',
-                                body: formData
-                            });
+							clearInterval(progressInterval);
+							progressBar.style.width = '100%';
 
-                            clearInterval(progressInterval);
-                            progressBar.style.width = '100%';
+							const data = await response.json();
 
-                            const data = await response.json();
+							if (data.success) {
+								statusText.textContent = '✅ Upload complete!';
+								statusText.classList.remove('text-gray-500');
+								statusText.classList.add('text-green-600');
 
-                            if (data.success) {
-                                statusText.textContent = '✅ Upload complete!';
-                                statusText.classList.remove('text-gray-500');
-                                statusText.classList.add('text-green-600');
+								// Show success message
+								if (data.repository_info) {
+									setTimeout(() => {
+										alert(`Upload successful!\nRepository: ${data.repository_info.name}\nView at: ${data.repository_info.web_url}`);
+										location.reload();
+									}, 1500);
+								} else {
+									setTimeout(() => {
+										location.reload();
+									}, 1500);
+								}
+							} else {
+								throw new Error(data.error || 'Upload failed');
+							}
+						} catch (error) {
+							statusText.textContent = '❌ ' + error.message;
+							statusText.classList.remove('text-gray-500');
+							statusText.classList.add('text-red-600');
+							uploadBtn.disabled = false;
+							uploadBtn.innerHTML = '<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg> Upload Source Code';
+						}
+					});
+				}
+			});
 
-                                // Show success message
-                                if (data.repository_info) {
-                                    setTimeout(() => {
-                                        alert(`Upload successful!\nRepository: ${data.repository_info.name}\nView at: ${data.repository_info.web_url}`);
-                                        location.reload();
-                                    }, 1500);
-                                } else {
-                                    setTimeout(() => {
-                                        location.reload();
-                                    }, 1500);
-                                }
-                            } else {
-                                throw new Error(data.error || 'Upload failed');
-                            }
-                        } catch (error) {
-                            statusText.textContent = '❌ ' + error.message;
-                            statusText.classList.remove('text-gray-500');
-                            statusText.classList.add('text-red-600');
-                            uploadBtn.disabled = false;
-                            uploadBtn.innerHTML = '<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg> Upload Source Code';
-                        }
-                    });
-                }
-            });
+			const currentStudentId = {{ data.StudentRecord.ID }};
 
+			// Modal Functions
+			function openTopicModal() {
+				console.log('openTopicModal called for student:', currentStudentId);
+				htmx.ajax('GET', '/topic-registration/' + currentStudentId, {
+					target: '#modal-container',
+					swap: 'innerHTML'
+				});
+				showModal();
+			}
 
+			function showModal() {
+				let modalContainer = document.getElementById('modal-container');
+				if (!modalContainer) {
+					modalContainer = document.createElement('div');
+					modalContainer.id = 'modal-container';
+					modalContainer.className = 'fixed inset-0 z-50';
+					document.body.appendChild(modalContainer);
+				}
+				modalContainer.style.display = 'block';
 
+				// Focus trap for accessibility
+				setTimeout(() => {
+					const modal = modalContainer.querySelector('[role="dialog"]');
+					if (modal) {
+						modal.focus();
+					}
+				}, 100);
+			}
 
-                const currentStudentId = {{ data.StudentRecord.ID }};
-            // Modal Functions
-        
-                      function openTopicModal() {
-                          console.log('openTopicModal called for student:', currentStudentId);
-                          htmx.ajax('GET', '/topic-registration/' + currentStudentId, {
-                              target: '#modal-container',
-                              swap: 'innerHTML'
-                          });
-                          showModal();
-                      }
+			function hideModal() {
+				const modalContainer = document.getElementById('modal-container');
+				if (modalContainer) {
+					modalContainer.style.display = 'none';
+					modalContainer.innerHTML = '';
+				}
+				// Reset modal state
+				if (window.modalState) {
+					window.modalState.openModalId = null;
+				}
+				document.body.style.overflow = '';
+			}
 
-            function showModal() {
-                let modalContainer = document.getElementById('modal-container');
-                if (!modalContainer) {
-                    modalContainer = document.createElement('div');
-                    modalContainer.id = 'modal-container';
-                    modalContainer.className = 'fixed inset-0 z-50';
-                    document.body.appendChild(modalContainer);
-                }
-                modalContainer.style.display = 'block';
+			// Other modal functions
+			function uploadNewVersion() {
+				console.log('Upload new version');
+				// Implementation for uploading new source code version
+			}
 
-                // Focus trap for accessibility
-                setTimeout(() => {
-                    const modal = modalContainer.querySelector('[role="dialog"]');
-                    if (modal) {
-                        modal.focus();
-                    }
-                }, 100);
-            }
+			function uploadRecommendation() {
+				console.log('Upload recommendation');
+				// Implementation for uploading recommendation
+			}
 
-            function hideModal() {
-                const modalContainer = document.getElementById('modal-container');
-                if (modalContainer) {
-                    modalContainer.style.display = 'none';
-                    modalContainer.innerHTML = '';
-                }
-                // Reset modal state
-                if (window.modalState) {
-                    window.modalState.openModalId = null;
-                }
-                document.body.style.overflow = '';
-            }
+			function uploadVideo() {
+				console.log('Upload video');
+				// Implementation for uploading video
+			}
 
-            // Other modal functions
-            function uploadNewVersion() {
-                console.log('Upload new version');
-                // Implementation for uploading new source code version
-            }
+			function playVideo() {
+				console.log('Play video');
+				// Implementation for playing video
+			}
 
-            function uploadRecommendation() {
-                console.log('Upload recommendation');
-                // Implementation for uploading recommendation
-            }
+			function viewReport(type, reportId) {
+				console.log('View report:', type, reportId);
+				// Implementation for viewing reports
+			}
 
-            function uploadVideo() {
-                console.log('Upload video');
-                // Implementation for uploading video
-            }
+			// Event Listeners
+			document.addEventListener('htmx:afterRequest', function(evt) {
+				if (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated') {
+					hideModal();
+					// Reload the page or update the topic section
+					location.reload();
+				}
+			});
 
-            function playVideo() {
-                console.log('Play video');
-                // Implementation for playing video
-            }
+			// Handle source code upload form
+			document.addEventListener('DOMContentLoaded', function() {
+				const form = document.getElementById('compact-source-form');
+				if (form) {
+					form.addEventListener('submit', function(e) {
+						e.preventDefault();
+						const formData = new FormData(form);
+						const uploadBtn = document.getElementById('compact-upload-btn');
+						const progressDiv = document.getElementById('compact-progress');
+						const progressBar = document.getElementById('compact-progress-bar');
+						const statusText = document.getElementById('compact-status');
 
-            function viewReport(type, reportId) {
-                console.log('View report:', type, reportId);
-                // Implementation for viewing reports
-            }
+						uploadBtn.disabled = true;
+						progressDiv.classList.remove('hidden');
 
-            // Event Listeners
-            document.addEventListener('htmx:afterRequest', function(evt) {
-                if (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated') {
-                    hideModal();
-                    // Reload the page or update the topic section
-                    location.reload();
-                }
-            });
+						// Simulate upload progress
+						let progress = 0;
+						const interval = setInterval(() => {
+							progress += 10;
+							progressBar.style.width = progress + '%';
 
-            // Handle source code upload form
-            document.addEventListener('DOMContentLoaded', function() {
-                const form = document.getElementById('compact-source-form');
-                if (form) {
-                    form.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        const formData = new FormData(form);
-                        const uploadBtn = document.getElementById('compact-upload-btn');
-                        const progressDiv = document.getElementById('compact-progress');
-                        const progressBar = document.getElementById('compact-progress-bar');
-                        const statusText = document.getElementById('compact-status');
+							if (progress >= 100) {
+								clearInterval(interval);
+								statusText.textContent = 'Upload complete!';
+								setTimeout(() => {
+									location.reload();
+								}, 1500);
+							}
+						}, 200);
 
-                        uploadBtn.disabled = true;
-                        progressDiv.classList.remove('hidden');
-
-                        // Simulate upload progress
-                        let progress = 0;
-                        const interval = setInterval(() => {
-                            progress += 10;
-                            progressBar.style.width = progress + '%';
-
-                            if (progress >= 100) {
-                                clearInterval(interval);
-                                statusText.textContent = 'Upload complete!';
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1500);
-                            }
-                        }, 200);
-
-                        // Actual upload would go here
-                        // fetch('/api/upload/source', { method: 'POST', body: formData })
-                    });
-                }
-            });
-        </script>
+						// Actual upload would go here
+						// fetch('/api/upload/source', { method: 'POST', body: formData })
+					});
+				}
+			});
+		</script>
 	}
 }
 
-// Topic Registration Section
+
+
+templ HorizontalProgressSteps(data *database.StudentDashboardData, locale string) {
+	<div class="mt-4">
+		<!-- Progress Bar -->
+		<div class="bg-gray-200 rounded-full h-2 mb-3">
+			<div
+				class="bg-blue-600 h-2 rounded-full transition-all duration-500"
+				style={ "width: " + fmt.Sprintf("%d%%", calculateProgress(data)) }
+			></div>
+		</div>
+
+		<!-- Steps -->
+		<div class="flex justify-between items-center">
+			@ProgressStep("📝", getStatLabel("topic", locale), data.TopicRegistration != nil, getTopicStatusText(data, locale), 1)
+			@ProgressStepConnector(data.TopicRegistration != nil)
+			@ProgressStep("💻", getStatLabel("code", locale), data.SourceCodeRepository != nil, getCodeStatusText(data, locale), 2)
+			@ProgressStepConnector(data.SourceCodeRepository != nil)
+			@ProgressStep("📄", getStatLabel("docs", locale), data.HasThesisPDF, getDocsStatusText(data, locale), 3)
+			@ProgressStepConnector(data.HasThesisPDF)
+			@ProgressStep("📋", getStatLabel("evaluation", locale), hasEvaluation(data), getEvaluationStatusText(data, locale), 4)
+		</div>
+	</div>
+}
+
+// Progress Step Component
+templ ProgressStep(icon string, label string, completed bool, status string, step int) {
+	<div class="flex flex-col items-center flex-1">
+		<div class={ "flex items-center justify-center w-10 h-10 rounded-full mb-2 transition-all",
+			templ.KV("bg-blue-600 text-white", completed),
+			templ.KV("bg-gray-200 text-gray-400", !completed) }>
+			if completed {
+				<span class="text-lg">✓</span>
+			} else {
+				<span class="text-sm font-medium">{ fmt.Sprintf("%d", step) }</span>
+			}
+		</div>
+		<div class="text-center">
+			<div class="text-xs font-medium text-gray-700">{ label }</div>
+			<div class="text-xs text-gray-500">{ status }</div>
+		</div>
+	</div>
+}
+
+// Progress Step Connector
+templ ProgressStepConnector(completed bool) {
+	<div class={ "flex-1 h-0.5 -mt-5 mx-2",
+		templ.KV("bg-blue-600", completed),
+		templ.KV("bg-gray-300", !completed) }></div>
+}
+
+
+
+// Simplified Mini Stat Card
+templ MiniStatCard(icon string, label string, completed bool, status string) {
+	<div class="bg-white rounded-lg border p-3 hover:shadow-sm transition-shadow">
+		<div class="flex items-center justify-between">
+			<div class="flex items-center space-x-2">
+				<span class="text-xl">{ icon }</span>
+				<div>
+					<div class="text-xs font-medium text-gray-700">{ label }</div>
+					<div class="text-xs text-gray-500">{ status }</div>
+				</div>
+			</div>
+			if completed {
+				<span class="text-green-500 text-sm">✓</span>
+			} else {
+				<span class="text-gray-300 text-sm">○</span>
+			}
+		</div>
+	</div>
+}
+
+// Updated Topic Registration Section with smaller buttons
 templ CompactTopicSection(data *database.StudentDashboardData, locale string) {
 	@card.Card() {
 		@card.Header() {
 			@card.Title() {
-				📝 Topic Registration
+				📝
+				if locale == "en" {
+					Topic Registration
+				} else {
+					Temos registravimas
+				}
 			}
 			if data.TopicRegistration != nil {
-				<div class="flex items-center space-x-2 ml-auto">
-					switch data.TopicRegistration.Status {
-						case "draft":
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
-								@icon.PencilLine(icon.Props{Size: 12, Class: "mr-1"})
-								Draft
-							</span>
-						case "submitted":
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
-								@icon.Clock(icon.Props{Size: 12, Class: "mr-1"})
-								Submitted
-							</span>
-						case "supervisor_approved":
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-								@icon.UserCheck(icon.Props{Size: 12, Class: "mr-1"})
-								Supervisor OK
-							</span>
-						case "approved":
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-								@icon.CircleCheck(icon.Props{Size: 12, Class: "mr-1"})
-								Approved
-							</span>
-						case "rejected":
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
-								@icon.CircleX(icon.Props{Size: 12, Class: "mr-1"})
-								Rejected
-							</span>
-						case "revision_requested":
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-800">
-								@icon.RotateCcw(icon.Props{Size: 12, Class: "mr-1"})
-								Revision
-							</span>
-					}
-				</div>
+				@StatusBadge(data.TopicRegistration.Status, locale)
 			}
 		}
 		@card.Content() {
 			if data.TopicRegistration != nil {
-				<!-- Topic exists - show preview -->
 				<div class="space-y-3">
-					<!-- Title Preview -->
-					<div class="space-y-1">
-						<p class="text-xs text-gray-500">
+					<!-- Title -->
+					<div>
+						<p class="text-xs text-gray-500 mb-1">
 							if locale == "en" {
 								Title
 							} else {
 								Tema
 							}
 						</p>
-						<p class="text-sm font-medium line-clamp-2" title={ data.TopicRegistration.Title }>
+						<p class="text-sm font-medium text-gray-900 line-clamp-2">
 							{ data.TopicRegistration.Title }
 						</p>
 					</div>
+
 					<!-- Supervisor -->
 					<div class="flex items-center justify-between">
 						<span class="text-xs text-gray-500">
@@ -348,98 +372,101 @@ templ CompactTopicSection(data *database.StudentDashboardData, locale string) {
 								Vadovas
 							}
 						</span>
-						<span class="text-sm">{ data.TopicRegistration.Supervisor }</span>
+						<span class="text-sm text-gray-700">{ data.TopicRegistration.Supervisor }</span>
 					</div>
-					<!-- Action Buttons -->
-					<div class="flex space-x-2 pt-2">
+
+					<!-- Simplified Action Buttons -->
+					<div class="flex gap-2 pt-2">
 						@button.Button(button.Props{
-							Variant: button.VariantDefault,
+							Variant: button.VariantOutline,
 							Size:    button.SizeIcon,
-							Class:   "flex-1",
 							Attributes: templ.Attributes{
 								"onclick": "openTopicModal()",
 							},
 						}) {
-							@icon.Eye(icon.Props{Size: 14, Class: "mr-1"})
-							if locale == "en" {
-								View
-							} else {
-								Peržiūrėti
-							}
+							@icon.Eye(icon.Props{Size: 14})
+							<span class="ml-1">
+								if locale == "en" {
+									View
+								} else {
+									Peržiūrėti
+								}
+							</span>
 						}
 						if data.TopicRegistration.IsEditable() {
 							@button.Button(button.Props{
 								Variant: button.VariantOutline,
 								Size:    button.SizeIcon,
-								Class:   "flex-1",
 								Attributes: templ.Attributes{
 									"onclick": "openTopicModal()",
 								},
 							}) {
-								@icon.Pencil(icon.Props{Size: 14, Class: "mr-1"})
-								if locale == "en" {
-									Edit
-								} else {
-									Redaguoti
-								}
+								@icon.Pencil(icon.Props{Size: 14})
+								<span class="ml-1">
+									if locale == "en" {
+										Edit
+									} else {
+										Redaguoti
+									}
+								</span>
 							}
 						}
 					</div>
-					<!-- Comments indicator if any -->
+
+					<!-- Comments if any -->
 					if data.TopicCommentCount > 0 {
-						<div class="flex items-center justify-between pt-2 border-t">
-							<div class="flex items-center space-x-1 text-xs text-gray-500">
-								@icon.MessageCircle(icon.Props{Size: 12})
-								<span>
-									{ fmt.Sprintf("%d", data.TopicCommentCount) }
-									if data.TopicCommentCount == 1 {
-										if locale == "en" {
-											comment
-										} else {
-											komentaras
-										}
+						<div class="flex items-center text-xs text-gray-500 pt-2 border-t">
+							@icon.MessageCircle(icon.Props{Size: 12})
+							<span class="ml-1">
+								{ fmt.Sprintf("%d", data.TopicCommentCount) }
+								if data.TopicCommentCount == 1 {
+									if locale == "en" {
+										comment
 									} else {
-										if locale == "en" {
-											comments
-										} else {
-											komentarai
-										}
+										komentaras
 									}
-								</span>
-							</div>
+								} else {
+									if locale == "en" {
+										comments
+									} else {
+										komentarai
+									}
+								}
+							</span>
 							if data.HasUnreadComments {
-								<span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+								<span class="ml-auto w-2 h-2 bg-blue-500 rounded-full"></span>
 							}
 						</div>
 					}
 				</div>
 			} else {
-				<!-- No topic yet - show start button -->
-				<div class="text-center py-4">
-					<div class="mb-3">
-						@icon.PencilLine(icon.Props{Size: 32, Class: "mx-auto text-gray-400"})
+				<!-- No topic - simplified start -->
+				<div class="text-center py-6">
+					<div class="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-3">
+						@icon.PencilLine(icon.Props{Size: 20, Class: "text-gray-400"})
 					</div>
-					<p class="text-sm text-gray-600 mb-3">
+					<p class="text-sm text-gray-600 mb-4">
 						if locale == "en" {
-							Start your thesis journey by registering your topic
+							Start by registering your topic
 						} else {
-							Pradėkite savo baigiamojo darbo kelionę registruodami temą
+							Pradėkite registruodami temą
 						}
 					</p>
 					@button.Button(button.Props{
 						Variant: button.VariantDefault,
 						Size:    button.SizeIcon,
-						Class:   "w-full",
 						Attributes: templ.Attributes{
 							"onclick": "openTopicModal()",
 						},
 					}) {
-						@icon.Plus(icon.Props{Size: 14, Class: "mr-1"})
-						if locale == "en" {
-							Register Topic
-						} else {
-							Registruoti temą
-						}
+						@icon.Plus(icon.Props{Size: 14})
+						<span class="ml-1">
+							if locale == "en" {
+								Register Topic
+							} else {
+								Registruoti temą
+							}
+						</span>
 					}
 				</div>
 			}
@@ -447,82 +474,160 @@ templ CompactTopicSection(data *database.StudentDashboardData, locale string) {
 	}
 }
 
-// Source Code Section
-templ CompactSourceSection(data *database.StudentDashboardData) {
+// Status Badge Component
+templ StatusBadge(status string, locale string) {
+	switch status {
+		case "draft":
+			<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+				if locale == "en" {
+					Draft
+				} else {
+					Juodraštis
+				}
+			</span>
+		case "submitted":
+			<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">
+				if locale == "en" {
+					Submitted
+				} else {
+					Pateikta
+				}
+			</span>
+		case "supervisor_approved":
+			<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+				if locale == "en" {
+					Supervisor OK
+				} else {
+					Vadovas patvirtino
+				}
+			</span>
+		case "approved":
+			<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
+				✓
+				if locale == "en" {
+					Approved
+				} else {
+					Patvirtinta
+				}
+			</span>
+		case "rejected":
+			<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">
+				if locale == "en" {
+					Rejected
+				} else {
+					Atmesta
+				}
+			</span>
+		case "revision_requested":
+			<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700">
+				if locale == "en" {
+					Needs revision
+				} else {
+					Reikia pataisymų
+				}
+			</span>
+	}
+}
+
+// Updated Source Section with cleaner design
+templ CompactSourceSection(data *database.StudentDashboardData, locale string) {
 	@card.Card() {
 		@card.Header() {
 			@card.Title() {
-				💻 Source Code
+				💻
+				if locale == "en" {
+					Source Code
+				} else {
+					Programos kodas
+				}
 			}
 			if data.SourceCodeRepository != nil {
-				<div class="flex items-center space-x-2 ml-auto">
-					<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-						@icon.CircleCheck(icon.Props{Size: 12, Class: "mr-1"})
+				<span class="text-xs text-green-600 font-medium">
+					✓
+					if locale == "en" {
 						Uploaded
-					</span>
-				</div>
+					} else {
+						Įkelta
+					}
+				</span>
 			}
 		}
 		@card.Content() {
 			if data.SourceCodeRepository != nil {
-				<!-- Compact Preview -->
 				<div class="space-y-3">
-					<div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+					<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
 						<div class="flex items-center space-x-2">
 							@icon.Github(icon.Props{Size: 16, Class: "text-gray-600"})
-							<span class="text-sm font-medium">Repository Ready</span>
+							<span class="text-sm font-medium">
+								if locale == "en" {
+									Repository Ready
+								} else {
+									Repozitorija paruošta
+								}
+							</span>
 						</div>
-						<div class="flex space-x-1">
+						<div class="flex gap-1">
 							@button.Button(button.Props{
-								Variant: button.VariantOutline,
+								Variant: button.VariantGhost,
 								Size:    button.SizeIcon,
 								Attributes: templ.Attributes{
 									"onclick": fmt.Sprintf("window.open('/repository/student/%d', '_blank')", data.StudentRecord.ID),
+									"title": "View repository",
 								},
 							}) {
-								@icon.Eye(icon.Props{Size: 14})
+								@icon.Eye(icon.Props{Size: 16})
 							}
 							if data.SourceCodeRepository.RepositoryURL != nil {
 								@button.Button(button.Props{
-									Variant: button.VariantOutline,
+									Variant: button.VariantGhost,
 									Size:    button.SizeIcon,
 									Attributes: templ.Attributes{
 										"onclick": fmt.Sprintf("window.open('%s', '_blank')", *data.SourceCodeRepository.RepositoryURL),
+										"title": "Open in GitHub",
 									},
 								}) {
-									@icon.ExternalLink(icon.Props{Size: 14})
+									@icon.ExternalLink(icon.Props{Size: 16})
 								}
 							}
 							@button.Button(button.Props{
-								Variant: button.VariantOutline,
+								Variant: button.VariantGhost,
 								Size:    button.SizeIcon,
 								Attributes: templ.Attributes{
 									"onclick": "uploadNewVersion()",
-									"title":   "Upload new version",
+									"title": getUploadNewVersionTitle(locale),
 								},
 							}) {
-								@icon.Upload(icon.Props{Size: 14})
+								@icon.Upload(icon.Props{Size: 16})
 							}
 						</div>
 					</div>
-					<div class="text-xs text-gray-500">
-						Uploaded: { data.SourceCodeRepository.UploadedDate.Format("Jan 2, 15:04") }
-					</div>
+					<p class="text-xs text-gray-500">
+						if locale == "en" {
+							Uploaded: { data.SourceCodeRepository.UploadedDate.Format("Jan 2, 15:04") }
+						} else {
+							Įkelta: { formatDateLT(data.SourceCodeRepository.UploadedDate) }
+						}
+					</p>
 				</div>
 			} else {
-				<!-- Compact Upload Form -->
-				@SourceUploadFormCompact()
+				@SourceUploadFormCompact(locale)
 			}
 		}
 	}
 }
 
 // Source Upload Form
-templ SourceUploadFormCompact() {
+templ SourceUploadFormCompact(locale string) {
     <div class="space-y-3">
-        <div class="border-2 border-dashed border-gray-300 rounded p-4 text-center">
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
             @icon.Upload(icon.Props{Size: 24, Class: "mx-auto text-gray-400 mb-2"})
-            <p class="text-sm text-gray-600 mb-3">Upload your thesis source code (ZIP)</p>
+            <p class="text-sm text-gray-600 mb-3">
+				if locale == "en" {
+					Upload your thesis source code (ZIP)
+				} else {
+					Įkelkite savo darbo programos kodą (ZIP)
+				}
+			</p>
 
             <form id="compact-source-form" class="space-y-2">
                 <input
@@ -542,7 +647,11 @@ templ SourceUploadFormCompact() {
                     },
                 }) {
                     @icon.Upload(icon.Props{Size: 14, Class: "mr-1"})
-                    Upload Source Code
+                    if locale == "en" {
+						Upload Source Code
+					} else {
+						Įkelti programos kodą
+					}
                 }
             </form>
 
@@ -550,104 +659,141 @@ templ SourceUploadFormCompact() {
                 <div class="w-full bg-gray-200 rounded-full h-1">
                     <div id="compact-progress-bar" class="bg-blue-600 h-1 rounded-full" style="width: 0%"></div>
                 </div>
-                <p id="compact-status" class="text-xs text-gray-500 mt-1">Uploading...</p>
+                <p id="compact-status" class="text-xs text-gray-500 mt-1">
+					if locale == "en" {
+						Uploading...
+					} else {
+						Įkeliama...
+					}
+				</p>
             </div>
         </div>
     </div>
 }
 
 // Documents Section
-templ CompactDocsSection(data *database.StudentDashboardData) {
+templ CompactDocsSection(data *database.StudentDashboardData, locale string) {
 	@card.Card() {
 		@card.Header() {
 			@card.Title() {
-				📄 Documents
+				📄
+				if locale == "en" {
+					Documents
+				} else {
+					Dokumentai
+				}
 			}
 		}
 		@card.Content() {
 			<div class="space-y-2">
 				<!-- Thesis PDF -->
-				<div class="flex items-center justify-between p-2 border rounded">
+				<div class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
 					<div class="flex items-center space-x-2">
 						@icon.FileText(icon.Props{Size: 16, Class: "text-red-600"})
-						<span class="text-sm">Thesis PDF</span>
+						<span class="text-sm">
+							if locale == "en" {
+								Thesis PDF
+							} else {
+								Darbo PDF
+							}
+						</span>
 					</div>
 					if data.HasThesisPDF && data.ThesisDocument != nil {
-						<div class="flex space-x-1">
+						<div class="flex items-center space-x-2">
 							<span class="text-xs text-green-600">✓</span>
 							@button.Button(button.Props{
-								Variant: button.VariantOutline,
+								Variant: button.VariantGhost,
 								Size:    button.SizeIcon,
 								Attributes: templ.Attributes{
 									"onclick": fmt.Sprintf("window.open('/api/documents/%d/preview', '_blank')", data.ThesisDocument.ID),
 								},
 							}) {
-								@icon.Eye(icon.Props{Size: 12})
+								@icon.Eye(icon.Props{Size: 14})
 							}
 						</div>
 					} else {
-						<span class="text-xs text-gray-500">Admin upload</span>
+						<span class="text-xs text-gray-500">
+							if locale == "en" {
+								Admin upload
+							} else {
+								Įkelia administratorius
+							}
+						</span>
 					}
 				</div>
+
 				<!-- Company Recommendation -->
-				<div class="flex items-center justify-between p-2 border rounded">
+				<div class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
 					<div class="flex items-center space-x-2">
 						@icon.Building(icon.Props{Size: 16, Class: "text-blue-600"})
-						<span class="text-sm">Recommendation</span>
+						<span class="text-sm">
+							if locale == "en" {
+								Recommendation
+							} else {
+								Rekomendacija
+							}
+						</span>
 					</div>
 					if data.CompanyRecommendation != nil {
-						<div class="flex space-x-1">
+						<div class="flex items-center space-x-2">
 							<span class="text-xs text-green-600">✓</span>
 							@button.Button(button.Props{
-								Variant: button.VariantOutline,
+								Variant: button.VariantGhost,
 								Size:    button.SizeIcon,
 								Attributes: templ.Attributes{
 									"onclick": fmt.Sprintf("window.open('/api/documents/%d/preview', '_blank')", data.CompanyRecommendation.ID),
 								},
 							}) {
-								@icon.Eye(icon.Props{Size: 12})
+								@icon.Eye(icon.Props{Size: 14})
 							}
 						</div>
 					} else {
 						@button.Button(button.Props{
-							Variant: button.VariantOutline,
+							Variant: button.VariantGhost,
 							Size:    button.SizeIcon,
 							Attributes: templ.Attributes{
 								"onclick": "uploadRecommendation()",
 							},
 						}) {
-							@icon.Upload(icon.Props{Size: 12})
+							@icon.Upload(icon.Props{Size: 14})
 						}
 					}
 				</div>
+
 				<!-- Video Presentation -->
-				<div class="flex items-center justify-between p-2 border rounded">
+				<div class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
 					<div class="flex items-center space-x-2">
 						@icon.Video(icon.Props{Size: 16, Class: "text-purple-600"})
-						<span class="text-sm">Video (Optional)</span>
+						<span class="text-sm">
+							if locale == "en" {
+								Video (Optional)
+							} else {
+								Video (Neprivaloma)
+							}
+						</span>
 					</div>
 					if data.VideoPresentation != nil {
-						<div class="flex space-x-1">
+						<div class="flex items-center space-x-2">
 							<span class="text-xs text-green-600">✓</span>
 							@button.Button(button.Props{
-								Variant: button.VariantOutline,
+								Variant: button.VariantGhost,
 								Size:    button.SizeIcon,
 								Attributes: templ.Attributes{
 									"onclick": "playVideo()",
 								},
 							}) {
-								@icon.Play(icon.Props{Size: 12})
+								@icon.Play(icon.Props{Size: 14})
 							}
 						</div>
 					} else {
 						@button.Button(button.Props{
-							Variant: button.VariantOutline,
+							Variant: button.VariantGhost,
 							Size:    button.SizeIcon,
 							Attributes: templ.Attributes{
 								"onclick": "uploadVideo()",
 							},
 						}) {
-							@icon.Upload(icon.Props{Size: 12})
+							@icon.Upload(icon.Props{Size: 14})
 						}
 					}
 				</div>
@@ -657,77 +803,139 @@ templ CompactDocsSection(data *database.StudentDashboardData) {
 }
 
 // Reports/Evaluation Section
-templ CompactEvalSection(data *database.StudentDashboardData) {
+templ CompactEvalSection(data *database.StudentDashboardData, locale string) {
 	@card.Card() {
 		@card.Header() {
 			@card.Title() {
-				📋 Evaluation
+				📋
+				if locale == "en" {
+					Evaluation
+				} else {
+					Vertinimas
+				}
 			}
 		}
 		@card.Content() {
 			<div class="space-y-2">
 				<!-- Supervisor Report -->
-				<div class="flex items-center justify-between p-2 border rounded">
+				<div class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
 					<div class="flex items-center space-x-2">
 						@icon.User(icon.Props{Size: 16, Class: "text-green-600"})
-						<span class="text-sm">Supervisor</span>
+						<span class="text-sm">
+							if locale == "en" {
+								Supervisor
+							} else {
+								Vadovas
+							}
+						</span>
 						if data.SupervisorReport != nil && data.SupervisorReport.Grade != nil {
 							<span class="text-xs font-medium text-blue-600">
-								Grade: { fmt.Sprintf("%d", *data.SupervisorReport.Grade) }
+								if locale == "en" {
+									Grade: { fmt.Sprintf("%d", *data.SupervisorReport.Grade) }
+								} else {
+									Balas: { fmt.Sprintf("%d", *data.SupervisorReport.Grade) }
+								}
 							</span>
 						}
 					</div>
 					if data.SupervisorReport != nil {
-						<div class="flex items-center space-x-1">
+						<div class="flex items-center space-x-2">
 							if data.SupervisorReport.IsSigned {
-								<span class="text-xs text-green-600">✓ Signed</span>
+								<span class="text-xs text-green-600">
+									if locale == "en" {
+										✓ Signed
+									} else {
+										✓ Pasirašyta
+									}
+								</span>
 							} else {
-								<span class="text-xs text-yellow-600">Draft</span>
+								<span class="text-xs text-yellow-600">
+									if locale == "en" {
+										Draft
+									} else {
+										Juodraštis
+									}
+								</span>
 							}
 							@button.Button(button.Props{
-								Variant: button.VariantOutline,
+								Variant: button.VariantGhost,
 								Size:    button.SizeIcon,
 								Attributes: templ.Attributes{
 									"onclick": fmt.Sprintf("viewReport('supervisor', %d)", data.SupervisorReport.ID),
 								},
 							}) {
-								@icon.Eye(icon.Props{Size: 12})
+								@icon.Eye(icon.Props{Size: 14})
 							}
 						</div>
 					} else {
-						<span class="text-xs text-gray-500">Pending</span>
+						<span class="text-xs text-gray-500">
+							if locale == "en" {
+								Pending
+							} else {
+								Laukiama
+							}
+						</span>
 					}
 				</div>
+
 				<!-- Reviewer Report -->
-				<div class="flex items-center justify-between p-2 border rounded">
+				<div class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
 					<div class="flex items-center space-x-2">
 						@icon.UserCheck(icon.Props{Size: 16, Class: "text-blue-600"})
-						<span class="text-sm">Reviewer</span>
+						<span class="text-sm">
+							if locale == "en" {
+								Reviewer
+							} else {
+								Recenzentas
+							}
+						</span>
 						if data.ReviewerReport != nil {
 							<span class="text-xs font-medium text-blue-600">
-								Grade: { fmt.Sprintf("%.1f", data.ReviewerReport.Grade) }
+								if locale == "en" {
+									Grade: { fmt.Sprintf("%.1f", data.ReviewerReport.Grade) }
+								} else {
+									Balas: { fmt.Sprintf("%.1f", data.ReviewerReport.Grade) }
+								}
 							</span>
 						}
 					</div>
 					if data.ReviewerReport != nil {
-						<div class="flex items-center space-x-1">
+						<div class="flex items-center space-x-2">
 							if data.ReviewerReport.IsSigned {
-								<span class="text-xs text-green-600">✓ Signed</span>
+								<span class="text-xs text-green-600">
+									if locale == "en" {
+										✓ Signed
+									} else {
+										✓ Pasirašyta
+									}
+								</span>
 							} else {
-								<span class="text-xs text-yellow-600">Draft</span>
+								<span class="text-xs text-yellow-600">
+									if locale == "en" {
+										Draft
+									} else {
+										Juodraštis
+									}
+								</span>
 							}
 							@button.Button(button.Props{
-								Variant: button.VariantOutline,
+								Variant: button.VariantGhost,
 								Size:    button.SizeIcon,
 								Attributes: templ.Attributes{
 									"onclick": fmt.Sprintf("viewReport('reviewer', %d)", data.ReviewerReport.ID),
 								},
 							}) {
-								@icon.Eye(icon.Props{Size: 12})
+								@icon.Eye(icon.Props{Size: 14})
 							}
 						</div>
 					} else {
-						<span class="text-xs text-gray-500">Pending</span>
+						<span class="text-xs text-gray-500">
+							if locale == "en" {
+								Pending
+							} else {
+								Laukiama
+							}
+						</span>
 					}
 				</div>
 			</div>
@@ -767,10 +975,6 @@ func calculateProgress(data *database.StudentDashboardData) int {
 		progress += 13
 	}
 
-	// OPTIONAL items (not included in progress):
-	// - Company recommendation
-	// - Video presentation
-
 	// Cap at 100%
 	if progress > 100 {
 		progress = 100
@@ -785,4 +989,146 @@ func formatDefenseDate(date string) string {
 		return "TBD"
 	}
 	return date
+}
+
+// Helper functions
+func getUploadNewVersionTitle(locale string) string {
+	if locale == "en" {
+		return "Upload new version"
+	}
+	return "Įkelti naują versiją"
+}
+
+func formatDateLT(date time.Time) string {
+	months := []string{
+		"", "sausio", "vasario", "kovo", "balandžio", "gegužės", "birželio",
+		"liepos", "rugpjūčio", "rugsėjo", "spalio", "lapkričio", "gruodžio",
+	}
+	return fmt.Sprintf("%s %d, %02d:%02d", months[date.Month()], date.Day(), date.Hour(), date.Minute())
+}
+
+// Helper functions with language support
+func getDashboardTitle(locale string) string {
+	if locale == "en" {
+		return "Dashboard"
+	}
+	return "Valdymo skydelis"
+}
+
+func getStatLabel(stat string, locale string) string {
+	labels := map[string]map[string]string{
+		"topic": {
+			"en": "Topic",
+			"lt": "Tema",
+		},
+		"code": {
+			"en": "Code",
+			"lt": "Kodas",
+		},
+		"docs": {
+			"en": "Docs",
+			"lt": "Dok.",
+		},
+		"evaluation": {
+			"en": "Evaluation",
+			"lt": "Vertinimas",
+		},
+	}
+
+	if label, ok := labels[stat][locale]; ok {
+		return label
+	}
+	return labels[stat]["en"]
+}
+
+func getTopicStatusText(data *database.StudentDashboardData, locale string) string {
+	if data.TopicRegistration == nil {
+		if locale == "en" {
+			return "Not started"
+		}
+		return "Nepradėta"
+	}
+
+	statusMap := map[string]map[string]string{
+		"draft": {
+			"en": "Draft",
+			"lt": "Juodraštis",
+		},
+		"submitted": {
+			"en": "Submitted",
+			"lt": "Pateikta",
+		},
+		"supervisor_approved": {
+			"en": "Supervisor OK",
+			"lt": "Vadovas patvirtino",
+		},
+		"approved": {
+			"en": "Approved",
+			"lt": "Patvirtinta",
+		},
+		"rejected": {
+			"en": "Rejected",
+			"lt": "Atmesta",
+		},
+		"revision_requested": {
+			"en": "Needs revision",
+			"lt": "Reikia pataisymų",
+		},
+	}
+
+	if status, ok := statusMap[data.TopicRegistration.Status][locale]; ok {
+		return status
+	}
+
+	if locale == "en" {
+		return "In progress"
+	}
+	return "Vykdoma"
+}
+
+func getCodeStatusText(data *database.StudentDashboardData, locale string) string {
+	if data.SourceCodeRepository != nil {
+		if locale == "en" {
+			return "Uploaded"
+		}
+		return "Įkelta"
+	}
+	if locale == "en" {
+		return "Not uploaded"
+	}
+	return "Neįkelta"
+}
+
+func getDocsStatusText(data *database.StudentDashboardData, locale string) string {
+	count := 0
+	total := 1 // Only thesis PDF is required
+
+	if data.HasThesisPDF {
+		count++
+	}
+
+	if locale == "en" {
+		return fmt.Sprintf("%d/%d required", count, total)
+	}
+	return fmt.Sprintf("%d/%d būtina", count, total)
+}
+
+func hasEvaluation(data *database.StudentDashboardData) bool {
+	return (data.SupervisorReport != nil && data.SupervisorReport.IsSigned) ||
+		   (data.ReviewerReport != nil && data.ReviewerReport.IsSigned)
+}
+
+func getEvaluationStatusText(data *database.StudentDashboardData, locale string) string {
+	count := 0
+	if data.SupervisorReport != nil {
+		count++
+	}
+	if data.ReviewerReport != nil {
+		count++
+	}
+
+	if locale == "en" {
+		return fmt.Sprintf("%d/2 reports", count)
+	}
+	return fmt.Sprintf("%d/2 ataskaitos", count)
 }

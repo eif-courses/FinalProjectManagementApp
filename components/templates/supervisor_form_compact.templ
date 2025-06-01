@@ -6,21 +6,31 @@ import (
 	"FinalProjectManagementApp/database"
 	"fmt"
 )
+
 func getPlaceholder(formVariant, fieldType string) string {
 	if formVariant == "en" {
 		return "Enter supervisor's feedback and comments..."
 	}
 	return "Įveskite vadovo atsiliepimą ir komentarus..."
 }
+
 templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
 	@modal.Modal(modal.Props{ID: "supervisor-modal", Class: "max-w-4xl w-full mx-4"}) {
 		@modal.Header() {
 			<div class="text-center">
 				<h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">
 					if props.FormVariant == "en" {
-						SUPERVISOR'S EVALUATION REPORT
+						if props.IsReadOnly {
+							SUPERVISOR'S EVALUATION REPORT (VIEW ONLY)
+						} else {
+							SUPERVISOR'S EVALUATION REPORT
+						}
 					} else {
-						BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS
+						if props.IsReadOnly {
+							BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS (PERŽIŪRA)
+						} else {
+							BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS
+						}
 					}
 				</h2>
 				<p class="text-sm text-gray-600 dark:text-gray-300">
@@ -31,9 +41,11 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 		@modal.Body() {
 			<form
 				id="compact-supervisor-form"
-				hx-post={ fmt.Sprintf("/supervisor-report/%d/submit", props.StudentRecord.ID) }
-				hx-target="#modal-container"
-				hx-swap="innerHTML"
+				if !props.IsReadOnly {
+					hx-post={ fmt.Sprintf("/supervisor-report/%d/submit", props.StudentRecord.ID) }
+					hx-target="#supervisor-modal"
+					hx-swap="outerHTML"
+				}
 				class="space-y-4 text-sm"
 			>
 				<!-- Study Program Info -->
@@ -59,7 +71,6 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 						<span class="ml-2">{ props.StudentRecord.GetFullName() }</span>
 					</div>
 				</div>
-
 				<!-- Thesis Title -->
 				<div class="border-t pt-3">
 					<div class="mb-2">
@@ -73,28 +84,39 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 						<span class="ml-2 font-semibold">{ props.StudentRecord.GetLocalizedTitle(props.FormVariant) }</span>
 					</div>
 				</div>
-
-				<!-- Evaluation Text -->
+				<!-- Evaluation Text - FIXED -->
 				<div>
 					<label class="block text-sm font-medium mb-2">
 						if props.FormVariant == "en" {
-							Evaluation Text
+							Evaluation Text (minimum 50 characters)
 						} else {
-							Atsiliepimo tekstas
+							Atsiliepimo tekstas (mažiausiai 50 simbolių)
 						}
-						<span class="text-red-500 ml-1">*</span>
+						if !props.IsReadOnly {
+							<span class="text-red-500 ml-1">*</span>
+						}
 					</label>
 					<textarea
 						id="supervisor_comments"
 						name="supervisor_comments"
-						value={ formData.SupervisorComments }
 						placeholder={ getPlaceholder(props.FormVariant, "feedback") }
-						required
+						required?={ !props.IsReadOnly }
 						rows="4"
 						class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-					></textarea>
+						if props.IsReadOnly {
+							class="w-full px-3 py-2 border border-gray-200 rounded-md shadow-sm text-sm bg-gray-50"
+							disabled
+							readonly
+						}
+						minlength="50"
+						oninput="updateCharCount(this)"
+					>{ formData.SupervisorComments }</textarea>
+					if !props.IsReadOnly {
+						<div class="text-xs text-gray-500 mt-1">
+							<span id="char-count">0</span>/50 characters minimum
+						</div>
+					}
 				</div>
-
 				<!-- Defense Eligibility -->
 				<div class="border-t pt-3">
 					<label class="block text-sm font-medium mb-3">
@@ -113,6 +135,9 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 								value="true"
 								checked?={ formData.IsPassOrFailed }
 								class="form-radio h-4 w-4 text-blue-600"
+								if props.IsReadOnly {
+									disabled
+								}
 							/>
 							<span class="ml-2 text-sm">
 								if props.FormVariant == "en" {
@@ -130,6 +155,9 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 								value="false"
 								checked?={ !formData.IsPassOrFailed }
 								class="form-radio h-4 w-4 text-blue-600"
+								if props.IsReadOnly {
+									disabled
+								}
 							/>
 							<span class="ml-2 text-sm">
 								if props.FormVariant == "en" {
@@ -141,7 +169,6 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 						</label>
 					</div>
 				</div>
-
 				<!-- Plagiarism Analysis -->
 				<div class="border-t pt-3">
 					<h4 class="text-sm font-medium mb-3">
@@ -162,6 +189,11 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 								max="100"
 								step="0.1"
 								class="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+								if props.IsReadOnly {
+									class="w-16 px-2 py-1 border border-gray-200 rounded text-center text-sm bg-gray-50"
+									disabled
+									readonly
+								}
 							/>
 							<span>
 								if props.FormVariant == "en" {
@@ -188,6 +220,11 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 								max="100"
 								step="0.1"
 								class="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+								if props.IsReadOnly {
+									class="w-16 px-2 py-1 border border-gray-200 rounded text-center text-sm bg-gray-50"
+									disabled
+									readonly
+								}
 							/>
 							<span class="text-sm">
 								if props.FormVariant == "en" {
@@ -214,6 +251,11 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 								max="100"
 								step="0.1"
 								class="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+								if props.IsReadOnly {
+									class="w-16 px-2 py-1 border border-gray-200 rounded text-center text-sm bg-gray-50"
+									disabled
+									readonly
+								}
 							/>
 							<span class="text-sm">
 								if props.FormVariant == "en" {
@@ -240,6 +282,11 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 								max="100"
 								step="0.1"
 								class="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+								if props.IsReadOnly {
+									class="w-16 px-2 py-1 border border-gray-200 rounded text-center text-sm bg-gray-50"
+									disabled
+									readonly
+								}
 							/>
 							<span class="text-sm">
 								if props.FormVariant == "en" {
@@ -251,7 +298,6 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 						</div>
 					</div>
 				</div>
-
 				<!-- Confirmation -->
 				<div class="border-t pt-3">
 					<h4 class="text-sm font-medium mb-2">
@@ -270,7 +316,6 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 						<span class="font-medium ml-2">{ props.CurrentSupervisorName }</span>
 					</div>
 				</div>
-
 				<!-- Supervisor Info -->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
@@ -280,15 +325,22 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 							} else {
 								Darbovietė
 							}
-							<span class="text-red-500 ml-1">*</span>
+							if !props.IsReadOnly {
+								<span class="text-red-500 ml-1">*</span>
+							}
 						</label>
 						<input
 							type="text"
 							id="supervisor_workplace"
 							name="supervisor_workplace"
 							value={ formData.SupervisorWorkplace }
-							required
+							required?={ !props.IsReadOnly }
 							class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+							if props.IsReadOnly {
+								class="w-full px-3 py-2 border border-gray-200 rounded-md shadow-sm text-sm bg-gray-50"
+								disabled
+								readonly
+							}
 						/>
 					</div>
 					<div>
@@ -298,19 +350,25 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 							} else {
 								Pareigos
 							}
-							<span class="text-red-500 ml-1">*</span>
+							if !props.IsReadOnly {
+								<span class="text-red-500 ml-1">*</span>
+							}
 						</label>
 						<input
 							type="text"
 							id="supervisor_position"
 							name="supervisor_position"
 							value={ formData.SupervisorPosition }
-							required
+							required?={ !props.IsReadOnly }
 							class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+							if props.IsReadOnly {
+								class="w-full px-3 py-2 border border-gray-200 rounded-md shadow-sm text-sm bg-gray-50"
+								disabled
+								readonly
+							}
 						/>
 					</div>
 				</div>
-
 				<!-- Date (auto-filled) -->
 				<div class="text-center text-sm text-gray-600 dark:text-gray-400 pt-3 border-t">
 					<span id="current-date"></span>
@@ -324,22 +382,35 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 			<div class="flex gap-3 justify-end w-full pt-4 border-t">
 				@modal.Close(modal.CloseProps{ModalID: "supervisor-modal"}) {
 					@button.Button(button.Props{Variant: button.VariantGhost}) {
-						if props.FormVariant == "en" {
-							Cancel
+						if props.IsReadOnly {
+							if props.FormVariant == "en" {
+								Close
+							} else {
+								Uždaryti
+							}
 						} else {
-							Atšaukti
+							if props.FormVariant == "en" {
+								Cancel
+							} else {
+								Atšaukti
+							}
 						}
 					}
 				}
-				@button.Button(button.Props{
-					Type:    button.TypeSubmit,
-
-					Variant: button.VariantSecondary,
-				}) {
-					if props.FormVariant == "en" {
-						Confirm and Submit
-					} else {
-						Patvirtinti ir pateikti
+				if !props.IsReadOnly {
+					@button.Button(button.Props{
+						Type:    button.TypeSubmit,
+						Variant: button.VariantSecondary,
+						Attributes: templ.Attributes{
+							"form":    "compact-supervisor-form",
+							"onclick": "return validateSupervisorForm()",
+						},
+					}) {
+						if props.FormVariant == "en" {
+							💾 Confirm and Submit
+						} else {
+							💾 Patvirtinti ir pateikti
+						}
 					}
 				}
 			</div>
@@ -348,10 +419,10 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 	<script>
 		// Wait for the modal to be fully loaded, then open it
 		(function() {
-			requestAnimationFrame(function() {
-				requestAnimationFrame(function() {
-					const modal = document.getElementById('supervisor-modal');
-					if (modal) {
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    const modal = document.getElementById('supervisor-modal');
+                    if (modal) {
 						if (window.modalState && window.modalState.openModalId) {
 							const existingModal = document.getElementById(window.modalState.openModalId);
 							if (existingModal && existingModal !== modal) {
@@ -376,6 +447,12 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 							content.classList.remove('scale-95', 'opacity-0');
 							content.classList.add('scale-100', 'opacity-100');
 						}
+						setTimeout(function() {
+                            const textarea = document.getElementById('supervisor_comments');
+                            if (textarea && !textarea.disabled) {
+                                updateCharCount(textarea);
+                            }
+                        }, 200);
 					}
 				});
 			});
@@ -406,5 +483,38 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 				});
 			}
 		});
+
+        function updateCharCount(textarea) {
+            const charCount = document.getElementById('char-count');
+            if (charCount) {
+                const length = textarea.value.length;
+                charCount.textContent = length;
+
+                if (length < 50) {
+                    charCount.style.color = 'red';
+                } else {
+                    charCount.style.color = 'green';
+                }
+            }
+        }
+
+        function validateSupervisorForm() {
+            const form = document.getElementById('compact-supervisor-form');
+            const comments = form.querySelector('#supervisor_comments').value.trim();
+            const workplace = form.querySelector('#supervisor_workplace').value.trim();
+            const position = form.querySelector('#supervisor_position').value.trim();
+
+            if (!comments || !workplace || !position) {
+                alert('Please fill in all required fields');
+                return false;
+            }
+
+            if (comments.length < 50) {
+                alert('Supervisor comments must be at least 50 characters long. Current length: ' + comments.length);
+                return false;
+            }
+
+            return true;
+        }
 	</script>
 }

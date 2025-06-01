@@ -42,13 +42,6 @@ func (j JSONMap) Value() (driver.Value, error) {
 
 // Constants for roles, statuses, etc.
 const (
-	// User roles
-	UserRoleAdmin            = "admin"
-	UserRoleDepartmentHead   = "department_head"
-	UserRoleSupervisor       = "supervisor"
-	UserRoleCommissionMember = "commission_member"
-	UserRoleReviewer         = "reviewer"
-	UserRoleStudent          = "student"
 
 	// Topic statuses
 	TopicStatusDraft              = "draft"

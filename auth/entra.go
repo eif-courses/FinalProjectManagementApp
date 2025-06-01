@@ -62,13 +62,11 @@ func NewAuthService(db *sqlx.DB) (*AuthService, error) {
 			"profile",
 			"email",
 			"https://graph.microsoft.com/User.Read",
-			// Add delegated email permissions if you want user-initiated emails
-			// "https://graph.microsoft.com/Mail.Send",
 		},
 		Endpoint: microsoft.AzureADEndpoint(config.TenantID),
 	}
 
-	// NEW: Create application credentials for system notifications
+	// Create application credentials for system notifications
 	var appGraphClient *msgraphsdk.GraphServiceClient
 	appCred, err := azidentity.NewClientSecretCredential(
 		config.TenantID,
@@ -106,7 +104,7 @@ func (a *AuthService) GetAppGraphClient() *msgraphsdk.GraphServiceClient {
 	return a.appGraphClient
 }
 
-// Need if user already sign in to M365 to get role
+// GenerateLoginURL generates the login URL for Microsoft authentication
 func (a *AuthService) GenerateLoginURL() (string, error) {
 	state, err := generateRandomState()
 	if err != nil {
@@ -119,16 +117,6 @@ func (a *AuthService) GenerateLoginURL() (string, error) {
 		oauth2.SetAuthURLParam("prompt", "login"),
 	), nil
 }
-
-// GenerateLoginURL generates the login URL for Microsoft authentication
-//func (a *AuthService) GenerateLoginURL() (string, error) {
-//	state, err := generateRandomState()
-//	if err != nil {
-//		return "", fmt.Errorf("failed to generate state: %w", err)
-//	}
-//
-//	return a.oauth2Config.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
-//}
 
 // HandleCallback handles the OAuth callback from Microsoft
 func (a *AuthService) HandleCallback(ctx context.Context, code, state string) (*AuthenticatedUser, error) {
@@ -191,7 +179,6 @@ func (a *AuthService) getUserInfo(ctx context.Context, accessToken string) (*Use
 		return nil, fmt.Errorf("Microsoft Graph API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	// DEBUG: Let's see what Microsoft Graph is actually returning
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
@@ -219,7 +206,6 @@ func (a *AuthService) getUserInfo(ctx context.Context, accessToken string) (*Use
 		email = userInfo.UserPrincipalName
 	}
 	if email == "" {
-		// Try to get email from other fields
 		log.Printf("DEBUG: No email found in Mail or UserPrincipalName fields")
 		return nil, fmt.Errorf("user email is required but not provided by Microsoft Graph. Available fields: ID=%s, DisplayName=%s", userInfo.ID, userInfo.DisplayName)
 	}
@@ -231,14 +217,13 @@ func (a *AuthService) getUserInfo(ctx context.Context, accessToken string) (*Use
 	return &userInfo, nil
 }
 
-// determineUserRole determines user role based on database and email/department
+// determineUserRole determines user role based on database and email/department - FIXED ORDER
 func (a *AuthService) determineUserRole(ctx context.Context, userInfo *UserInfo) (string, int, []string, error) {
 	email := strings.ToLower(userInfo.Mail)
 
-	// DEBUG: Log user info (remove in production)
 	log.Printf("DEBUG: Determining role for user: %s", email)
 
-	// First, check if user is a department head in the database
+	// 1. First, check if user is a department head in the database
 	departmentHead, err := a.getDepartmentHead(ctx, email)
 	if err != nil && err != sql.ErrNoRows {
 		return "", 0, nil, fmt.Errorf("failed to check department head: %w", err)
@@ -250,21 +235,34 @@ func (a *AuthService) determineUserRole(ctx context.Context, userInfo *UserInfo)
 		return role, departmentHead.Role, permissions, nil
 	}
 
-	// Check if user is a commission member
-	commissionMember, err := a.getCommissionMemberByEmail(ctx, email)
+	// 2. Check if user is a supervisor in the database
+	isSupervisorInDB, err := a.isSupervisorInDatabase(ctx, email)
 	if err != nil && err != sql.ErrNoRows {
-		return "", 0, nil, fmt.Errorf("failed to check commission member: %w", err)
+		return "", 0, nil, fmt.Errorf("failed to check supervisor in database: %w", err)
 	}
 
-	if commissionMember != nil && commissionMember.IsActive && time.Now().Unix() < commissionMember.ExpiresAt {
-		log.Printf("DEBUG: User is commission member")
-		return RoleCommissionMember, -1, []string{
-			PermissionViewThesis,
-			PermissionEvaluateDefense,
+	log.Printf("DEBUG: isSupervisorInDatabase result for %s: %v (error: %v)", email, isSupervisorInDB, err)
+
+	if isSupervisorInDB {
+		log.Printf("DEBUG: User found as supervisor in database")
+		return RoleSupervisor, -1, []string{
+			PermissionViewAssignedStudents,
+			PermissionCreateReports,
+			PermissionReviewSubmissions,
 		}, nil
 	}
 
-	// Check if user is a reviewer (assigned as reviewer in student_records)
+	// 3. Check if user is a supervisor (academic staff) based on email/job title
+	if a.isSupervisor(userInfo) {
+		log.Printf("DEBUG: User detected as supervisor by email/title patterns")
+		return RoleSupervisor, -1, []string{
+			PermissionViewAssignedStudents,
+			PermissionCreateReports,
+			PermissionReviewSubmissions,
+		}, nil
+	}
+
+	// 4. Check if user is a reviewer (assigned as reviewer in student_records)
 	isReviewer, err := a.isReviewer(ctx, email)
 	if err != nil && err != sql.ErrNoRows {
 		return "", 0, nil, fmt.Errorf("failed to check reviewer status: %w", err)
@@ -280,33 +278,22 @@ func (a *AuthService) determineUserRole(ctx context.Context, userInfo *UserInfo)
 		}, nil
 	}
 
-	// NEW: Check if user is a supervisor in the database
-	isSupervisorInDB, err := a.isSupervisorInDatabase(ctx, email)
+	// 5. Check if user is a commission member
+	commissionMember, err := a.getCommissionMemberByEmail(ctx, email)
 	if err != nil && err != sql.ErrNoRows {
-		return "", 0, nil, fmt.Errorf("failed to check supervisor in database: %w", err)
+		return "", 0, nil, fmt.Errorf("failed to check commission member: %w", err)
 	}
 
-	if isSupervisorInDB {
-		log.Printf("DEBUG: User found as supervisor in database")
-		return RoleSupervisor, -1, []string{
-			PermissionViewAssignedStudents,
-			PermissionCreateReports,
-			PermissionReviewSubmissions,
+	if commissionMember != nil && commissionMember.IsActive && time.Now().Unix() < commissionMember.ExpiresAt {
+		log.Printf("DEBUG: User is commission member")
+		return RoleCommissionMember, -1, []string{
+			PermissionViewThesis,
+			PermissionEvaluateDefense,
 		}, nil
 	}
 
-	// Check if user is a supervisor (academic staff) based on email/job title
-	if a.isSupervisor(userInfo) {
-		log.Printf("DEBUG: User detected as supervisor by email/title patterns")
-		return RoleSupervisor, -1, []string{
-			PermissionViewAssignedStudents,
-			PermissionCreateReports,
-			PermissionReviewSubmissions,
-		}, nil
-	}
-
-	// Check if user is a student
-	if a.isStudentEmail(email) || email == "penworld@eif.viko.lt" {
+	// 6. LAST: Check if user is a student (only after all other checks fail)
+	if a.isStudentEmail(email) {
 		log.Printf("DEBUG: User detected as student")
 		return RoleStudent, -1, []string{
 			PermissionViewOwnData,
@@ -320,7 +307,7 @@ func (a *AuthService) determineUserRole(ctx context.Context, userInfo *UserInfo)
 	return RoleGuest, -1, []string{}, nil
 }
 
-// getDepartmentHead retrieves department head from database
+// getDepartmentHead retrieves department head from database using sqlx
 func (a *AuthService) getDepartmentHead(ctx context.Context, email string) (*DepartmentHead, error) {
 	query := `
 		SELECT id, email, name, sure_name, department, department_en, 
@@ -330,12 +317,7 @@ func (a *AuthService) getDepartmentHead(ctx context.Context, email string) (*Dep
 	`
 
 	var head DepartmentHead
-	err := a.db.QueryRowContext(ctx, query, email).Scan(
-		&head.ID, &head.Email, &head.Name, &head.SureName,
-		&head.Department, &head.DepartmentEn, &head.JobTitle,
-		&head.Role, &head.IsActive, &head.CreatedAt,
-	)
-
+	err := a.db.GetContext(ctx, &head, query, email)
 	if err != nil {
 		return nil, err
 	}
@@ -343,21 +325,36 @@ func (a *AuthService) getDepartmentHead(ctx context.Context, email string) (*Dep
 	return &head, nil
 }
 
-// getCommissionMemberByEmail retrieves commission member (placeholder)
+// getCommissionMemberByEmail retrieves commission member using sqlx
 func (a *AuthService) getCommissionMemberByEmail(ctx context.Context, email string) (*CommissionMember, error) {
-	// This is a placeholder - commission_members table uses access_code, not email
+	// This is a placeholder since commission_members table uses access_code, not email
 	// You might want to add an email field or create a mapping table
 	return nil, sql.ErrNoRows
 }
 
-// isReviewer checks if user is assigned as a reviewer for any students
+// isReviewer checks if user is assigned as a reviewer for any students using sqlx
 func (a *AuthService) isReviewer(ctx context.Context, email string) (bool, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM student_records WHERE reviewer_email = ?`
-	err := a.db.QueryRowContext(ctx, query, email).Scan(&count)
+	err := a.db.GetContext(ctx, &count, query, email)
 	if err != nil {
 		return false, err
 	}
+	return count > 0, nil
+}
+
+// isSupervisorInDatabase checks if user is listed as a supervisor in student_records using sqlx
+func (a *AuthService) isSupervisorInDatabase(ctx context.Context, email string) (bool, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM student_records WHERE supervisor_email = ? AND supervisor_email != ''`
+
+	err := a.db.GetContext(ctx, &count, query, email)
+	if err != nil {
+		log.Printf("ERROR: Failed to check supervisor in database for %s: %v", email, err)
+		return false, err
+	}
+
+	log.Printf("DEBUG: Found %d student records for supervisor %s", count, email)
 	return count > 0, nil
 }
 
@@ -409,30 +406,13 @@ func (a *AuthService) getDepartmentHeadPermissions(roleID int) (string, []string
 	}
 }
 
-// isSupervisorInDatabase checks if user is listed as a supervisor in student_records
-func (a *AuthService) isSupervisorInDatabase(ctx context.Context, email string) (bool, error) {
-	var count int
-	query := `SELECT COUNT(*) FROM student_records WHERE supervisor_email = ? AND supervisor_email != ''`
-
-	err := a.db.QueryRowContext(ctx, query, email).Scan(&count)
-	if err != nil {
-		log.Printf("ERROR: Failed to check supervisor in database for %s: %v", email, err)
-		return false, err
-	}
-
-	log.Printf("DEBUG: Found %d student records for supervisor %s", count, email)
-	return count > 0, nil
-}
-
-// isSupervisor checks if user is academic staff
+// isSupervisor checks if user is academic staff - IMPROVED
 func (a *AuthService) isSupervisor(userInfo *UserInfo) bool {
 	email := strings.ToLower(userInfo.Mail)
 	jobTitle := strings.ToLower(userInfo.JobTitle)
 
-	// DEBUG: Log the checks
 	log.Printf("DEBUG: isSupervisor checks for %s:", email)
 	log.Printf("  Job Title: '%s'", jobTitle)
-	log.Printf("  Is student email: %v", a.isStudentEmail(email))
 
 	// Don't classify students as supervisors
 	if a.isStudentEmail(email) {
@@ -443,27 +423,21 @@ func (a *AuthService) isSupervisor(userInfo *UserInfo) bool {
 	// Check job title patterns
 	supervisorTitles := []string{
 		"professor", "lecturer", "dėstytojas", "profesorius",
-		"docentas", "dr.", "assistant", "associate",
+		"docentas", "dr.", "assistant", "associate", "vadovas",
+		"kompetencij", // for emails like personalokompetencijos
 	}
 
 	for _, title := range supervisorTitles {
-		if strings.Contains(jobTitle, title) {
-			log.Printf("DEBUG: Matched job title pattern: %s", title)
+		if strings.Contains(jobTitle, title) || strings.Contains(email, title) {
+			log.Printf("DEBUG: Matched supervisor pattern: %s", title)
 			return true
 		}
 	}
 
-	// Check email domain patterns for staff
-	staffDomains := []string{
-		"@viko.lt",
-		"@eif.viko.lt",
-	}
-
-	for _, domain := range staffDomains {
-		if strings.Contains(email, domain) {
-			log.Printf("DEBUG: Matched staff domain: %s", domain)
-			return true
-		}
+	// Check email domain patterns for staff - IMPROVED LOGIC
+	if strings.Contains(email, "@viko.lt") && !a.isStudentEmail(email) {
+		log.Printf("DEBUG: Staff email at @viko.lt domain (not a student)")
+		return true
 	}
 
 	log.Printf("DEBUG: No supervisor patterns matched")
@@ -472,6 +446,8 @@ func (a *AuthService) isSupervisor(userInfo *UserInfo) bool {
 
 // isStudentEmail checks if email belongs to a student
 func (a *AuthService) isStudentEmail(email string) bool {
+	log.Printf("DEBUG: Checking if %s is student email", email)
+
 	// Specific student emails
 	specificStudents := []string{
 		"penworld@eif.viko.lt",
@@ -480,6 +456,7 @@ func (a *AuthService) isStudentEmail(email string) bool {
 
 	for _, studentEmail := range specificStudents {
 		if email == studentEmail {
+			log.Printf("DEBUG: Matched specific student email: %s", studentEmail)
 			return true
 		}
 	}
@@ -492,6 +469,7 @@ func (a *AuthService) isStudentEmail(email string) bool {
 
 	for _, pattern := range studentPatterns {
 		if strings.Contains(email, pattern) {
+			log.Printf("DEBUG: Matched student pattern: %s", pattern)
 			return true
 		}
 	}
@@ -502,11 +480,13 @@ func (a *AuthService) isStudentEmail(email string) bool {
 		if len(parts) > 0 {
 			localPart := parts[0]
 			if len(localPart) > 0 && localPart[0] >= '0' && localPart[0] <= '9' {
+				log.Printf("DEBUG: Matched student ID pattern (starts with number): %s", localPart)
 				return true
 			}
 		}
 	}
 
+	log.Printf("DEBUG: No student patterns matched for %s", email)
 	return false
 }
 
@@ -519,32 +499,75 @@ func generateRandomState() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// Helper methods for database operations
+// Helper methods for database operations using sqlx
 
-// AddDepartmentHead adds a new department head to the database
+// AddDepartmentHead adds a new department head to the database using sqlx
 func (a *AuthService) AddDepartmentHead(ctx context.Context, head *DepartmentHead) error {
 	query := `
 		INSERT INTO department_heads (email, name, sure_name, department, department_en, job_title, role, is_active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (:email, :name, :sure_name, :department, :department_en, :job_title, :role, :is_active)
 	`
 
-	_, err := a.db.ExecContext(ctx, query,
-		head.Email, head.Name, head.SureName, head.Department,
-		head.DepartmentEn, head.JobTitle, head.Role, head.IsActive)
-
+	_, err := a.db.NamedExecContext(ctx, query, head)
 	return err
 }
 
-// UpdateDepartmentHeadRole updates the role of a department head
+// UpdateDepartmentHeadRole updates the role of a department head using sqlx
 func (a *AuthService) UpdateDepartmentHeadRole(ctx context.Context, email string, roleID int) error {
 	query := `UPDATE department_heads SET role = ? WHERE email = ?`
 	_, err := a.db.ExecContext(ctx, query, roleID, email)
 	return err
 }
 
-// DeactivateDepartmentHead deactivates a department head
+// DeactivateDepartmentHead deactivates a department head using sqlx
 func (a *AuthService) DeactivateDepartmentHead(ctx context.Context, email string) error {
 	query := `UPDATE department_heads SET is_active = 0 WHERE email = ?`
 	_, err := a.db.ExecContext(ctx, query, email)
+	return err
+}
+
+// GetDepartmentHeads retrieves all department heads using sqlx
+func (a *AuthService) GetDepartmentHeads(ctx context.Context) ([]DepartmentHead, error) {
+	query := `
+		SELECT id, email, name, sure_name, department, department_en, 
+		       job_title, role, is_active, created_at 
+		FROM department_heads 
+		WHERE is_active = 1 
+		ORDER BY department, name
+	`
+
+	var heads []DepartmentHead
+	err := a.db.SelectContext(ctx, &heads, query)
+	return heads, err
+}
+
+// GetDepartmentHeadByID retrieves a department head by ID using sqlx
+func (a *AuthService) GetDepartmentHeadByID(ctx context.Context, id int) (*DepartmentHead, error) {
+	query := `
+		SELECT id, email, name, sure_name, department, department_en, 
+		       job_title, role, is_active, created_at 
+		FROM department_heads 
+		WHERE id = ?
+	`
+
+	var head DepartmentHead
+	err := a.db.GetContext(ctx, &head, query, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &head, nil
+}
+
+// UpdateDepartmentHead updates a department head using sqlx
+func (a *AuthService) UpdateDepartmentHead(ctx context.Context, head *DepartmentHead) error {
+	query := `
+		UPDATE department_heads 
+		SET name = :name, sure_name = :sure_name, department = :department, 
+		    department_en = :department_en, job_title = :job_title, role = :role, is_active = :is_active
+		WHERE id = :id
+	`
+
+	_, err := a.db.NamedExecContext(ctx, query, head)
 	return err
 }
