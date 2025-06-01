@@ -151,28 +151,34 @@ func (h *StudentListHandler) getStudentsForSupervisor(supervisorEmail string, fi
 
 	// Use your existing StudentSummaryView model
 	baseQuery := `
-		SELECT 
-			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
-			sr.student_email, sr.final_project_title, sr.final_project_title_en,
-			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
-			sr.study_program, sr.department, sr.current_year, sr.program_code,
-			sr.student_number, sr.is_favorite, sr.is_public_defense, 
-			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
-			COALESCE(ptr.status, '') as topic_status, 
-			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
-			ptr.approved_by, ptr.approved_at,
-			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
-			spr.is_signed as supervisor_report_signed,
-			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
-			rr.is_signed as reviewer_report_signed,
-			rr.grade as reviewer_grade,
-			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
-		FROM student_records sr
-		LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
-		LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
-		LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
-		LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
-		WHERE sr.supervisor_email = ?`
+        SELECT 
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
+        FROM student_records sr
+        LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
+        LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
+        LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+        LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
+        LEFT JOIN documents d ON sr.id = d.student_record_id AND d.document_type = 'thesis_source_code'
+        WHERE 1=1`
 
 	args = append(args, supervisorEmail)
 
@@ -189,21 +195,26 @@ func (h *StudentListHandler) getStudentsForSupervisor(supervisorEmail string, fi
 	// Count query
 	countQuery := strings.Replace(baseQuery,
 		`SELECT 
-			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
-			sr.student_email, sr.final_project_title, sr.final_project_title_en,
-			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
-			sr.study_program, sr.department, sr.current_year, sr.program_code,
-			sr.student_number, sr.is_favorite, sr.is_public_defense, 
-			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
-			COALESCE(ptr.status, '') as topic_status, 
-			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
-			ptr.approved_by, ptr.approved_at,
-			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
-			spr.is_signed as supervisor_report_signed,
-			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
-			rr.is_signed as reviewer_report_signed,
-			rr.grade as reviewer_grade,
-			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
 		"SELECT COUNT(*)", 1)
 	countQuery = strings.Replace(countQuery, " ORDER BY sr.student_lastname, sr.student_name", "", 1)
 
@@ -236,28 +247,34 @@ func (h *StudentListHandler) getStudentsForReviewer(reviewerEmail string, filter
 	var args []interface{}
 
 	baseQuery := `
-		SELECT 
-			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
-			sr.student_email, sr.final_project_title, sr.final_project_title_en,
-			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
-			sr.study_program, sr.department, sr.current_year, sr.program_code,
-			sr.student_number, sr.is_favorite, sr.is_public_defense, 
-			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
-			COALESCE(ptr.status, '') as topic_status, 
-			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
-			ptr.approved_by, ptr.approved_at,
-			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
-			spr.is_signed as supervisor_report_signed,
-			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
-			rr.is_signed as reviewer_report_signed,
-			rr.grade as reviewer_grade,
-			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
-		FROM student_records sr
-		LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
-		LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
-		LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
-		LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
-		WHERE sr.reviewer_email = ?`
+        SELECT 
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
+        FROM student_records sr
+        LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
+        LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
+        LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+        LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
+        LEFT JOIN documents d ON sr.id = d.student_record_id AND d.document_type = 'thesis_source_code'
+        WHERE 1=1`
 
 	args = append(args, reviewerEmail)
 
@@ -274,21 +291,26 @@ func (h *StudentListHandler) getStudentsForReviewer(reviewerEmail string, filter
 	// Count query
 	countQuery := strings.Replace(baseQuery,
 		`SELECT 
-			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
-			sr.student_email, sr.final_project_title, sr.final_project_title_en,
-			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
-			sr.study_program, sr.department, sr.current_year, sr.program_code,
-			sr.student_number, sr.is_favorite, sr.is_public_defense, 
-			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
-			COALESCE(ptr.status, '') as topic_status, 
-			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
-			ptr.approved_by, ptr.approved_at,
-			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
-			spr.is_signed as supervisor_report_signed,
-			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
-			rr.is_signed as reviewer_report_signed,
-			rr.grade as reviewer_grade,
-			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
 		"SELECT COUNT(*)", 1)
 	countQuery = strings.Replace(countQuery, " ORDER BY sr.student_lastname, sr.student_name", "", 1)
 
@@ -316,28 +338,34 @@ func (h *StudentListHandler) getAllStudents(filters *database.TemplateFilterPara
 	var args []interface{}
 
 	baseQuery := `
-		SELECT 
-			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
-			sr.student_email, sr.final_project_title, sr.final_project_title_en,
-			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
-			sr.study_program, sr.department, sr.current_year, sr.program_code,
-			sr.student_number, sr.is_favorite, sr.is_public_defense, 
-			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
-			COALESCE(ptr.status, '') as topic_status, 
-			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
-			ptr.approved_by, ptr.approved_at,
-			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
-			spr.is_signed as supervisor_report_signed,
-			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
-			rr.is_signed as reviewer_report_signed,
-			rr.grade as reviewer_grade,
-			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
-		FROM student_records sr
-		LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
-		LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
-		LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
-		LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
-		WHERE 1=1`
+        SELECT 
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
+        FROM student_records sr
+        LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
+        LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
+        LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+        LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
+        LEFT JOIN documents d ON sr.id = d.student_record_id AND d.document_type = 'thesis_source_code'
+        WHERE 1=1`
 
 	// Apply filters
 	whereClause, filterArgs := buildWhereClause(filters)
@@ -349,24 +377,29 @@ func (h *StudentListHandler) getAllStudents(filters *database.TemplateFilterPara
 	// Add ordering
 	baseQuery += " ORDER BY sr.student_lastname, sr.student_name"
 
-	// Count query
+	// Updated count query
 	countQuery := strings.Replace(baseQuery,
 		`SELECT 
-			sr.id, sr.student_group, sr.student_name, sr.student_lastname,
-			sr.student_email, sr.final_project_title, sr.final_project_title_en,
-			sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
-			sr.study_program, sr.department, sr.current_year, sr.program_code,
-			sr.student_number, sr.is_favorite, sr.is_public_defense, 
-			sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
-			COALESCE(ptr.status, '') as topic_status, 
-			CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
-			ptr.approved_by, ptr.approved_at,
-			CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
-			spr.is_signed as supervisor_report_signed,
-			CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
-			rr.is_signed as reviewer_report_signed,
-			rr.grade as reviewer_grade,
-			CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
 		"SELECT COUNT(*)", 1)
 	countQuery = strings.Replace(countQuery, " ORDER BY sr.student_lastname, sr.student_name", "", 1)
 

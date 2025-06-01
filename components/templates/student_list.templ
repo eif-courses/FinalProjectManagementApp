@@ -10,6 +10,7 @@ import (
 	"FinalProjectManagementApp/components/selectbox"
 	"FinalProjectManagementApp/components/table"
 	"FinalProjectManagementApp/database"
+	"fmt"
 	"database/sql"
 	"strconv"
 )
@@ -94,6 +95,10 @@ templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSumma
                     values: { limit: '10', group: '', study_program: '', topic_status: '', year: '', search: '', page: '1' }
                 });
             }
+
+function viewStudentRepository(studentId) {
+        window.open('/repository/student/' + studentId, '_blank');
+    }
 
          // Function to view topic registration (read-only)
          function viewTopicRegistration(studentId) {
@@ -642,10 +647,10 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
 						}
 					}
 					if canViewDocuments(user.Role) {
-						@table.Cell() {
-							@DocumentsCell(user, student.ID)
-						}
-					}
+                        @table.Cell() {
+                            @DocumentsCell(user, student.ID, student.HasSourceCode)
+                        }
+                    }
 					if canViewReviewer(user.Role) {
 						@table.Cell() {
 							@ReviewerStatus(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool, student.ID)
@@ -721,17 +726,39 @@ templ RegistrationStatus(user *auth.AuthenticatedUser, status string, approved b
 	}
 }
 
-templ DocumentsCell(user *auth.AuthenticatedUser, studentID int) {
-	<div
-		id={ "docs-" + strconv.Itoa(studentID) }
-		class="text-xs"
-		data-student-id={ strconv.Itoa(studentID) }
-		data-user-role={ user.Role }
-		data-load-documents="true"
-	>
-		<div class="text-muted-foreground italic">Kraunama...</div>
-	</div>
+
+templ DocumentsCell(user *auth.AuthenticatedUser, studentID int, hasSourceCode bool) {
+    <div class="flex items-center gap-1">
+        if hasSourceCode {
+            @button.Button(button.Props{
+                Variant: button.VariantGhost,
+                Size:    button.SizeIcon,
+                Class:   "h-6 w-6 p-0",
+                Attributes: templ.Attributes{
+                    "onclick": fmt.Sprintf("viewStudentRepository(%d)", studentID),
+                    "title":   "View Repository",
+                },
+            }) {
+                @icon.Github(icon.Props{Size: 14})
+            }
+        } else {
+            <!-- Show a placeholder or nothing for students without source code -->
+            <div class="flex items-center justify-center h-6 w-6 p-0">
+                <span class="text-xs text-muted-foreground" title="No source code uploaded">-</span>
+            </div>
+        }
+        <div
+            id={ "docs-" + strconv.Itoa(studentID) }
+            class="text-xs"
+            data-student-id={ strconv.Itoa(studentID) }
+            data-user-role={ user.Role }
+            data-load-documents="true"
+        >
+            <div class="text-muted-foreground italic">Kraunama...</div>
+        </div>
+    </div>
 }
+
 
 templ ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasReport bool, isSigned bool, studentID int) {
 	if reviewerName != "" {

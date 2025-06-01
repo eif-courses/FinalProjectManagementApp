@@ -3,10 +3,13 @@ package handlers
 
 import (
 	"FinalProjectManagementApp/auth"
+	"FinalProjectManagementApp/components/repository"
 	"FinalProjectManagementApp/database"
+	"FinalProjectManagementApp/types"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"io"
@@ -36,10 +39,8 @@ func NewRepositoryHandler(db *sqlx.DB, githubConfig *database.GitHubConfig) *Rep
 // MAIN HANDLERS
 // ================================
 
-// ViewStudentRepository displays the repository page for supervisors/reviewers
+// ViewStudentRepository displays the repository page using templ
 func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http.Request) {
-	log.Printf("DEBUG: Repository view requested for URL: %s", r.URL.Path)
-
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
 		http.Redirect(w, r, "/auth/login", http.StatusFound)
@@ -47,56 +48,50 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 	}
 
 	studentIDStr := chi.URLParam(r, "studentId")
-	log.Printf("DEBUG: Student ID extracted: %s", studentIDStr)
-
 	studentID, err := strconv.Atoi(studentIDStr)
 	if err != nil {
-		log.Printf("ERROR: Invalid student ID: %s", studentIDStr)
 		http.Error(w, "Invalid student ID", http.StatusBadRequest)
 		return
 	}
 
-	// Check permissions
 	if !h.canViewRepository(user, studentID) {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
 
-	// Get student record
 	student, err := h.getStudentRecord(studentID)
 	if err != nil {
 		http.Error(w, "Student not found", http.StatusNotFound)
 		return
 	}
 
-	// Get repository information
 	repoInfo, err := h.getStudentRepository(studentID)
 	if err != nil {
 		http.Error(w, "Repository not found", http.StatusNotFound)
 		return
 	}
 
-	// Check for nil repository URL
+	// Get current locale from request
+	currentLocale := h.getCurrentLocale(r)
+
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
-		h.renderNoRepositoryPage(w, r, user, student)
+		component := repository.NoRepositoryPage(user, student, currentLocale)
+		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
 
-	// Get repository contents from GitHub
 	repoContents, err := h.getRepositoryContents(repoInfo)
 	if err != nil {
-		// Log error but don't fail completely
-		fmt.Printf("Warning: Could not fetch repository contents: %v\n", err)
-		repoContents = &RepositoryContents{
-			Files:   []RepositoryFile{},
-			Commits: []CommitInfo{},
-			Stats:   RepositoryStats{},
+		repoContents = &types.RepositoryContents{
+			Files:   []types.RepositoryFile{},
+			Commits: []types.CommitInfo{},
+			Stats:   types.RepositoryStats{},
 			Error:   err.Error(),
 		}
 	}
 
-	// Render the repository view
-	h.renderRepositoryPage(w, r, user, student, repoInfo, repoContents)
+	component := repository.RepositoryPage(user, student, repoInfo, repoContents, currentLocale)
+	templ.Handler(component).ServeHTTP(w, r)
 }
 
 // GetRepositoryAPI returns repository data as JSON for AJAX requests
@@ -135,7 +130,7 @@ func (h *RepositoryHandler) GetRepositoryAPI(w http.ResponseWriter, r *http.Requ
 
 	repoContents, err := h.getRepositoryContents(repoInfo)
 	if err != nil {
-		repoContents = &RepositoryContents{Error: err.Error()}
+		repoContents = &types.RepositoryContents{Error: err.Error()}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -286,46 +281,11 @@ func (h *RepositoryHandler) getStudentRepository(studentID int) (*database.Docum
 }
 
 // ================================
-// GITHUB API TYPES
-// ================================
-
-type RepositoryContents struct {
-	Files   []RepositoryFile `json:"files"`
-	Commits []CommitInfo     `json:"commits"`
-	Stats   RepositoryStats  `json:"stats"`
-	Error   string           `json:"error,omitempty"`
-}
-
-type RepositoryFile struct {
-	Name     string `json:"name"`
-	Path     string `json:"path"`
-	Type     string `json:"type"` // file, dir
-	Size     int64  `json:"size"`
-	URL      string `json:"url"`
-	Language string `json:"language"`
-}
-
-type CommitInfo struct {
-	SHA     string    `json:"sha"`
-	Message string    `json:"message"`
-	Author  string    `json:"author"`
-	Date    time.Time `json:"date"`
-	URL     string    `json:"url"`
-}
-
-type RepositoryStats struct {
-	TotalFiles  int            `json:"total_files"`
-	TotalSize   int64          `json:"total_size"`
-	Languages   map[string]int `json:"languages"`
-	LastUpdated time.Time      `json:"last_updated"`
-	CommitCount int            `json:"commit_count"`
-}
-
-// ================================
 // GITHUB API OPERATIONS
 // ================================
 
-func (h *RepositoryHandler) getRepositoryContents(repoInfo *database.Document) (*RepositoryContents, error) {
+func (h *RepositoryHandler) getRepositoryContents(repoInfo *database.Document) (*types.RepositoryContents, error) {
+
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
 		return nil, fmt.Errorf("no repository URL available")
 	}
@@ -344,20 +304,20 @@ func (h *RepositoryHandler) getRepositoryContents(repoInfo *database.Document) (
 	// Get recent commits
 	commits, err := h.getRepositoryCommits(repoName)
 	if err != nil {
-		commits = []CommitInfo{} // Don't fail on commits error
+		commits = []types.CommitInfo{} // Don't fail on commits error
 	}
 
 	// Calculate stats
 	stats := h.calculateRepositoryStats(files, commits)
 
-	return &RepositoryContents{
+	return &types.RepositoryContents{
 		Files:   files,
 		Commits: commits,
 		Stats:   stats,
 	}, nil
 }
 
-func (h *RepositoryHandler) getRepositoryFiles(repoName string) ([]RepositoryFile, error) {
+func (h *RepositoryHandler) getRepositoryFiles(repoName string) ([]types.RepositoryFile, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents",
 		h.githubConfig.Organization, repoName)
 
@@ -386,7 +346,7 @@ func (h *RepositoryHandler) getRepositoryFiles(repoName string) ([]RepositoryFil
 		return nil, fmt.Errorf("failed to decode GitHub response: %w", err)
 	}
 
-	var files []RepositoryFile
+	var files []types.RepositoryFile
 	for _, file := range githubFiles {
 		fileType := "file"
 		if t, ok := file["type"].(string); ok {
@@ -398,7 +358,7 @@ func (h *RepositoryHandler) getRepositoryFiles(repoName string) ([]RepositoryFil
 			size = int64(s)
 		}
 
-		files = append(files, RepositoryFile{
+		files = append(files, types.RepositoryFile{
 			Name: h.getStringValue(file, "name"),
 			Path: h.getStringValue(file, "path"),
 			Type: fileType,
@@ -410,7 +370,7 @@ func (h *RepositoryHandler) getRepositoryFiles(repoName string) ([]RepositoryFil
 	return files, nil
 }
 
-func (h *RepositoryHandler) getRepositoryCommits(repoName string) ([]CommitInfo, error) {
+func (h *RepositoryHandler) getRepositoryCommits(repoName string) ([]types.CommitInfo, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?per_page=10",
 		h.githubConfig.Organization, repoName)
 
@@ -434,7 +394,7 @@ func (h *RepositoryHandler) getRepositoryCommits(repoName string) ([]CommitInfo,
 		return nil, fmt.Errorf("failed to decode commits: %w", err)
 	}
 
-	var commits []CommitInfo
+	var commits []types.CommitInfo
 	for _, commit := range githubCommits {
 		commitData, ok := commit["commit"].(map[string]interface{})
 		if !ok {
@@ -454,7 +414,7 @@ func (h *RepositoryHandler) getRepositoryCommits(repoName string) ([]CommitInfo,
 			sha = sha[:7] // Short SHA
 		}
 
-		commits = append(commits, CommitInfo{
+		commits = append(commits, types.CommitInfo{
 			SHA:     sha,
 			Message: h.getStringValue(commitData, "message"),
 			Author:  h.getStringValue(author, "name"),
@@ -466,8 +426,8 @@ func (h *RepositoryHandler) getRepositoryCommits(repoName string) ([]CommitInfo,
 	return commits, nil
 }
 
-func (h *RepositoryHandler) calculateRepositoryStats(files []RepositoryFile, commits []CommitInfo) RepositoryStats {
-	stats := RepositoryStats{
+func (h *RepositoryHandler) calculateRepositoryStats(files []types.RepositoryFile, commits []types.CommitInfo) types.RepositoryStats {
+	stats := types.RepositoryStats{
 		TotalFiles:  len(files),
 		Languages:   make(map[string]int),
 		CommitCount: len(commits),
@@ -581,7 +541,7 @@ func (h *RepositoryHandler) proxyRepositoryDownload(w http.ResponseWriter, r *ht
 // HTML RENDERING
 // ================================
 
-func (h *RepositoryHandler) renderRepositoryPage(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *RepositoryContents) {
+func (h *RepositoryHandler) renderRepositoryPage(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	html := h.generateRepositoryHTML(user, student, repoInfo, contents)
 	w.Write([]byte(html))
@@ -593,7 +553,7 @@ func (h *RepositoryHandler) renderNoRepositoryPage(w http.ResponseWriter, r *htt
 	w.Write([]byte(html))
 }
 
-func (h *RepositoryHandler) generateRepositoryHTML(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *RepositoryContents) string {
+func (h *RepositoryHandler) generateRepositoryHTML(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents) string {
 	// Safe repository URL handling
 	repoURL := ""
 	if repoInfo.RepositoryURL != nil {
@@ -1120,7 +1080,7 @@ func (h *RepositoryHandler) getStatusClass(status string) string {
 	}
 }
 
-func (h *RepositoryHandler) generateRepositorySection(contents *RepositoryContents) string {
+func (h *RepositoryHandler) generateRepositorySection(contents *types.RepositoryContents) string {
 	if contents.Error != "" {
 		return fmt.Sprintf(`
             <div class="stat-card">
@@ -1163,7 +1123,7 @@ func (h *RepositoryHandler) generateLanguagesSection(languages map[string]int) s
 	return html
 }
 
-func (h *RepositoryHandler) generateCommitsSection(commits []CommitInfo) string {
+func (h *RepositoryHandler) generateCommitsSection(commits []types.CommitInfo) string {
 	if len(commits) == 0 {
 		return `<div class="stat-card"><h3 class="font-semibold mb-3 text-gray-900">🔄 Recent Commits</h3><p class="text-gray-500 text-sm">No commits found</p></div>`
 	}
@@ -1191,7 +1151,7 @@ func (h *RepositoryHandler) generateCommitsSection(commits []CommitInfo) string 
 	return html
 }
 
-func (h *RepositoryHandler) generateFileListHTML(files []RepositoryFile) string {
+func (h *RepositoryHandler) generateFileListHTML(files []types.RepositoryFile) string {
 	if len(files) == 0 {
 		return `<div class="p-6 text-center text-gray-500">
             <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1304,7 +1264,7 @@ func (h *RepositoryHandler) generateFileListHTML(files []RepositoryFile) string 
 
 	return html
 }
-func (h *RepositoryHandler) generateFileLink(file RepositoryFile) string {
+func (h *RepositoryHandler) generateFileLink(file types.RepositoryFile) string {
 	if file.Type == "file" {
 		return fmt.Sprintf(`
 			<span class="text-blue-600 hover:underline flex-1 truncate cursor-pointer" 
@@ -1341,8 +1301,7 @@ func (h *RepositoryHandler) truncateString(s string, length int) string {
 	return s[:length] + "..."
 }
 
-// ViewFileContent displays file content in the web interface
-// FIX 2: Update ViewFileContent method
+// ViewFileContent displays file content using templ
 func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -1357,34 +1316,37 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// FIXED: Proper wildcard parameter extraction
 	filePath := chi.URLParam(r, "*")
-	log.Printf("DEBUG: Extracted file path from wildcard: '%s'", filePath)
 
 	if !h.canViewRepository(user, studentID) {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
 
-	// Get repository info
 	repoInfo, err := h.getStudentRepository(studentID)
 	if err != nil || repoInfo.RepositoryURL == nil {
 		http.Error(w, "Repository not found", http.StatusNotFound)
 		return
 	}
 
-	// Get student info for context
-	student, _ := h.getStudentRecord(studentID)
-
-	// Fetch file content from GitHub
 	fileContent, err := h.getFileContent(*repoInfo.RepositoryURL, filePath)
 	if err != nil {
-		h.renderFileError(w, r, student, filePath, err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Render file content page
-	h.renderFileContentPage(w, r, user, student, repoInfo, filePath, fileContent)
+	// For HTMX requests, only return the file viewer component
+	if r.Header.Get("HX-Request") == "true" {
+		component := repository.FileViewer(studentID, filePath, fileContent)
+		templ.Handler(component).ServeHTTP(w, r)
+		return
+	}
+
+	// For full page loads, return the complete page
+	student, _ := h.getStudentRecord(studentID)
+	currentLocale := h.getCurrentLocale(r)
+	component := repository.FileViewerPage(user, student, repoInfo, filePath, fileContent, currentLocale)
+	templ.Handler(component).ServeHTTP(w, r)
 }
 
 // GetFileContentAPI returns file content as JSON
@@ -1494,7 +1456,7 @@ type FileTreeNode struct {
 	Language string          `json:"language,omitempty"`
 }
 
-func (h *RepositoryHandler) getFileContent(repoURL, filePath string) (*FileContent, error) {
+func (h *RepositoryHandler) getFileContent(repoURL, filePath string) (*types.FileContent, error) {
 	repoName := h.extractRepoName(repoURL)
 	if repoName == "" {
 		return nil, fmt.Errorf("invalid repository URL")
@@ -1534,7 +1496,7 @@ func (h *RepositoryHandler) getFileContent(repoURL, filePath string) (*FileConte
 		return nil, fmt.Errorf("path points to a directory, not a file")
 	}
 
-	fileContent := &FileContent{
+	fileContent := &types.FileContent{
 		Name:        h.getStringValue(githubFile, "name"),
 		Path:        h.getStringValue(githubFile, "path"),
 		Type:        fileType,
@@ -1966,8 +1928,7 @@ func (h *RepositoryHandler) escapeHTML(content string) string {
 	return content
 }
 
-// ViewStudentRepositoryPath displays a specific directory path
-// FIX 1: Update ViewStudentRepositoryPath method
+// ViewStudentRepositoryPath displays a specific directory using templ
 func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -1982,9 +1943,7 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 		return
 	}
 
-	// FIXED: Proper wildcard parameter extraction
 	dirPath := chi.URLParam(r, "*")
-	log.Printf("DEBUG: Extracted path from wildcard: '%s'", dirPath)
 
 	if !h.canViewRepository(user, studentID) {
 		http.Error(w, "Access denied", http.StatusForbidden)
@@ -2003,25 +1962,26 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 		return
 	}
 
+	currentLocale := h.getCurrentLocale(r)
+
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
-		h.renderNoRepositoryPage(w, r, user, student)
+		component := repository.NoRepositoryPage(user, student, currentLocale)
+		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
 
-	// Get repository contents for specific path
 	repoContents, err := h.getRepositoryContentsForPath(repoInfo, dirPath)
 	if err != nil {
-		log.Printf("Warning: Could not fetch repository contents for path '%s': %v", dirPath, err)
-		repoContents = &RepositoryContents{
-			Files:   []RepositoryFile{},
-			Commits: []CommitInfo{},
-			Stats:   RepositoryStats{},
+		repoContents = &types.RepositoryContents{
+			Files:   []types.RepositoryFile{},
+			Commits: []types.CommitInfo{},
+			Stats:   types.RepositoryStats{},
 			Error:   err.Error(),
 		}
 	}
 
-	// Render the repository view with path
-	h.renderRepositoryPageWithPath(w, r, user, student, repoInfo, repoContents, dirPath)
+	component := repository.DirectoryPage(user, student, repoInfo, repoContents, dirPath, currentLocale)
+	templ.Handler(component).ServeHTTP(w, r)
 }
 
 // GetRepositoryPathAPI returns repository data for a specific path as JSON
@@ -2068,7 +2028,7 @@ func (h *RepositoryHandler) GetRepositoryPathAPI(w http.ResponseWriter, r *http.
 
 	repoContents, err := h.getRepositoryContentsForPath(repoInfo, dirPath)
 	if err != nil {
-		repoContents = &RepositoryContents{Error: err.Error()}
+		repoContents = &types.RepositoryContents{Error: err.Error()}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -2079,7 +2039,7 @@ func (h *RepositoryHandler) GetRepositoryPathAPI(w http.ResponseWriter, r *http.
 	})
 }
 
-func (h *RepositoryHandler) getRepositoryContentsForPath(repoInfo *database.Document, dirPath string) (*RepositoryContents, error) {
+func (h *RepositoryHandler) getRepositoryContentsForPath(repoInfo *database.Document, dirPath string) (*types.RepositoryContents, error) {
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
 		return nil, fmt.Errorf("no repository URL available")
 	}
@@ -2104,20 +2064,20 @@ func (h *RepositoryHandler) getRepositoryContentsForPath(repoInfo *database.Docu
 	commits, err := h.getRepositoryCommits(repoName)
 	if err != nil {
 		log.Printf("WARNING: Failed to get commits: %v", err)
-		commits = []CommitInfo{} // Don't fail on commits error
+		commits = []types.CommitInfo{} // Don't fail on commits error
 	}
 
 	// Calculate stats
 	stats := h.calculateRepositoryStats(files, commits)
 
-	return &RepositoryContents{
+	return &types.RepositoryContents{
 		Files:   files,
 		Commits: commits,
 		Stats:   stats,
 	}, nil
 }
 
-func (h *RepositoryHandler) getRepositoryFilesForPath(repoName, dirPath string) ([]RepositoryFile, error) {
+func (h *RepositoryHandler) getRepositoryFilesForPath(repoName, dirPath string) ([]types.RepositoryFile, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s",
 		h.githubConfig.Organization, repoName, dirPath)
 
@@ -2146,7 +2106,7 @@ func (h *RepositoryHandler) getRepositoryFilesForPath(repoName, dirPath string) 
 		return nil, fmt.Errorf("failed to decode GitHub response: %w", err)
 	}
 
-	var files []RepositoryFile
+	var files []types.RepositoryFile
 	for _, file := range githubFiles {
 		fileType := "file"
 		if t, ok := file["type"].(string); ok {
@@ -2158,7 +2118,7 @@ func (h *RepositoryHandler) getRepositoryFilesForPath(repoName, dirPath string) 
 			size = int64(s)
 		}
 
-		files = append(files, RepositoryFile{
+		files = append(files, types.RepositoryFile{
 			Name: h.getStringValue(file, "name"),
 			Path: h.getStringValue(file, "path"),
 			Type: fileType,
@@ -2169,12 +2129,12 @@ func (h *RepositoryHandler) getRepositoryFilesForPath(repoName, dirPath string) 
 
 	return files, nil
 }
-func (h *RepositoryHandler) renderRepositoryPageWithPath(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *RepositoryContents, dirPath string) {
+func (h *RepositoryHandler) renderRepositoryPageWithPath(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	html := h.generateRepositoryHTMLWithPath(user, student, repoInfo, contents, dirPath)
 	w.Write([]byte(html))
 }
-func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *RepositoryContents, dirPath string) string {
+func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string) string {
 	// Safe repository URL handling
 	repoURL := ""
 	if repoInfo.RepositoryURL != nil {
@@ -2474,4 +2434,20 @@ func (h *RepositoryHandler) generatePathBreadcrumb(dirPath string, studentID int
 	}
 
 	return breadcrumb
+}
+
+// Helper method to get current locale
+func (h *RepositoryHandler) getCurrentLocale(r *http.Request) string {
+	locale := r.URL.Query().Get("locale")
+	if locale == "" {
+		// Check cookie or session
+		cookie, err := r.Cookie("locale")
+		if err == nil {
+			locale = cookie.Value
+		}
+	}
+	if locale != "en" && locale != "lt" {
+		locale = "lt" // Default to Lithuanian
+	}
+	return locale
 }

@@ -1,0 +1,129 @@
+package repository
+
+import (
+    "FinalProjectManagementApp/auth"
+    "FinalProjectManagementApp/database"
+    "FinalProjectManagementApp/components/templates"
+)
+
+// Use the main layout instead of creating a separate one
+templ RepositoryLayout(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, currentLocale string) {
+    @templates.Layout(user, currentLocale, "Repository - " + student.StudentName + " " + student.StudentLastname) {
+        // Repository-specific styles
+        <style>
+            .file-tree {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            }
+            .file-explorer {
+                border: 1px solid #d0d7de;
+                border-radius: 6px;
+                overflow: hidden;
+            }
+            .file-header {
+                background-color: #f6f8fa;
+                border-bottom: 1px solid #d0d7de;
+                padding: 16px;
+            }
+            .file-row {
+                display: flex;
+                align-items: center;
+                padding: 8px 16px;
+                border-bottom: 1px solid #d0d7de;
+                transition: background-color 0.1s;
+            }
+            .file-row:hover {
+                background-color: #f6f8fa;
+            }
+            .file-row:last-child {
+                border-bottom: none;
+            }
+            .file-icon {
+                margin-right: 12px;
+                flex-shrink: 0;
+            }
+            .file-name {
+                flex-grow: 1;
+                color: #0969da;
+                text-decoration: none;
+                font-size: 14px;
+            }
+            .file-name:hover {
+                text-decoration: underline;
+            }
+            .file-meta {
+                color: #656d76;
+                font-size: 12px;
+                margin-left: auto;
+                flex-shrink: 0;
+            }
+            .breadcrumb {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 14px;
+                color: #656d76;
+                margin-bottom: 16px;
+            }
+            .breadcrumb a {
+                color: #0969da;
+                text-decoration: none;
+            }
+            .breadcrumb a:hover {
+                text-decoration: underline;
+            }
+            .code-viewer {
+                background-color: #f6f8fa;
+                border-radius: 6px;
+                overflow: hidden;
+                margin-top: 16px;
+            }
+            .code-header {
+                background-color: #f6f8fa;
+                border-bottom: 1px solid #d0d7de;
+                padding: 8px 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .code-content {
+                background-color: #ffffff;
+                overflow-x: auto;
+            }
+            pre {
+                margin: 0;
+                font-size: 13px;
+                line-height: 20px;
+            }
+            .line-numbers {
+                user-select: none;
+                width: 50px;
+                color: #656d76;
+                text-align: right;
+                padding-right: 16px;
+                background-color: #f6f8fa;
+                border-right: 1px solid #d0d7de;
+            }
+            .status-badge {
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            .status-success {
+                background-color: #dafbe1;
+                color: #1a7f37;
+            }
+            .status-pending {
+                background-color: #fff8c5;
+                color: #9a6700;
+            }
+        </style>
+
+        // Add Prism.js for syntax highlighting
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+        { children... }
+    }
+}

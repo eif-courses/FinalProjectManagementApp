@@ -1,0 +1,75 @@
+package repository
+
+import (
+    "FinalProjectManagementApp/types"
+)
+
+templ FileViewer(studentID int, filePath string, content *types.FileContent) {
+    <div id="file-content" class="container mx-auto px-4 py-6">
+        <div class="code-viewer">
+            <div class="code-header">
+                <div class="flex items-center gap-2">
+                    @FileIcon(content.Name)
+                    <span class="font-medium text-sm">{ content.Name }</span>
+                    <span class="text-gray-500 text-sm">({ formatFileSize(content.Size) })</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick={ copyToClipboard(content.Content) }
+                            class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                        Copy
+                    </button>
+                    if content.DownloadURL != "" {
+                        <a href={ templ.SafeURL(content.DownloadURL) }
+                           download={ content.Name }
+                           class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                            Download
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <div class="code-content">
+                if content.IsBinary {
+                    <div class="p-8 text-center text-gray-500">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="font-medium">Binary file</p>
+                        <p class="text-sm mt-2">This file cannot be displayed in the browser.</p>
+                    </div>
+                } else {
+                    <div class="overflow-x-auto">
+                        <pre><code class={ getLanguageClass(content.Language) }>{ content.Content }</code></pre>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+func getLanguageClass(language string) string {
+    langMap := map[string]string{
+        "Go": "language-go",
+        "JavaScript": "language-javascript",
+        "TypeScript": "language-typescript",
+        "Python": "language-python",
+        "Java": "language-java",
+        "HTML": "language-html",
+        "CSS": "language-css",
+        "Markdown": "language-markdown",
+    }
+
+    if class, ok := langMap[language]; ok {
+        return class
+    }
+    return "language-text"
+}
+
+script copyToClipboard(content string) {
+    navigator.clipboard.writeText(content).then(function() {
+        event.target.textContent = "Copied!";
+        setTimeout(function() {
+            event.target.textContent = "Copy";
+        }, 2000);
+    });
+}

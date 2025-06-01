@@ -1794,6 +1794,10 @@ type StudentSummaryView struct {
 
 	// From videos
 	HasVideo bool `json:"has_video" db:"has_video"` // derived as CASE (1/0)
+
+	HasSourceCode bool           `db:"has_source_code"` // Add this line
+	RepositoryURL sql.NullString `db:"repository_url"`  // Optional: if you want the URL too
+
 }
 
 // GetCompletionStatus returns overall completion status

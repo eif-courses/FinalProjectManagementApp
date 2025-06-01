@@ -1,0 +1,119 @@
+package repository
+
+import (
+    "FinalProjectManagementApp/auth"
+    "FinalProjectManagementApp/database"
+    "FinalProjectManagementApp/types"
+    "FinalProjectManagementApp/components/templates"
+    "fmt"
+)
+
+templ RepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, currentLocale string) {
+    @RepositoryLayout(user, student, repoInfo, currentLocale) {
+        <div class="space-y-6">
+            @RepositoryHeader(student, repoInfo, contents.Stats)
+
+            if contents.Error != "" {
+                <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-red-700">Error loading repository: { contents.Error }</p>
+                    </div>
+                </div>
+            } else {
+                @FileExplorer(student.ID, "", contents.Files)
+                <div id="file-content"></div>
+            }
+        </div>
+    }
+}
+
+templ DirectoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string, currentLocale string) {
+    @RepositoryLayout(user, student, repoInfo, currentLocale) {
+        <div class="space-y-6">
+            @RepositoryHeader(student, repoInfo, contents.Stats)
+
+            if contents.Error != "" {
+                <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-red-700">Error loading directory: { contents.Error }</p>
+                    </div>
+                </div>
+            } else {
+                @FileExplorer(student.ID, dirPath, contents.Files)
+                <div id="file-content"></div>
+            }
+        </div>
+    }
+}
+
+templ NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, currentLocale string) {
+    @templates.Layout(user, currentLocale, "No Repository - " + student.StudentName + " " + student.StudentLastname) {
+        <div class="max-w-md mx-auto text-center py-12">
+            <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+            </svg>
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">No Repository Available</h2>
+            <p class="text-gray-600 mb-6">This student has not uploaded their source code yet.</p>
+
+            <div class="bg-gray-50 rounded-lg p-6 text-left mb-6">
+                <h3 class="font-medium text-gray-900 mb-3">Student Information</h3>
+                <dl class="space-y-2 text-sm">
+                    <div>
+                        <dt class="text-gray-500 inline">Name:</dt>
+                        <dd class="text-gray-900 inline ml-1">{ student.StudentName } { student.StudentLastname }</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 inline">Student ID:</dt>
+                        <dd class="text-gray-900 inline ml-1">{ student.StudentNumber }</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 inline">Email:</dt>
+                        <dd class="text-gray-900 inline ml-1">{ student.StudentEmail }</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 inline">Department:</dt>
+                        <dd class="text-gray-900 inline ml-1">{ student.Department }</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <a href="/students-list"
+               class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Back to Student List
+            </a>
+        </div>
+    }
+}
+
+templ FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, filePath string, content *types.FileContent, currentLocale string) {
+    @RepositoryLayout(user, student, repoInfo, currentLocale) {
+        <div class="space-y-6">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">📄 { content.Name }</h1>
+                        <p class="text-gray-600">{ student.StudentName } { student.StudentLastname } • { student.StudyProgram }</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d", student.ID)) }
+                           class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                            ← Back to Repository
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            @Breadcrumb(student.ID, filePath)
+            @FileViewer(student.ID, filePath, content)
+        </div>
+    }
+}
