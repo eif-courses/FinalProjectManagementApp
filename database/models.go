@@ -1237,9 +1237,27 @@ func IntValue(i *int) int {
 
 // Validation helper functions
 func ValidateEmail(email string) bool {
-	return len(email) > 3 &&
-		strings.Contains(email, "@") &&
-		strings.Contains(email, ".")
+	// More lenient email validation that accepts most common formats
+	if email == "" {
+		return false
+	}
+
+	// Basic check: must have @ and at least one dot after @
+	atIndex := strings.Index(email, "@")
+	if atIndex < 1 {
+		return false
+	}
+
+	domain := email[atIndex+1:]
+	if !strings.Contains(domain, ".") {
+		return false
+	}
+
+	// Optional: Use regex for more strict validation
+	// emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	// return emailRegex.MatchString(email)
+
+	return true
 }
 
 func ValidateGrade(grade float64) bool {
@@ -3037,4 +3055,28 @@ func (ptr *ProjectTopicRegistration) GetNextAction(locale string) string {
 		return actionMap[locale][ptr.Status]
 	}
 	return "Unknown status"
+}
+
+type ImportResult struct {
+	SuccessCount int             `json:"success_count"`
+	ErrorCount   int             `json:"error_count"`
+	Errors       []ImportError   `json:"errors"`
+	Duplicates   []string        `json:"duplicates"`
+	NewStudents  []StudentRecord `json:"new_students"`
+}
+
+type ImportError struct {
+	Row     int               `json:"row"`
+	Field   string            `json:"field"`
+	Message string            `json:"message"`
+	Data    map[string]string `json:"data"`
+}
+
+type ImportOptions struct {
+	OverwriteExisting bool   `json:"overwrite_existing"`
+	ValidateEmails    bool   `json:"validate_emails"`
+	SendNotifications bool   `json:"send_notifications"`
+	ImportedByEmail   string `json:"imported_by_email"`
+	AllowedDepartment string `json:"allowed_department"`
+	UserRole          string `json:"user_role"`
 }

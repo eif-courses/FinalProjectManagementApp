@@ -139,3 +139,6 @@ func canCreateSupervisorReport(userRole, supervisorEmail, userEmail string) bool
 	return userRole == "admin" || userRole == "department_head" ||
 		(userRole == "supervisor" && supervisorEmail == userEmail)
 }
+func canImportData(role string) bool {
+	return role == "admin" || role == "department_head"
+}

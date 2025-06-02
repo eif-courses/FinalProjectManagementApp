@@ -276,10 +276,176 @@ function showSuccessNotification(message) {
 
             // Confirm functions are loaded
             console.log('All functions loaded successfully');
+
+
+
+            // ==================================================
+            // MODAL FOR IMPORT EXPORT
+            // =================================================
+            function openImportModal() {
+                htmx.ajax('GET', '/admin/import/modal', {
+                    target: '#modal-container',
+                    swap: 'innerHTML'
+                });
+                showModal();
+            }
+
+            function closeImportModal(event) {
+                if (event && event.target !== event.currentTarget) return;
+                hideModal();
+            }
+
+            function handleFileSelect(input) {
+                const file = input.files[0];
+                const fileInfo = document.getElementById('file-info');
+                const fileName = document.getElementById('file-name');
+                const fileSize = document.getElementById('file-size');
+                const importButton = document.getElementById('import-button');
+                const previewSection = document.getElementById('preview-section');
+
+                if (file) {
+                    fileName.textContent = file.name;
+                    fileSize.textContent = `(${formatFileSize(file.size)})`;
+                    fileInfo.classList.remove('hidden');
+                    importButton.disabled = false;
+
+                    // Show preview for Excel files
+                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                        previewFile(file);
+                    }
+                } else {
+                    fileInfo.classList.add('hidden');
+                    importButton.disabled = true;
+                    previewSection.classList.add('hidden');
+                }
+            }
+
+            function previewFile(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('preview', 'true');
+
+                fetch('/admin/import/preview', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('preview-content').innerHTML = html;
+                    document.getElementById('preview-section').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Preview error:', error);
+                });
+            }
+
+            function startImport() {
+                const fileInput = document.getElementById('import-file');
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    alert('Pasirinkite failą');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('overwrite_existing', document.getElementById('overwrite-existing').checked);
+                formData.append('validate_emails', document.getElementById('validate-emails').checked);
+                formData.append('send_notifications', document.getElementById('send-notifications').checked);
+
+                const importButton = document.getElementById('import-button');
+                const buttonText = document.getElementById('import-button-text');
+
+                importButton.disabled = true;
+                buttonText.textContent = 'Importuojama...';
+
+                fetch('/admin/import/process', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('import-results').innerHTML = html;
+                    document.getElementById('import-results').classList.remove('hidden');
+
+                    // Hide other sections
+                    document.getElementById('preview-section').classList.add('hidden');
+
+                    // Refresh the student list after successful import
+                    setTimeout(() => {
+                        hideModal();
+                        window.location.reload();
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Import error:', error);
+                    alert('Importavimo klaida: ' + error.message);
+                })
+                .finally(() => {
+                    importButton.disabled = false;
+                    buttonText.textContent = 'Importuoti';
+                });
+            }
+
+     function exportData() {
+         console.log('Export function called');
+
+         // Get the form element first
+         const filtersForm = document.getElementById('filters-form');
+         const searchValue = document.getElementById('search')?.value || '';
+
+         // Get current filters from the form
+         let filters = {};
+         if (filtersForm) {
+             // Get all form inputs manually
+             const formData = new FormData(filtersForm);
+             for (let [key, value] of formData.entries()) {
+                 filters[key] = value;
+             }
+         }
+
+         console.log('Filters:', filters);
+         console.log('Search value:', searchValue);
+
+         // Build query string
+         const params = new URLSearchParams();
+         if (searchValue) params.append('search', searchValue);
+
+         // Add all filter values
+         Object.keys(filters).forEach(key => {
+             if (filters[key] && filters[key] !== '') {
+                 params.append(key, filters[key]);
+             }
+         });
+
+         const exportUrl = '/admin/export/students?' + params.toString();
+         console.log('Export URL:', exportUrl);
+
+         // Download file
+         window.location.href = exportUrl;
+     }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+
+
+            // ===================================================
+
+
+
+
         </script>
 	}
 }
 
+// Update your StudentListHeader template
 templ StudentListHeader(user *auth.AuthenticatedUser, searchValue string) {
 	<div class="space-y-4">
 		<div class="flex items-center justify-between">
@@ -288,9 +454,22 @@ templ StudentListHeader(user *auth.AuthenticatedUser, searchValue string) {
 				<p class="text-muted-foreground">Valdyti ir peržiūrėti studentų informaciją</p>
 			</div>
 			<div class="flex items-center gap-3">
-				if canExportData(user.Role) {
+				// Add import button for department heads and admins
+				if canImportData(user.Role) {
 					@button.Button(button.Props{
 						Variant: button.VariantDefault,
+						Class:   "flex items-center gap-2",
+						Attributes: templ.Attributes{
+							"onclick": "openImportModal()",
+						},
+					}) {
+						@icon.Upload(icon.Props{Size: 16})
+						Importuoti studentus
+					}
+				}
+				if canExportData(user.Role) {
+					@button.Button(button.Props{
+						Variant: button.VariantOutline,
 						Class:   "flex items-center gap-2",
 						Attributes: templ.Attributes{
 							"onclick": "exportData()",
@@ -975,3 +1154,6 @@ func getCompactSupervisorAction(studentID int, action string) string {
 	}
 	return "editSupervisorReport(" + strconv.Itoa(studentID) + ")"
 }
+
+
+

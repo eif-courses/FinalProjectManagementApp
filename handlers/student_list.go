@@ -1,18 +1,22 @@
 package handlers
 
 import (
+	"FinalProjectManagementApp/auth"
+	"FinalProjectManagementApp/components/templates"
+	"FinalProjectManagementApp/database"
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
+	"github.com/xuri/excelize/v2"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"FinalProjectManagementApp/auth"
-	"FinalProjectManagementApp/components/templates"
-	"FinalProjectManagementApp/database"
-	"github.com/go-chi/chi/v5"
+	"time"
 )
 
 type StudentListHandler struct {
@@ -24,6 +28,862 @@ func NewStudentListHandler(db *sqlx.DB) *StudentListHandler {
 	return &StudentListHandler{
 		db: db,
 	}
+}
+
+// ImportModalHandler shows the import modal
+func (h *StudentListHandler) ImportModalHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if user.Role != auth.RoleAdmin && user.Role != auth.RoleDepartmentHead {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	err := templates.ImportModal(user).Render(r.Context(), w)
+	if err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	}
+}
+
+// PreviewHandler handles file preview
+func (h *StudentListHandler) PreviewHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Add role validation to use the user variable
+	if user.Role != auth.RoleAdmin && user.Role != auth.RoleDepartmentHead {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "No file uploaded", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	records, err := h.processFile(file, header.Filename)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error processing file: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Show ALL records in preview - REMOVED THE LIMIT
+	previewRecords := records
+	// REMOVED: if len(records) > 5 {
+	//     previewRecords = records[:5]
+	// }
+
+	// Render preview template with all records
+	err = templates.ImportPreview(previewRecords, len(records)).Render(r.Context(), w)
+	if err != nil {
+		http.Error(w, "Failed to render preview", http.StatusInternalServerError)
+	}
+}
+func (h *StudentListHandler) ProcessImportHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "No file uploaded", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Parse options
+	overwriteExisting := r.FormValue("overwrite_existing") == "true"
+	validateEmails := r.FormValue("validate_emails") == "true"
+	sendNotifications := r.FormValue("send_notifications") == "true"
+
+	records, err := h.processFile(file, header.Filename)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error processing file: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Get department for department heads
+	var allowedDepartment string
+	if user.Role == auth.RoleDepartmentHead {
+		var departmentHead database.DepartmentHead
+		err := h.db.Get(&departmentHead, "SELECT * FROM department_heads WHERE email = ? AND is_active = 1", user.Email)
+		if err != nil {
+			http.Error(w, "Failed to get department head info", http.StatusInternalServerError)
+			return
+		}
+		allowedDepartment = departmentHead.Department
+		log.Printf("Department head %s importing for department: %s", user.Email, allowedDepartment)
+	}
+
+	// Use database.ImportOptions with department restriction
+	importResult, err := h.importStudentRecords(records, database.ImportOptions{
+		OverwriteExisting: overwriteExisting,
+		ValidateEmails:    validateEmails,
+		SendNotifications: sendNotifications,
+		ImportedByEmail:   user.Email,
+		AllowedDepartment: allowedDepartment, // Add this field to ImportOptions
+		UserRole:          user.Role,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Import failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Create audit log
+	h.createImportAuditLog(user.Email, len(records), importResult.SuccessCount, importResult.ErrorCount)
+
+	err = templates.ImportResults(importResult, "lt").Render(r.Context(), w)
+	if err != nil {
+		http.Error(w, "Failed to render results", http.StatusInternalServerError)
+	}
+}
+
+//====================================================EXPORT HANDLER===============
+
+// Helper functions for status determination
+func getTopicRegistrationStatus(student database.StudentSummaryView) string {
+	if student.TopicApproved {
+		return "Patvirtinta katedros vedėjo"
+	}
+
+	status := getTopicStatus(student.TopicStatus)
+	switch status {
+	case "submitted":
+		return "Pateikta peržiūrai"
+	case "supervisor_approved":
+		return "Vadovas patvirtino"
+	case "revision_requested":
+		return "Prašoma pataisymų"
+	case "draft":
+		return "Juodraštis"
+	case "rejected":
+		return "Atmesta"
+	default:
+		return "Nepradėtas pildyti"
+	}
+}
+
+func getReviewerReportStatus(student database.StudentSummaryView) string {
+	if student.ReviewerName == "" {
+		return "Nepaskirtas"
+	}
+
+	if !student.HasReviewerReport {
+		return "Neužpildyta"
+	}
+
+	if student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool {
+		return "Pasirašyta"
+	}
+
+	return "Užpildyta"
+}
+
+func getSupervisorReportStatus(student database.StudentSummaryView) string {
+	if !student.HasSupervisorReport {
+		return "Neužpildyta"
+	}
+
+	if student.SupervisorReportSigned.Valid && student.SupervisorReportSigned.Bool {
+		return "Pasirašyta"
+	}
+
+	return "Užpildyta"
+}
+
+// Add this method to fetch actual documents from database
+func (h *StudentListHandler) getStudentDocuments(studentID int) ([]database.Document, error) {
+	var documents []database.Document
+
+	query := `
+        SELECT id, student_record_id, document_type, original_filename, 
+               storage_path, file_size, status, uploaded_at
+        FROM documents 
+        WHERE student_record_id = ?
+    `
+
+	err := h.db.Select(&documents, query, studentID)
+	return documents, err
+}
+
+// ExportHandler handles data export
+func (h *StudentListHandler) ExportHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse filters from query parameters
+	filters := &database.TemplateFilterParams{
+		Page:         1,
+		Limit:        10000, // Export all
+		Group:        r.URL.Query().Get("group"),
+		StudyProgram: r.URL.Query().Get("study_program"),
+		TopicStatus:  r.URL.Query().Get("topic_status"),
+		Search:       r.URL.Query().Get("search"),
+	}
+
+	if yearStr := r.URL.Query().Get("year"); yearStr != "" {
+		if year, err := strconv.Atoi(yearStr); err == nil {
+			filters.Year = year
+		}
+	}
+
+	// Get students based on user role using your existing methods
+	var students []database.StudentSummaryView
+	var err error
+
+	switch user.Role {
+	case auth.RoleDepartmentHead:
+		students, _, err = h.getStudentsForDepartmentHead(user, filters)
+	case auth.RoleAdmin:
+		students, _, err = h.getAllStudents(filters)
+	case auth.RoleSupervisor:
+		students, _, err = h.getStudentsForSupervisor(user.Email, filters)
+	default:
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to fetch students: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Create Excel file
+	file := excelize.NewFile()
+	defer file.Close()
+
+	sheetName := "Students"
+	file.NewSheet(sheetName)
+	file.DeleteSheet("Sheet1")
+
+	// Extended headers with status columns
+	headers := []string{
+		"StudentName",
+		"StudentLastname",
+		"StudentNumber",
+		"StudentEmail",
+		"StudentGroup",
+		"FinalProjectTitle",
+		"FinalProjectTitleEn",
+		"SupervisorEmail",
+		"StudyProgram",
+		"Department",
+		"ProgramCode",
+		"CurrentYear",
+		"ReviewerEmail",
+		"ReviewerName",
+		// Status columns
+		"TopicRegistrationStatus", // Temos registravimo lapas status
+		"HasVideo",                // Video document
+		"HasThesisPDF",            // PDF document
+		"HasRecommendation",       // Recommendation document
+		"HasSourceCode",           // Source code/GitHub
+		"ReviewerReportStatus",    // Recenzento status
+		"SupervisorReportStatus",  // Vadovo status
+	}
+
+	// Style for headers
+	headerStyle, _ := file.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#E0E0E0"},
+			Pattern: 1,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+	})
+
+	// Write headers
+	for i, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		file.SetCellValue(sheetName, cell, header)
+		file.SetCellStyle(sheetName, cell, cell, headerStyle)
+	}
+
+	// Write data with additional processing for status fields
+	for i, student := range students {
+		row := i + 2
+
+		// Basic student data
+		file.SetCellValue(sheetName, fmt.Sprintf("A%d", row), student.StudentName)
+		file.SetCellValue(sheetName, fmt.Sprintf("B%d", row), student.StudentLastname)
+		file.SetCellValue(sheetName, fmt.Sprintf("C%d", row), student.StudentNumber)
+		file.SetCellValue(sheetName, fmt.Sprintf("D%d", row), student.StudentEmail)
+		file.SetCellValue(sheetName, fmt.Sprintf("E%d", row), student.StudentGroup)
+		file.SetCellValue(sheetName, fmt.Sprintf("F%d", row), student.FinalProjectTitle)
+		file.SetCellValue(sheetName, fmt.Sprintf("G%d", row), student.FinalProjectTitleEn)
+		file.SetCellValue(sheetName, fmt.Sprintf("H%d", row), student.SupervisorEmail)
+		file.SetCellValue(sheetName, fmt.Sprintf("I%d", row), student.StudyProgram)
+		file.SetCellValue(sheetName, fmt.Sprintf("J%d", row), student.Department)
+		file.SetCellValue(sheetName, fmt.Sprintf("K%d", row), student.ProgramCode)
+		file.SetCellValue(sheetName, fmt.Sprintf("L%d", row), student.CurrentYear)
+		file.SetCellValue(sheetName, fmt.Sprintf("M%d", row), student.ReviewerEmail)
+		file.SetCellValue(sheetName, fmt.Sprintf("N%d", row), student.ReviewerName)
+
+		// Topic Registration Status
+		topicStatus := getTopicRegistrationStatus(student)
+		file.SetCellValue(sheetName, fmt.Sprintf("O%d", row), topicStatus)
+
+		// Document statuses - fetch from database
+		documents, _ := h.getStudentDocuments(student.ID)
+
+		// Check for specific document types
+		hasVideo := "Ne"
+		hasThesisPDF := "Ne"
+		hasRecommendation := "Ne"
+
+		for _, doc := range documents {
+			switch doc.DocumentType {
+			case "video":
+				hasVideo = "Taip"
+			case "thesis", "thesis_pdf":
+				hasThesisPDF = "Taip"
+			case "recommendation":
+				hasRecommendation = "Taip"
+			}
+		}
+
+		file.SetCellValue(sheetName, fmt.Sprintf("P%d", row), hasVideo)
+		file.SetCellValue(sheetName, fmt.Sprintf("Q%d", row), hasThesisPDF)
+		file.SetCellValue(sheetName, fmt.Sprintf("R%d", row), hasRecommendation)
+
+		// Source code status
+		sourceCodeStatus := "Ne"
+		if student.HasSourceCode {
+			sourceCodeStatus = "Taip"
+		}
+		file.SetCellValue(sheetName, fmt.Sprintf("S%d", row), sourceCodeStatus)
+
+		// Reviewer Report Status
+		reviewerStatus := getReviewerReportStatus(student)
+		file.SetCellValue(sheetName, fmt.Sprintf("T%d", row), reviewerStatus)
+
+		// Supervisor Report Status
+		supervisorStatus := getSupervisorReportStatus(student)
+		file.SetCellValue(sheetName, fmt.Sprintf("U%d", row), supervisorStatus)
+	}
+
+	// Auto-size columns
+	for i := range headers {
+		col, _ := excelize.ColumnNumberToName(i + 1)
+		file.SetColWidth(sheetName, col, col, 15)
+	}
+
+	// Set response headers
+	filename := fmt.Sprintf("students_export_%s.xlsx", time.Now().Format("2006-01-02_15-04"))
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+
+	// Write file to response
+	err = file.Write(w)
+	if err != nil {
+		http.Error(w, "Failed to write Excel file", http.StatusInternalServerError)
+	}
+}
+
+// SampleExcelHandler provides a sample Excel file
+func (h *StudentListHandler) SampleExcelHandler(w http.ResponseWriter, r *http.Request) {
+	file := excelize.NewFile()
+	defer file.Close()
+
+	sheetName := "Students"
+	file.NewSheet(sheetName)
+	file.DeleteSheet("Sheet1")
+
+	// Headers - including FinalProjectTitleEn
+	headers := []string{
+		"StudentName",
+		"StudentLastname",
+		"StudentNumber",
+		"StudentEmail",
+		"StudentGroup",
+		"FinalProjectTitle",
+		"FinalProjectTitleEn", // Added this column
+		"SupervisorEmail",
+		"StudyProgram",
+		"Department",
+		"ProgramCode",
+		"CurrentYear",
+		"ReviewerEmail",
+		"ReviewerName",
+	}
+
+	// Sample data - added English title column
+	sampleData := [][]interface{}{
+		{
+			"Jonas",
+			"Jonaitis",
+			"s123456",
+			"jonas.jonaitis@stud.viko.lt",
+			"PI22A",
+			"Pavyzdinis baigiamasis darbas",
+			"Sample Final Project", // English title
+			"supervisor@viko.lt",
+			"Programų sistemos",
+			"Programinės įrangos",
+			"6531BX028",
+			2025,
+			"reviewer@viko.lt",
+			"Dr. Recenzentas",
+		},
+		{
+			"Petras",
+			"Petraitis",
+			"s123457",
+			"petras.petraitis@stud.viko.lt",
+			"PI22B",
+			"Kitas pavyzdinis darbas",
+			"Another Sample Project", // English title
+			"supervisor2@viko.lt",
+			"Programų sistemos",
+			"Programinės įrangos",
+			"6531BX028",
+			2025,
+			"reviewer2@viko.lt",
+			"Prof. Kitas Recenzentas",
+		},
+	}
+
+	// Style headers (optional but nice to have)
+	headerStyle, _ := file.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#E0E0E0"},
+			Pattern: 1,
+		},
+	})
+
+	// Write headers with style
+	for i, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		file.SetCellValue(sheetName, cell, header)
+		file.SetCellStyle(sheetName, cell, cell, headerStyle)
+	}
+
+	// Write sample data
+	for i, row := range sampleData {
+		for j, value := range row {
+			cell, _ := excelize.CoordinatesToCellName(j+1, i+2)
+			file.SetCellValue(sheetName, cell, value)
+		}
+	}
+
+	// Auto-size columns for better readability (optional)
+	for i := range headers {
+		col, _ := excelize.ColumnNumberToName(i + 1)
+		file.SetColWidth(sheetName, col, col, 15)
+	}
+
+	// Add a note/instruction row (optional)
+	instructionRow := 4
+	cell, _ := excelize.CoordinatesToCellName(1, instructionRow)
+	file.SetCellValue(sheetName, cell, "Pastaba: FinalProjectTitleEn stulpelis yra neprivalomas. Jei neturite angliško pavadinimo, palikite tuščią.")
+
+	// Merge cells for the instruction
+	endCell, _ := excelize.CoordinatesToCellName(len(headers), instructionRow)
+	file.MergeCell(sheetName, cell, endCell)
+
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"student_import_sample.xlsx\"")
+
+	err := file.Write(w)
+	if err != nil {
+		http.Error(w, "Failed to write sample file", http.StatusInternalServerError)
+	}
+}
+
+// Helper methods for file processing and import
+func (h *StudentListHandler) processFile(file io.Reader, filename string) ([]map[string]string, error) {
+	if strings.HasSuffix(strings.ToLower(filename), ".xlsx") || strings.HasSuffix(strings.ToLower(filename), ".xls") {
+		return h.processExcelFile(file)
+	} else if strings.HasSuffix(strings.ToLower(filename), ".csv") {
+		return h.processCSVFile(file)
+	}
+	return nil, fmt.Errorf("unsupported file type")
+}
+
+// Add this temporary debug function
+func (h *StudentListHandler) debugExcelHeaders(file io.Reader) {
+	content, _ := io.ReadAll(file)
+	f, _ := excelize.OpenReader(strings.NewReader(string(content)))
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) > 0 {
+		rows, _ := f.GetRows(sheets[0])
+		if len(rows) > 0 {
+			log.Printf("=== EXCEL HEADERS ===")
+			for i, header := range rows[0] {
+				log.Printf("Column %d: '%s'", i+1, header)
+			}
+			log.Printf("===================")
+		}
+	}
+}
+
+func (h *StudentListHandler) debugRecord(record map[string]string, rowNum int) {
+	log.Printf("=== Row %d Debug ===", rowNum)
+	for key, value := range record {
+		log.Printf("  %s: %s", key, value)
+	}
+	log.Printf("==================")
+}
+
+func (h *StudentListHandler) processExcelFile(file io.Reader) ([]map[string]string, error) {
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := excelize.OpenReader(strings.NewReader(string(content)))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		return nil, fmt.Errorf("no sheets found in Excel file")
+	}
+
+	rows, err := f.GetRows(sheets[0])
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rows) < 2 {
+		return nil, fmt.Errorf("file must contain at least a header row and one data row")
+	}
+
+	headers := rows[0]
+
+	// Debug: print headers
+	log.Printf("Excel headers found: %v", headers)
+
+	var records []map[string]string
+
+	for i := 1; i < len(rows); i++ {
+		record := make(map[string]string)
+		for j, header := range headers {
+			if j < len(rows[i]) {
+				// Trim spaces and normalize header
+				normalizedHeader := strings.TrimSpace(header)
+				value := ""
+				if j < len(rows[i]) {
+					value = strings.TrimSpace(rows[i][j])
+				}
+				record[normalizedHeader] = value
+			}
+		}
+
+		// Debug first few records
+		if i <= 3 {
+			log.Printf("=== Row %d ===", i)
+			for key, value := range record {
+				log.Printf("  '%s': '%s'", key, value)
+			}
+			log.Printf("==================")
+		}
+
+		records = append(records, record)
+	}
+
+	return records, nil
+}
+
+func (h *StudentListHandler) processCSVFile(file io.Reader) ([]map[string]string, error) {
+	reader := csv.NewReader(file)
+	reader.Comma = '\t' // Tab-separated
+
+	headers, err := reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("error reading headers: %v", err)
+	}
+
+	var records []map[string]string
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error reading row: %v", err)
+		}
+
+		recordMap := make(map[string]string)
+		for i, header := range headers {
+			if i < len(record) {
+				recordMap[header] = strings.TrimSpace(record[i])
+			}
+		}
+		records = append(records, recordMap)
+	}
+
+	return records, nil
+}
+
+// Update this method signature
+func (h *StudentListHandler) importStudentRecords(records []map[string]string, options database.ImportOptions) (*database.ImportResult, error) {
+	result := &database.ImportResult{
+		Errors:      []database.ImportError{},
+		Duplicates:  []string{},
+		NewStudents: []database.StudentRecord{},
+	}
+
+	tx, err := h.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	for i, record := range records {
+		// Pass the full options to mapRecordToStudent
+		student, err := h.mapRecordToStudent(record, options.ValidateEmails, options)
+		if err != nil {
+			result.ErrorCount++
+			result.Errors = append(result.Errors, database.ImportError{
+				Row:     i + 2,
+				Message: err.Error(),
+				Data:    record,
+			})
+			continue
+		}
+
+		// Rest of the import logic remains the same...
+		// Check for duplicates
+		exists, existingID, err := h.studentExists(tx, student.StudentNumber, student.StudentEmail)
+		if err != nil {
+			result.ErrorCount++
+			result.Errors = append(result.Errors, database.ImportError{
+				Row:     i + 2,
+				Message: fmt.Sprintf("Error checking duplicate: %v", err),
+				Data:    record,
+			})
+			continue
+		}
+
+		if exists {
+			if options.OverwriteExisting {
+				// Update existing student
+				err = h.updateStudent(tx, existingID, student)
+				if err != nil {
+					result.ErrorCount++
+					result.Errors = append(result.Errors, database.ImportError{
+						Row:     i + 2,
+						Message: fmt.Sprintf("Error updating student: %v", err),
+						Data:    record,
+					})
+					continue
+				}
+				result.SuccessCount++
+			} else {
+				result.Duplicates = append(result.Duplicates, student.StudentNumber)
+				continue
+			}
+		} else {
+			// Insert new student
+			err = h.insertStudent(tx, student)
+			if err != nil {
+				result.ErrorCount++
+				result.Errors = append(result.Errors, database.ImportError{
+					Row:     i + 2,
+					Message: fmt.Sprintf("Database error: %v", err),
+					Data:    record,
+				})
+				continue
+			}
+			result.SuccessCount++
+			result.NewStudents = append(result.NewStudents, *student)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return result, nil
+}
+
+func (h *StudentListHandler) mapRecordToStudent(record map[string]string, validateEmails bool, options database.ImportOptions) (*database.StudentRecord, error) {
+	// Helper function to get value with case-insensitive matching
+	getValue := func(keys ...string) string {
+		// First try exact matches
+		for _, key := range keys {
+			if val, ok := record[key]; ok && val != "" {
+				return val
+			}
+		}
+
+		// Then try case-insensitive matches
+		for recordKey, recordValue := range record {
+			for _, searchKey := range keys {
+				if strings.EqualFold(strings.TrimSpace(recordKey), strings.TrimSpace(searchKey)) && recordValue != "" {
+					return recordValue
+				}
+			}
+		}
+
+		return ""
+	}
+
+	// Debug: print what keys we have in the record
+	log.Printf("Available keys in record: %v", getRecordKeys(record))
+
+	student := &database.StudentRecord{
+		// Try multiple possible header names with variations
+		StudentName:         getValue("StudentName", "student_name", "Name", "Vardas", "Student Name"),
+		StudentLastname:     getValue("StudentLastname", "student_lastname", "Lastname", "Pavardė", "Student Lastname", "StudentSurname"),
+		StudentNumber:       getValue("StudentNumber", "student_number", "Number", "Numeris", "Student Number"),
+		StudentEmail:        getValue("StudentEmail", "student_email", "Email", "El. paštas", "Student Email"),
+		StudentGroup:        getValue("StudentGroup", "student_group", "Group", "Grupė", "Student Group"),
+		FinalProjectTitle:   getValue("FinalProjectTitle", "final_project_title", "Title", "Tema", "Final Project Title"),
+		FinalProjectTitleEn: getValue("FinalProjectTitleEn", "final_project_title_en", "TitleEn", "Title En", "FinalProjectTitle En"),
+		SupervisorEmail:     getValue("SupervisorEmail", "supervisor_email", "Supervisor", "Vadovas", "Supervisor Email"),
+		StudyProgram:        getValue("StudyProgram", "study_program", "Program", "Programa", "Study Program"),
+		Department:          getValue("Department", "department", "Katedra", "Dept"),
+		ProgramCode:         getValue("ProgramCode", "program_code", "Code", "Kodas", "Program Code"),
+		ReviewerEmail:       getValue("ReviewerEmail", "reviewer_email", "Reviewer Email"),
+		ReviewerName:        getValue("ReviewerName", "reviewer_name", "Reviewer", "Recenzentas", "Reviewer Name"),
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
+	}
+
+	// Parse current year with multiple possible keys
+	yearStr := getValue("CurrentYear", "current_year", "Year", "Metai", "Current Year")
+	if yearStr != "" {
+		year, err := strconv.Atoi(yearStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid year: %s", yearStr)
+		}
+		student.CurrentYear = year
+	}
+
+	// Rest of your validation logic...
+	// Log what we mapped
+	log.Printf("Mapped student: %+v", student)
+
+	// Validate required fields
+	if student.StudentName == "" {
+		return nil, fmt.Errorf("student name is required")
+	}
+	if student.StudentLastname == "" {
+		return nil, fmt.Errorf("student lastname is required")
+	}
+	if student.StudentNumber == "" {
+		return nil, fmt.Errorf("student number is required")
+	}
+	if student.StudentEmail == "" {
+		return nil, fmt.Errorf("student email is required")
+	}
+
+	// Rest of your validation...
+	return student, nil
+}
+
+// Helper function to get record keys for debugging
+func getRecordKeys(record map[string]string) []string {
+	keys := make([]string, 0, len(record))
+	for k := range record {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (h *StudentListHandler) studentExists(tx *sqlx.Tx, studentNumber, email string) (bool, int, error) {
+	var id int
+	err := tx.Get(&id, "SELECT id FROM student_records WHERE student_number = ? OR student_email = ?", studentNumber, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, 0, nil
+		}
+		return false, 0, err
+	}
+	return true, id, nil
+}
+
+func (h *StudentListHandler) insertStudent(tx *sqlx.Tx, student *database.StudentRecord) error {
+	query := `
+        INSERT INTO student_records (
+            student_group, student_name, student_lastname, student_number,
+            student_email, final_project_title, final_project_title_en,
+            supervisor_email, study_program, department, program_code,
+            current_year, reviewer_email, reviewer_name, created_at, updated_at
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )`
+
+	result, err := tx.Exec(query,
+		student.StudentGroup, student.StudentName, student.StudentLastname,
+		student.StudentNumber, student.StudentEmail, student.FinalProjectTitle,
+		student.FinalProjectTitleEn, student.SupervisorEmail, student.StudyProgram,
+		student.Department, student.ProgramCode, student.CurrentYear,
+		student.ReviewerEmail, student.ReviewerName, student.CreatedAt, student.UpdatedAt,
+	)
+
+	if err != nil {
+		log.Printf("Insert error: %v", err)
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	log.Printf("Inserted %d rows", rowsAffected)
+
+	return nil
+}
+
+func (h *StudentListHandler) updateStudent(tx *sqlx.Tx, id int, student *database.StudentRecord) error {
+	query := `
+        UPDATE student_records SET
+            student_group = ?, student_name = ?, student_lastname = ?,
+            student_number = ?, student_email = ?, final_project_title = ?,
+            final_project_title_en = ?, supervisor_email = ?, study_program = ?,
+            department = ?, program_code = ?, current_year = ?,
+            reviewer_email = ?, reviewer_name = ?, updated_at = ?
+        WHERE id = ?`
+
+	student.UpdatedAt = time.Now()
+	_, err := tx.Exec(query,
+		student.StudentGroup, student.StudentName, student.StudentLastname,
+		student.StudentNumber, student.StudentEmail, student.FinalProjectTitle,
+		student.FinalProjectTitleEn, student.SupervisorEmail, student.StudyProgram,
+		student.Department, student.ProgramCode, student.CurrentYear,
+		student.ReviewerEmail, student.ReviewerName, student.UpdatedAt, id,
+	)
+	return err
+}
+
+func (h *StudentListHandler) createImportAuditLog(userEmail string, totalRecords, successCount, errorCount int) {
+	auditLog := database.AuditLog{
+		UserEmail:    userEmail,
+		UserRole:     "department_head",
+		Action:       "import_students",
+		ResourceType: "student_records",
+		Details:      &[]string{fmt.Sprintf("Imported %d/%d students successfully", successCount, totalRecords)}[0],
+		CreatedAt:    time.Now(),
+		Success:      errorCount == 0,
+	}
+
+	// Create audit log
+	database.CreateAuditLog(auditLog)
 }
 
 // Add missing getLocale function
@@ -149,7 +1009,6 @@ func (h *StudentListHandler) getStudentsForSupervisor(supervisorEmail string, fi
 	var students []database.StudentSummaryView
 	var args []interface{}
 
-	// Use your existing StudentSummaryView model
 	baseQuery := `
         SELECT 
             sr.id, sr.student_group, sr.student_name, sr.student_lastname,
@@ -178,7 +1037,7 @@ func (h *StudentListHandler) getStudentsForSupervisor(supervisorEmail string, fi
         LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
         LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
         LEFT JOIN documents d ON sr.id = d.student_record_id AND d.document_type = 'thesis_source_code'
-        WHERE 1=1`
+        WHERE sr.supervisor_email = ?` // Add this WHERE clause
 
 	args = append(args, supervisorEmail)
 
@@ -238,8 +1097,107 @@ func (h *StudentListHandler) getStudentsForSupervisor(supervisorEmail string, fi
 }
 
 func (h *StudentListHandler) getStudentsForDepartmentHead(user *auth.AuthenticatedUser, filters *database.TemplateFilterParams) ([]database.StudentSummaryView, int, error) {
-	// For now, show all students for department head - you can refine this based on department
-	return h.getAllStudents(filters)
+	// Get the department head's information
+	var departmentHead database.DepartmentHead
+	err := h.db.Get(&departmentHead, "SELECT * FROM department_heads WHERE email = ? AND is_active = 1", user.Email)
+	if err != nil {
+		log.Printf("Error getting department head info for %s: %v", user.Email, err)
+		return nil, 0, fmt.Errorf("failed to get department head info: %v", err)
+	}
+
+	log.Printf("Department head %s belongs to department: %s", user.Email, departmentHead.Department)
+
+	// Rest of the function remains the same...
+	var students []database.StudentSummaryView
+	var args []interface{}
+
+	baseQuery := `
+        SELECT 
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video
+        FROM student_records sr
+        LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
+        LEFT JOIN supervisor_reports spr ON sr.id = spr.student_record_id
+        LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+        LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
+        LEFT JOIN documents d ON sr.id = d.student_record_id AND d.document_type = 'thesis_source_code'
+        WHERE sr.department = ?`
+
+	args = append(args, departmentHead.Department)
+
+	// Apply additional filters
+	whereClause, filterArgs := buildWhereClause(filters)
+	if whereClause != "" {
+		baseQuery += " AND " + whereClause
+		args = append(args, filterArgs...)
+	}
+
+	// Add ordering
+	baseQuery += " ORDER BY sr.student_lastname, sr.student_name"
+
+	// Count query
+	countQuery := strings.Replace(baseQuery,
+		`SELECT 
+            sr.id, sr.student_group, sr.student_name, sr.student_lastname,
+            sr.student_email, sr.final_project_title, sr.final_project_title_en,
+            sr.supervisor_email, sr.reviewer_name, sr.reviewer_email,
+            sr.study_program, sr.department, sr.current_year, sr.program_code,
+            sr.student_number, sr.is_favorite, sr.is_public_defense, 
+            sr.defense_date, sr.defense_location, sr.created_at, sr.updated_at,
+            CASE 
+                WHEN d.id IS NOT NULL AND d.document_type = 'thesis_source_code' 
+                THEN 1 
+                ELSE 0 
+            END as has_source_code,
+            COALESCE(ptr.status, '') as topic_status, 
+            CASE WHEN ptr.approved_at IS NOT NULL THEN 1 ELSE 0 END as topic_approved,
+            ptr.approved_by, ptr.approved_at,
+            CASE WHEN spr.id IS NOT NULL THEN 1 ELSE 0 END as has_supervisor_report,
+            spr.is_signed as supervisor_report_signed,
+            CASE WHEN rr.id IS NOT NULL THEN 1 ELSE 0 END as has_reviewer_report,
+            rr.is_signed as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            CASE WHEN v.id IS NOT NULL THEN 1 ELSE 0 END as has_video`,
+		"SELECT COUNT(*)", 1)
+	countQuery = strings.Replace(countQuery, " ORDER BY sr.student_lastname, sr.student_name", "", 1)
+
+	var total int
+	err = h.db.Get(&total, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	log.Printf("Found %d students in department %s", total, departmentHead.Department)
+
+	// Add pagination
+	baseQuery += " LIMIT ? OFFSET ?"
+	args = append(args, filters.Limit, (filters.Page-1)*filters.Limit)
+
+	// Execute main query
+	err = h.db.Select(&students, baseQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return students, total, nil
 }
 
 func (h *StudentListHandler) getStudentsForReviewer(reviewerEmail string, filters *database.TemplateFilterParams) ([]database.StudentSummaryView, int, error) {
@@ -274,7 +1232,7 @@ func (h *StudentListHandler) getStudentsForReviewer(reviewerEmail string, filter
         LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
         LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
         LEFT JOIN documents d ON sr.id = d.student_record_id AND d.document_type = 'thesis_source_code'
-        WHERE 1=1`
+        WHERE sr.reviewer_email = ?` // Add this WHERE clause
 
 	args = append(args, reviewerEmail)
 
@@ -535,7 +1493,7 @@ func getTopicStatus(status sql.NullString) string {
 	return ""
 }
 
-// Get available groups for current user
+// Update getAvailableGroups to be department-specific for department heads
 func (h *StudentListHandler) getAvailableGroups(userRole, userEmail string) ([]string, error) {
 	var groups []string
 	var query string
@@ -548,6 +1506,15 @@ func (h *StudentListHandler) getAvailableGroups(userRole, userEmail string) ([]s
 	case auth.RoleReviewer:
 		query = `SELECT DISTINCT student_group FROM student_records WHERE reviewer_email = ? ORDER BY student_group`
 		args = []interface{}{userEmail}
+	case auth.RoleDepartmentHead:
+		// Get department head's department first
+		var department string
+		err := h.db.Get(&department, "SELECT department FROM department_heads WHERE email = ? AND is_active = 1", userEmail)
+		if err != nil {
+			return groups, err
+		}
+		query = `SELECT DISTINCT student_group FROM student_records WHERE department = ? ORDER BY student_group`
+		args = []interface{}{department}
 	default:
 		query = `SELECT DISTINCT student_group FROM student_records ORDER BY student_group`
 		args = []interface{}{}
@@ -557,7 +1524,7 @@ func (h *StudentListHandler) getAvailableGroups(userRole, userEmail string) ([]s
 	return groups, err
 }
 
-// Get available study programs for current user
+// Update getAvailableStudyPrograms to be department-specific for department heads
 func (h *StudentListHandler) getAvailableStudyPrograms(userRole, userEmail string) ([]string, error) {
 	var programs []string
 	var query string
@@ -570,6 +1537,15 @@ func (h *StudentListHandler) getAvailableStudyPrograms(userRole, userEmail strin
 	case auth.RoleReviewer:
 		query = `SELECT DISTINCT study_program FROM student_records WHERE reviewer_email = ? ORDER BY study_program`
 		args = []interface{}{userEmail}
+	case auth.RoleDepartmentHead:
+		// Get department head's department first
+		var department string
+		err := h.db.Get(&department, "SELECT department FROM department_heads WHERE email = ? AND is_active = 1", userEmail)
+		if err != nil {
+			return programs, err
+		}
+		query = `SELECT DISTINCT study_program FROM student_records WHERE department = ? ORDER BY study_program`
+		args = []interface{}{department}
 	default:
 		query = `SELECT DISTINCT study_program FROM student_records ORDER BY study_program`
 		args = []interface{}{}
@@ -579,7 +1555,7 @@ func (h *StudentListHandler) getAvailableStudyPrograms(userRole, userEmail strin
 	return programs, err
 }
 
-// Get available years for current user
+// Update getAvailableYears to be department-specific for department heads
 func (h *StudentListHandler) getAvailableYears(userRole, userEmail string) ([]int, error) {
 	var years []int
 	var query string
@@ -592,6 +1568,15 @@ func (h *StudentListHandler) getAvailableYears(userRole, userEmail string) ([]in
 	case auth.RoleReviewer:
 		query = `SELECT DISTINCT current_year FROM student_records WHERE reviewer_email = ? ORDER BY current_year DESC`
 		args = []interface{}{userEmail}
+	case auth.RoleDepartmentHead:
+		// Get department head's department first
+		var department string
+		err := h.db.Get(&department, "SELECT department FROM department_heads WHERE email = ? AND is_active = 1", userEmail)
+		if err != nil {
+			return years, err
+		}
+		query = `SELECT DISTINCT current_year FROM student_records WHERE department = ? ORDER BY current_year DESC`
+		args = []interface{}{department}
 	default:
 		query = `SELECT DISTINCT current_year FROM student_records ORDER BY current_year DESC`
 		args = []interface{}{}
@@ -624,3 +1609,28 @@ func (h *StudentListHandler) getFilterOptions(userRole, userEmail string) (*data
 		Years:         years,
 	}, nil
 }
+
+//=====================================
+// REVIEWER HANDLER FOR STUDENT LIST
+// ==================================
+
+func (h *StudentListHandler) ReviewerStudentsList(w http.ResponseWriter, r *http.Request) {
+	// For now, just redirect to login if no token
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// TODO: Implement token validation and create reviewer session
+	// For now, just show an error
+	http.Error(w, "Reviewer access not yet implemented", http.StatusNotImplemented)
+}
+func (h *StudentListHandler) validateReviewerToken(token string) (string, error) {
+	// Implement your token validation logic here
+	// This could be JWT, database lookup, etc.
+	// Return the reviewer email if valid
+	return "", fmt.Errorf("not implemented")
+}
+
+//========================================================

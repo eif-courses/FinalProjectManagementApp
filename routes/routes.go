@@ -52,7 +52,7 @@ func SetupRoutes(db *sqlx.DB,
 	topicHandlers := handlers.NewTopicHandlers(db.DB)
 	supervisorReportHandler := handlers.NewSupervisorReportHandler(db)
 	studentListHandler := handlers.NewStudentListHandler(db)
-
+	//importHandler := handlers.NewImportHandler(db)
 	// Initialize upload handlers
 	uploadHandlers := handlers.NewUploadHandlers(db)
 
@@ -104,6 +104,8 @@ func SetupRoutes(db *sqlx.DB,
 	// Reviewer-specific route with token
 	r.Get("/reviewer/students", studentListHandler.ReviewerStudentsList)
 
+	// REMOVED THE FIRST /admin ROUTE GROUP HERE
+
 	// Protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
@@ -114,77 +116,6 @@ func SetupRoutes(db *sqlx.DB,
 		// TEST FOR GITHUB
 		r.Get("/test-upload", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, "static/upload_test.html")
-		})
-
-		// Add this to your routes setup for testing
-		r.Get("/test-repository", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html")
-			html := `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Repository Test</title>
-    <link rel="stylesheet" href="/assets/css/output.css">
-</head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-4xl mx-auto bg-white rounded-lg p-6">
-        <h1 class="text-2xl font-bold mb-6">Repository System Test</h1>
-        
-        <div class="space-y-4">
-            <h2 class="text-lg font-semibold">Test Repository Viewing:</h2>
-            
-            <div class="space-y-2">
-                <a href="/repository/student/1" target="_blank" 
-                   class="block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                    Test Repository View (Student ID: 1)
-                </a>
-                
-                <a href="/repository/student/2" target="_blank" 
-                   class="block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                    Test Repository View (Student ID: 2)
-                </a>
-                
-                <a href="/api/repository/student/1" target="_blank" 
-                   class="block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                    Test API Response (Student ID: 1)
-                </a>
-            </div>
-            
-            <h2 class="text-lg font-semibold mt-6">Test JavaScript Function:</h2>
-            <button onclick="viewStudentRepository(1)" 
-                    class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
-                Test JavaScript Function
-            </button>
-            
-            <h2 class="text-lg font-semibold mt-6">Current User Info:</h2>
-            <div id="user-info" class="bg-gray-100 p-4 rounded">
-                Loading user info...
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // Test the viewStudentRepository function
-        function viewStudentRepository(studentId) {
-            console.log('Opening repository for student ID:', studentId);
-            window.open('/repository/student/' + studentId, '_blank');
-        }
-        
-        // Fetch current user info
-        fetch('/api/auth/user')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('user-info').innerHTML = 
-                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-            })
-            .catch(error => {
-                document.getElementById('user-info').innerHTML = 
-                    'Error: ' + error.message;
-            });
-    </script>
-</body>
-</html>`
-			w.Write([]byte(html))
 		})
 
 		// Repository viewing routes (only if GitHub is configured)
@@ -432,10 +363,17 @@ func SetupRoutes(db *sqlx.DB,
 			})
 		})
 
-		// Admin routes
+		// Admin routes - MERGED WITH IMPORT/EXPORT FUNCTIONALITY
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(authMiddleware.RequireRole(auth.RoleAdmin))
+			r.Use(authMiddleware.RequireRole(auth.RoleAdmin, auth.RoleDepartmentHead))
 			r.Get("/dashboard", dashboardHandlers.DashboardHandler)
+
+			// Import/Export routes (from the first /admin definition)
+			r.Get("/import/modal", studentListHandler.ImportModalHandler)
+			r.Post("/import/preview", studentListHandler.PreviewHandler)
+			r.Post("/import/process", studentListHandler.ProcessImportHandler)
+			r.Get("/import/sample-excel", studentListHandler.SampleExcelHandler)
+			r.Get("/export/students", studentListHandler.ExportHandler)
 
 			// Admin can access all topic management functions
 			r.Get("/topics", topicHandlers.ShowAllTopics)

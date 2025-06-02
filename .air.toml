@@ -9,7 +9,7 @@ cmd = "go build -o ./tmp/main.exe ."
 delay = 100
 exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules"]
 exclude_file = []
-exclude_regex = ["_test.go"]
+exclude_regex = ["_test.go", "_templ.go"]  # Exclude generated templ files
 exclude_unchanged = false
 follow_symlink = false
 full_bin = ""
@@ -24,21 +24,3 @@ rerun = false
 rerun_delay = 500
 send_interrupt = false
 stop_on_root = false
-
-[color]
-app = ""
-build = "yellow"
-main = "magenta"
-runner = "green"
-watcher = "cyan"
-
-[log]
-main_only = false
-time = false
-
-[misc]
-clean_on_exit = true
-
-[screen]
-clear_on_rebuild = false
-keep_scroll = true

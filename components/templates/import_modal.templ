@@ -1,0 +1,155 @@
+// templates/import_modal.templ
+package templates
+
+import (
+    "FinalProjectManagementApp/auth"
+    "FinalProjectManagementApp/components/button"
+    "FinalProjectManagementApp/components/icon"
+    "FinalProjectManagementApp/database"  // This will be used now
+    "fmt"
+)
+
+templ ImportModal(user *auth.AuthenticatedUser) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onclick="closeImportModal(event)">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="p-6">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold">Importuoti studentus</h2>
+                    <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600">
+                        @icon.X(icon.Props{Size: 20})
+                    </button>
+                </div>
+
+                <!-- Import Options -->
+                <div class="space-y-6">
+                    <!-- File Upload Section -->
+                    <div class="border rounded-lg p-4">
+                        <h3 class="font-medium mb-3">1. Pasirinkite failą</h3>
+                        <form id="import-form" enctype="multipart/form-data">
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                                <input type="file" id="import-file" name="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(this)"/>
+                                <label for="import-file" class="cursor-pointer">
+                                    <div class="flex flex-col items-center">
+                                        @icon.Upload(icon.Props{Size: 32, Class: "text-gray-400 mb-2"})
+                                        <p class="text-sm text-gray-600 mb-1">Spustelėkite arba vilkite failą čia</p>
+                                        <p class="text-xs text-gray-500">Excel (.xlsx, .xls) arba CSV failai</p>
+                                    </div>
+                                </label>
+                            </div>
+                            <div id="file-info" class="mt-3 hidden">
+                                <div class="flex items-center gap-2 text-sm">
+                                    @icon.FileText(icon.Props{Size: 16})
+                                    <span id="file-name"></span>
+                                    <span id="file-size" class="text-gray-500"></span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Import Options -->
+              <div class="border rounded-lg p-4">
+                  <h3 class="font-medium mb-3">2. Importavimo nustatymai</h3>
+                  <div class="space-y-3">
+                      <label class="flex items-center">
+                          <input type="checkbox" id="overwrite-existing" class="mr-2" checked/>
+                          <span class="text-sm">Perrašyti esamus studentus (jei sutampa studentų numeriai)</span>
+                      </label>
+                      <label class="flex items-center">
+                          <input type="checkbox" id="validate-emails" class="mr-2"/>
+                          <span class="text-sm">Tikrinti el. pašto adresų formatą</span>
+                      </label>
+                      <label class="flex items-center">
+                          <input type="checkbox" id="send-notifications" class="mr-2"/>
+                          <span class="text-sm">Siųsti pranešimus naujiems studentams</span>
+                      </label>
+                  </div>
+              </div>
+
+                    <!-- Preview Section (initially hidden) -->
+                    <div id="preview-section" class="border rounded-lg p-4 hidden">
+                        <h3 class="font-medium mb-3">3. Duomenų peržiūra</h3>
+                        <div id="preview-content">
+                            <!-- Preview will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Results Section (initially hidden) -->
+                    <div id="import-results" class="hidden">
+                        <!-- Results will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-between mt-6 pt-4 border-t">
+                    <div class="flex gap-2">
+                        <a href="/admin/import/sample-excel" class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
+                            @icon.Download(icon.Props{Size: 14})
+                            Atsisiųsti pavyzdinį Excel failą
+                        </a>
+                    </div>
+                    <div class="flex gap-2">
+                        @button.Button(button.Props{
+                            Variant: button.VariantOutline,
+                            Attributes: templ.Attributes{"onclick": "closeImportModal()"},
+                        }) {
+                            Atšaukti
+                        }
+                        @button.Button(button.Props{
+                            ID:      "import-button",
+                            Variant: button.VariantDefault,
+                            Attributes: templ.Attributes{
+                                "onclick": "startImport()",
+                                "disabled": "true",
+                            },
+                        }) {
+                            <span id="import-button-text">Importuoti</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+// Fix this - use database.ImportResult instead of handlers.ImportResult
+templ ImportResults(result *database.ImportResult, locale string) {
+    <div class="space-y-4">
+        <h3 class="font-medium text-green-600">Importavimas baigtas!</h3>
+
+        <!-- Summary -->
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-green-50 p-3 rounded text-center">
+                <div class="text-lg font-bold text-green-600">{ fmt.Sprintf("%d", result.SuccessCount) }</div>
+                <div class="text-xs text-green-700">Sėkmingai</div>
+            </div>
+            <div class="bg-red-50 p-3 rounded text-center">
+                <div class="text-lg font-bold text-red-600">{ fmt.Sprintf("%d", result.ErrorCount) }</div>
+                <div class="text-xs text-red-700">Klaidos</div>
+            </div>
+            <div class="bg-yellow-50 p-3 rounded text-center">
+                <div class="text-lg font-bold text-yellow-600">{ fmt.Sprintf("%d", len(result.Duplicates)) }</div>
+                <div class="text-xs text-yellow-700">Dublikatai</div>
+            </div>
+        </div>
+
+        <!-- Error Details -->
+        if len(result.Errors) > 0 {
+            <div>
+                <h4 class="font-medium text-red-600 mb-2">Klaidos:</h4>
+                <div class="max-h-32 overflow-y-auto border rounded p-2 text-sm">
+                    for _, err := range result.Errors {
+                        <div class="py-1 border-b last:border-b-0">
+                            <span class="font-medium">Eilutė { fmt.Sprintf("%d", err.Row) }:</span>
+                            <span class="text-red-600">{ err.Message }</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="text-sm text-gray-600">
+            Duomenys sėkmingai įkelti. Puslapis bus atnaujintas.
+        </div>
+    </div>
+}
