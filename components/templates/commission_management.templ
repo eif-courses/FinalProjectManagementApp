@@ -1,0 +1,499 @@
+package templates
+
+import (
+	"FinalProjectManagementApp/auth"
+	"FinalProjectManagementApp/database"
+	"fmt"
+	"time"
+)
+
+type CommissionManagementData struct {
+	AccessCodes   []database.CommissionMember
+	Departments   []string
+	StudyPrograms []string
+}
+
+templ CommissionManagement(user *auth.AuthenticatedUser, locale string, data CommissionManagementData) {
+	@Layout(user, locale, "Commission Access Management") {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-bold">Commission Access Management</h1>
+
+			<!-- Create New Access Code -->
+			<div class="bg-white rounded-lg shadow p-6">
+				<h2 class="text-lg font-semibold mb-4">Create New Access Code</h2>
+
+				<form hx-post="/admin/commission/create"
+					  hx-target="#access-codes-list"
+					  hx-swap="afterbegin"
+					  class="space-y-4">
+
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium mb-1">Department</label>
+							<select name="department" required class="w-full border rounded-md px-3 py-2">
+								<option value="">Select Department</option>
+								for _, dept := range data.Departments {
+									<option value={ dept }>{ dept }</option>
+								}
+							</select>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium mb-1">Study Program (Optional)</label>
+							<select name="study_program" class="w-full border rounded-md px-3 py-2">
+								<option value="">All Programs</option>
+								for _, program := range data.StudyPrograms {
+									<option value={ program }>{ program }</option>
+								}
+							</select>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium mb-1">Year (Optional)</label>
+							<input type="number" name="year" min="1" max="4"
+								   class="w-full border rounded-md px-3 py-2"
+								   placeholder="e.g., 2024"/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium mb-1">Duration (days)</label>
+							<input type="number" name="duration_days" value="7" min="1" max="365"
+								   required class="w-full border rounded-md px-3 py-2"/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium mb-1">Max Access Count</label>
+							<input type="number" name="max_access" value="0" min="0"
+								   class="w-full border rounded-md px-3 py-2"
+								   placeholder="0 for unlimited"/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium mb-1">Access Level</label>
+							<select name="access_level" class="w-full border rounded-md px-3 py-2">
+								<option value="view_only">View Only</option>
+								<option value="evaluate">Evaluate</option>
+								<option value="full">Full Access</option>
+							</select>
+						</div>
+					</div>
+
+					<div>
+						<label class="block text-sm font-medium mb-1">Description (Optional)</label>
+						<textarea name="description" rows="2"
+								  class="w-full border rounded-md px-3 py-2"
+								  placeholder="e.g., Defense commission for Spring 2024"></textarea>
+					</div>
+
+					<div>
+						<label class="block text-sm font-medium mb-1">Allowed Student Groups (Optional)</label>
+						<input type="text" name="allowed_groups"
+							   class="w-full border rounded-md px-3 py-2"
+							   placeholder="e.g., PI22A,PI22B (comma-separated)"/>
+					</div>
+
+					<button type="submit"
+							class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+						Generate Access Code
+					</button>
+				</form>
+			</div>
+
+			<!-- Active Access Codes -->
+			<div class="bg-white rounded-lg shadow p-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-lg font-semibold">Active Access Codes</h2>
+					<button hx-get="/admin/commission/list"
+							hx-target="#access-codes-list"
+							class="text-blue-600 hover:text-blue-800">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+								  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+						</svg>
+					</button>
+				</div>
+
+				<div class="overflow-x-auto">
+					<table class="min-w-full divide-y divide-gray-200">
+						<thead>
+							<tr>
+								<th class="px-4 py-2 text-left text-sm font-medium text-gray-500">Department</th>
+								<th class="px-4 py-2 text-left text-sm font-medium text-gray-500">Access Code</th>
+								<th class="px-4 py-2 text-left text-sm font-medium text-gray-500">Expires</th>
+								<th class="px-4 py-2 text-left text-sm font-medium text-gray-500">Usage</th>
+								<th class="px-4 py-2 text-left text-sm font-medium text-gray-500">Actions</th>
+							</tr>
+						</thead>
+						<tbody id="access-codes-list" class="divide-y divide-gray-200">
+							for _, code := range data.AccessCodes {
+								@AccessCodeRow(&code, locale)
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				// Handle copy access code buttons
+				document.addEventListener('click', function(e) {
+					if (e.target.closest('.copy-access-code')) {
+						const button = e.target.closest('.copy-access-code');
+						const code = button.getAttribute('data-code');
+						const url = window.location.origin + '/commission/' + code;
+
+						navigator.clipboard.writeText(url).then(function() {
+							// Show temporary success message
+							const originalHTML = button.innerHTML;
+							button.innerHTML = '<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+
+							setTimeout(function() {
+								button.innerHTML = originalHTML;
+							}, 2000);
+						}).catch(function(err) {
+							alert('Failed to copy URL to clipboard');
+						});
+					}
+				});
+			});
+		</script>
+	}
+}
+
+templ AccessCodeRow(member *database.CommissionMember, locale string) {
+	<tr>
+		<td class="px-4 py-3 text-sm">
+			{ member.Department }
+			if member.StudyProgram.Valid && member.StudyProgram.String != "" {
+				<div class="text-xs text-gray-500">{ member.StudyProgram.String }</div>
+			}
+		</td>
+		<td class="px-4 py-3">
+			<div class="flex items-center space-x-2">
+				<code class="text-sm bg-gray-100 px-2 py-1 rounded" id={ fmt.Sprintf("code-%s", member.AccessCode) }>{ member.AccessCode }</code>
+				<button data-code={ member.AccessCode }
+						class="copy-access-code text-gray-500 hover:text-gray-700">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+							  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+					</svg>
+				</button>
+			</div>
+			<div class="text-xs text-gray-500 mt-1">
+				URL: { fmt.Sprintf("%s/commission/%s", "http://localhost:8080", member.AccessCode) }
+			</div>
+		</td>
+		<td class="px-4 py-3 text-sm">
+			{ time.Unix(member.ExpiresAt, 0).Format("2006-01-02 15:04") }
+			if time.Now().Unix() > member.ExpiresAt {
+				<span class="ml-2 text-xs text-red-600">Expired</span>
+			}
+		</td>
+		<td class="px-4 py-3 text-sm">
+			{ fmt.Sprintf("%d", member.AccessCount) }
+			if member.MaxAccess > 0 {
+				/ { fmt.Sprintf("%d", member.MaxAccess) }
+			}
+		</td>
+		<td class="px-4 py-3">
+			<button hx-delete={ fmt.Sprintf("/admin/commission/%s", member.AccessCode) }
+					hx-confirm="Are you sure you want to deactivate this access code?"
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+					class="text-red-600 hover:text-red-800 text-sm">
+				Deactivate
+			</button>
+		</td>
+	</tr>
+}
+templ CommissionAccessError(message string) {
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<title>Access Error</title>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<link rel="stylesheet" href="/assets/css/output.css"/>
+	</head>
+	<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+		<div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
+			<div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+				<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+						  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+				</svg>
+			</div>
+			<h1 class="text-xl font-semibold text-gray-900 mb-2">Access Error</h1>
+			<p class="text-gray-600 mb-6">{ message }</p>
+			<div class="text-sm text-gray-500">
+				<p>If you believe this is an error, please contact your system administrator.</p>
+			</div>
+		</div>
+	</body>
+	</html>
+}
+
+templ CommissionPortal(member *database.CommissionMember, students []database.StudentRecord, locale string) {
+	<!DOCTYPE html>
+	<html lang={ locale }>
+	<head>
+		<title>Commission Portal</title>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<link rel="stylesheet" href="/assets/css/output.css"/>
+		<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+	</head>
+	<body class="bg-gray-50">
+		<div class="min-h-screen">
+			<!-- Header -->
+			<header class="bg-white shadow">
+				<div class="max-w-7xl mx-auto px-4 py-6">
+					<h1 class="text-2xl font-bold text-gray-900">Commission Portal</h1>
+					<p class="text-sm text-gray-600 mt-1">
+						Department: { member.Department }
+						if member.StudyProgram.Valid {
+							• Program: { member.StudyProgram.String }
+						}
+					</p>
+				</div>
+			</header>
+
+			<!-- Main Content -->
+			<main class="max-w-7xl mx-auto px-4 py-8">
+				<div class="bg-white rounded-lg shadow">
+					<div class="px-6 py-4 border-b">
+						<h2 class="text-lg font-semibold">Student List</h2>
+						<p class="text-sm text-gray-600">
+							Total students: { len(students) }
+						</p>
+					</div>
+
+					<div class="overflow-x-auto">
+						<table class="min-w-full divide-y divide-gray-200">
+							<thead class="bg-gray-50">
+								<tr>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Title</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supervisor</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Group</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+								</tr>
+							</thead>
+							<tbody class="bg-white divide-y divide-gray-200">
+								for _, student := range students {
+									<tr class="hover:bg-gray-50">
+										<td class="px-6 py-4 whitespace-nowrap">
+											<div>
+												<div class="text-sm font-medium text-gray-900">
+													{ student.StudentName } { student.StudentLastname }
+												</div>
+												<div class="text-sm text-gray-500">
+													{ student.StudentEmail }
+												</div>
+											</div>
+										</td>
+										<td class="px-6 py-4">
+											<div class="text-sm text-gray-900">
+												if locale == "en" && student.FinalProjectTitleEn != "" {
+													{ student.FinalProjectTitleEn }
+												} else {
+													{ student.FinalProjectTitle }
+												}
+											</div>
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+											{ student.SupervisorEmail }
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+											{ student.StudentGroup }
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-sm">
+											<a href={ templ.SafeURL(fmt.Sprintf("/commission/%s/student/%d", member.AccessCode, student.ID)) }
+											   class="text-blue-600 hover:text-blue-800">
+												View Details
+											</a>
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</main>
+		</div>
+
+		<script>
+				function copyToClipboard(text) {
+            		navigator.clipboard.writeText(window.location.origin + '/commission/' + text);
+            		alert('Access URL copied to clipboard!');
+            	}
+
+            	// Add event listener for copy buttons
+            	document.addEventListener('click', function(e) {
+            		if (e.target.closest('.copy-btn')) {
+            			const btn = e.target.closest('.copy-btn');
+            			const code = btn.getAttribute('data-access-code');
+            			copyToClipboard(code);
+            		}
+            	});
+		</script>
+	</body>
+	</html>
+}
+
+templ CommissionStudentView(member *database.CommissionMember, student *database.StudentRecord, data *database.StudentDashboardData, locale string, accessCode string) {
+	<!DOCTYPE html>
+	<html lang={ locale }>
+	<head>
+		<title>Student Details - Commission Portal</title>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<link rel="stylesheet" href="/assets/css/output.css"/>
+	</head>
+	<body class="bg-gray-50">
+		<div class="min-h-screen">
+			<!-- Header with back button -->
+			<header class="bg-white shadow">
+				<div class="max-w-7xl mx-auto px-4 py-6">
+					<div class="flex items-center justify-between">
+						<div>
+							<a href={ templ.SafeURL(fmt.Sprintf("/commission/%s", accessCode)) }
+							   class="text-blue-600 hover:text-blue-800 flex items-center mb-2">
+								← Back to List
+							</a>
+							<h1 class="text-2xl font-bold text-gray-900">
+								{ student.StudentName } { student.StudentLastname }
+							</h1>
+						</div>
+					</div>
+				</div>
+			</header>
+
+			<!-- Student Details -->
+			<main class="max-w-7xl mx-auto px-4 py-8 space-y-6">
+				<!-- Basic Information -->
+				<div class="bg-white rounded-lg shadow p-6">
+					<h2 class="text-lg font-semibold mb-4">Student Information</h2>
+					<dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<dt class="text-sm font-medium text-gray-500">Student Number</dt>
+							<dd class="mt-1 text-sm text-gray-900">{ student.StudentNumber }</dd>
+						</div>
+						<div>
+							<dt class="text-sm font-medium text-gray-500">Email</dt>
+							<dd class="mt-1 text-sm text-gray-900">{ student.StudentEmail }</dd>
+						</div>
+						<div>
+							<dt class="text-sm font-medium text-gray-500">Study Program</dt>
+							<dd class="mt-1 text-sm text-gray-900">{ student.StudyProgram }</dd>
+						</div>
+						<div>
+							<dt class="text-sm font-medium text-gray-500">Group</dt>
+							<dd class="mt-1 text-sm text-gray-900">{ student.StudentGroup }</dd>
+						</div>
+					</dl>
+				</div>
+
+				<!-- Project Information -->
+				<div class="bg-white rounded-lg shadow p-6">
+					<h2 class="text-lg font-semibold mb-4">Project Details</h2>
+					<div class="space-y-4">
+						<div>
+							<h3 class="text-sm font-medium text-gray-500">Project Title</h3>
+							<p class="mt-1 text-sm text-gray-900">{ student.FinalProjectTitle }</p>
+							if student.FinalProjectTitleEn != "" {
+								<p class="mt-1 text-sm text-gray-600 italic">{ student.FinalProjectTitleEn }</p>
+							}
+						</div>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<h3 class="text-sm font-medium text-gray-500">Supervisor</h3>
+								<p class="mt-1 text-sm text-gray-900">{ student.SupervisorEmail }</p>
+							</div>
+							<div>
+								<h3 class="text-sm font-medium text-gray-500">Reviewer</h3>
+								<p class="mt-1 text-sm text-gray-900">
+									if student.ReviewerEmail != "" {
+										{ student.ReviewerEmail }
+									} else {
+										<span class="text-gray-400">Not assigned</span>
+									}
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Documents Section -->
+				if member.AccessLevel != "view_only" {
+					<div class="bg-white rounded-lg shadow p-6">
+						<h2 class="text-lg font-semibold mb-4">Documents</h2>
+						<div class="space-y-3">
+							if data.HasThesisPDF && data.ThesisDocument != nil {
+								<div class="flex items-center justify-between p-3 border rounded">
+									<div class="flex items-center space-x-3">
+										<svg class="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+											<path d="M4 4v12h12V7.414L12.586 4H4zm14 0v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2h9.172a2 2 0 011.414.586l3.828 3.828A2 2 0 0118 7.828V16z"/>
+										</svg>
+										<div>
+											<p class="text-sm font-medium">Thesis Document</p>
+											<p class="text-xs text-gray-500">PDF Document</p>
+										</div>
+									</div>
+									<a href={ templ.SafeURL(fmt.Sprintf("/api/documents/%d/download", data.ThesisDocument.ID)) }
+									   class="text-blue-600 hover:text-blue-800 text-sm">
+										Download
+									</a>
+								</div>
+							}
+
+							if data.SourceCodeRepository != nil {
+								<div class="flex items-center justify-between p-3 border rounded">
+									<div class="flex items-center space-x-3">
+										<svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z"/>
+										</svg>
+										<div>
+											<p class="text-sm font-medium">Source Code</p>
+											<p class="text-xs text-gray-500">Repository Available</p>
+										</div>
+									</div>
+									<span class="text-green-600 text-sm">Available</span>
+								</div>
+							}
+						</div>
+					</div>
+				}
+
+				<!-- Reports Section -->
+				<div class="bg-white rounded-lg shadow p-6">
+					<h2 class="text-lg font-semibold mb-4">Evaluation Reports</h2>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div class="border rounded p-4">
+							<h3 class="font-medium mb-2">Supervisor Report</h3>
+							if data.SupervisorReport != nil {
+								<p class="text-sm text-green-600">Submitted</p>
+								if data.SupervisorReport.Grade != nil {
+									<p class="text-sm text-gray-600">Grade: { fmt.Sprintf("%d", *data.SupervisorReport.Grade) }</p>
+								}
+							} else {
+								<p class="text-sm text-gray-400">Not submitted</p>
+							}
+						</div>
+						<div class="border rounded p-4">
+							<h3 class="font-medium mb-2">Reviewer Report</h3>
+							if data.ReviewerReport != nil {
+								<p class="text-sm text-green-600">Submitted</p>
+								<p class="text-sm text-gray-600">Grade: { fmt.Sprintf("%.1f", data.ReviewerReport.Grade) }</p>
+							} else {
+								<p class="text-sm text-gray-400">Not submitted</p>
+							}
+						</div>
+					</div>
+				</div>
+			</main>
+		</div>
+	</body>
+	</html>
+}

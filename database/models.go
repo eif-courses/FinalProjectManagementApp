@@ -135,110 +135,6 @@ func (dh *DepartmentHead) GetLocalizedDepartment(lang string) string {
 	return dh.Department
 }
 
-// CommissionMember represents a commission member with access token (enhanced)
-type CommissionMember struct {
-	ID                   int       `json:"id" db:"id"`
-	AccessCode           string    `json:"access_code" db:"access_code"`
-	Department           string    `json:"department" db:"department"`
-	StudyProgram         *string   `json:"study_program" db:"study_program"`
-	Year                 *int      `json:"year" db:"year"`
-	Description          string    `json:"description" db:"description"`
-	IsActive             bool      `json:"is_active" db:"is_active"`
-	ExpiresAt            int64     `json:"expires_at" db:"expires_at"`
-	CreatedAt            time.Time `json:"created_at" db:"created_at"`
-	LastAccessedAt       *int64    `json:"last_accessed_at" db:"last_accessed_at"`
-	CreatedBy            string    `json:"created_by" db:"created_by"`
-	AccessCount          int       `json:"access_count" db:"access_count"`
-	MaxAccess            int       `json:"max_access" db:"max_access"`
-	AllowedStudentGroups *string   `json:"allowed_student_groups" db:"allowed_student_groups"`
-	AllowedStudyPrograms *string   `json:"allowed_study_programs" db:"allowed_study_programs"`
-	AccessLevel          string    `json:"access_level" db:"access_level"`
-	CommissionType       string    `json:"commission_type" db:"commission_type"`
-}
-
-// IsExpired checks if the commission access has expired
-func (cm *CommissionMember) IsExpired() bool {
-	return time.Now().Unix() > cm.ExpiresAt
-}
-
-// IsAccessLimitReached checks if access limit has been reached
-func (cm *CommissionMember) IsAccessLimitReached() bool {
-	return cm.MaxAccess > 0 && cm.AccessCount >= cm.MaxAccess
-}
-
-// CanAccess checks if commission member can access the system
-func (cm *CommissionMember) CanAccess() bool {
-	return cm.IsActive && !cm.IsExpired() && !cm.IsAccessLimitReached()
-}
-
-// GetExpiresAtFormatted returns formatted expiration date
-func (cm *CommissionMember) GetExpiresAtFormatted() string {
-	return time.Unix(cm.ExpiresAt, 0).Format("2006-01-02 15:04")
-}
-
-// GetLastAccessedFormatted returns formatted last access date
-func (cm *CommissionMember) GetLastAccessedFormatted() string {
-	if cm.LastAccessedAt == nil {
-		return "Never"
-	}
-	return time.Unix(*cm.LastAccessedAt, 0).Format("2006-01-02 15:04")
-}
-
-// GetAllowedStudentGroupsList returns allowed student groups as slice
-func (cm *CommissionMember) GetAllowedStudentGroupsList() []string {
-	if cm.AllowedStudentGroups == nil {
-		return []string{}
-	}
-	return strings.Split(*cm.AllowedStudentGroups, ",")
-}
-
-// GetAllowedStudyProgramsList returns allowed study programs as slice
-func (cm *CommissionMember) GetAllowedStudyProgramsList() []string {
-	if cm.AllowedStudyPrograms == nil {
-		return []string{}
-	}
-	return strings.Split(*cm.AllowedStudyPrograms, ",")
-}
-
-// CanAccessStudent checks if commission member can access specific student
-func (cm *CommissionMember) CanAccessStudent(studentGroup, studyProgram string) bool {
-	if !cm.CanAccess() {
-		return false
-	}
-
-	// Check allowed groups
-	if cm.AllowedStudentGroups != nil {
-		allowedGroups := cm.GetAllowedStudentGroupsList()
-		groupAllowed := false
-		for _, group := range allowedGroups {
-			if strings.TrimSpace(group) == studentGroup {
-				groupAllowed = true
-				break
-			}
-		}
-		if !groupAllowed {
-			return false
-		}
-	}
-
-	// Check allowed study programs
-	if cm.AllowedStudyPrograms != nil {
-		allowedPrograms := cm.GetAllowedStudyProgramsList()
-		programAllowed := false
-		for _, program := range allowedPrograms {
-			if strings.TrimSpace(program) == studyProgram {
-				programAllowed = true
-				break
-			}
-		}
-		if !programAllowed {
-			return false
-		}
-	}
-
-	return true
-}
-
 // ================================
 // REVIEWER INVITATION MODELS
 // ================================
@@ -3103,4 +2999,26 @@ type ReviewerReportFormData struct {
 	ReviewPros                  string
 	ReviewCons                  string
 	ReviewQuestions             string
+}
+
+// COMMISION
+
+type CommissionMember struct {
+	ID                   int            `db:"id"`
+	AccessCode           string         `db:"access_code"`
+	Department           string         `db:"department"`
+	StudyProgram         sql.NullString `db:"study_program"`
+	Year                 sql.NullInt64  `db:"year"`
+	Description          sql.NullString `db:"description"`
+	IsActive             bool           `db:"is_active"`
+	ExpiresAt            int64          `db:"expires_at"`
+	CreatedAt            time.Time      `db:"created_at"`
+	LastAccessedAt       sql.NullInt64  `db:"last_accessed_at"`
+	CreatedBy            string         `db:"created_by"`
+	AccessCount          int            `db:"access_count"`
+	MaxAccess            int            `db:"max_access"`
+	AllowedStudentGroups sql.NullString `db:"allowed_student_groups"`
+	AllowedStudyPrograms sql.NullString `db:"allowed_study_programs"`
+	AccessLevel          string         `db:"access_level"`
+	CommissionType       string         `db:"commission_type"`
 }

@@ -3,6 +3,7 @@ package routes
 
 import (
 	"FinalProjectManagementApp/database"
+	"FinalProjectManagementApp/services"
 	"encoding/json"
 	"fmt"
 	"github.com/jmoiron/sqlx"
@@ -55,6 +56,10 @@ func SetupRoutes(db *sqlx.DB,
 	//importHandler := handlers.NewImportHandler(db)
 	// Initialize upload handlers
 	uploadHandlers := handlers.NewUploadHandlers(db)
+
+	// Initialize handlers
+	commissionService := services.NewCommissionService(db)
+	commissionHandler := handlers.NewCommissionHandler(commissionService, studentListHandler)
 
 	// Get app config for GitHub settings
 	appConfig := database.LoadAppConfig()
@@ -372,9 +377,21 @@ func SetupRoutes(db *sqlx.DB,
 			r.Post("/{id}/save-draft", studentListHandler.ReviewerReportSaveDraftHandler) // Add this
 		})
 
+		// Commission member access routes (no auth required, uses access code)
+		r.Route("/commission/{accessCode}", func(r chi.Router) {
+			r.Get("/", commissionHandler.ShowAccessPage)
+			r.Get("/student/{studentID}", commissionHandler.ViewStudent)
+		})
+
 		// Admin routes - MERGED WITH IMPORT/EXPORT FUNCTIONALITY
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(authMiddleware.RequireRole(auth.RoleAdmin, auth.RoleDepartmentHead))
+
+			r.Get("/commission", commissionHandler.ShowManagementPage)
+			r.Post("/commission/create", commissionHandler.CreateAccess)
+			r.Get("/commission/list", commissionHandler.ListActiveAccess)
+			r.Delete("/commission/{accessCode}", commissionHandler.DeactivateAccess)
+
 			r.Get("/dashboard", dashboardHandlers.DashboardHandler)
 
 			// Import/Export routes (from the first /admin definition)

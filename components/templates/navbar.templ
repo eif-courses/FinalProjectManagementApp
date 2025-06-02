@@ -113,9 +113,11 @@ templ RoleBasedNavigation(user *auth.AuthenticatedUser) {
             @NavLink("/admin", "shield-check", "Administravimas", getCurrentPath() == "/admin")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
             @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
+            @NavLink("/admin/commission", "key", "Komisijos", getCurrentPath() == "/admin/commission")
         } else if user.Role == "department_head" {
             @NavLink("/department", "building", "Katedra", getCurrentPath() == "/department")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
+            @NavLink("/admin/commission", "key", "Komisijos", getCurrentPath() == "/admin/commission")
         } else if user.Role == "supervisor" {
             @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
@@ -346,9 +348,11 @@ templ MobileRoleBasedNav(user *auth.AuthenticatedUser) {
         @MobileNavLink("/admin", "shield-check", "Administravimas")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
         @MobileNavLink("/manage", "users", "Vadovavimas")
+        @MobileNavLink("/admin/commission", "key", "Komisijos")
     } else if user.Role == "department_head" {
         @MobileNavLink("/department", "building", "Katedra")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
+        @MobileNavLink("/admin/commission", "key", "Komisijos")
     } else if user.Role == "supervisor" {
         @MobileNavLink("/manage", "users", "Vadovavimas")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
@@ -439,6 +443,8 @@ func renderNavIcon(iconName string, isActive bool) templ.Component {
         return icon.Users(icon.Props{Size: size, Class: class})
     case "graduation-cap":
         return icon.GraduationCap(icon.Props{Size: size, Class: class})
+    case "key":
+        return icon.Key(icon.Props{Size: size, Class: class})
     default:
         return icon.Circle(icon.Props{Size: size, Class: class})
     }
@@ -469,6 +475,8 @@ func renderMobileIcon(iconName string) templ.Component {
         return icon.Users(icon.Props{Size: 18})
     case "graduation-cap":
         return icon.GraduationCap(icon.Props{Size: 18})
+    case "key":
+        return icon.Key(icon.Props{Size: 18})
     default:
         return icon.Circle(icon.Props{Size: 18})
     }
