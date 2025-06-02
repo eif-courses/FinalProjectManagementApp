@@ -1,0 +1,895 @@
+package templates
+
+import (
+	"FinalProjectManagementApp/components/button"
+	"FinalProjectManagementApp/components/modal"
+	"FinalProjectManagementApp/components/textarea"
+	"FinalProjectManagementApp/components/input"
+	"FinalProjectManagementApp/components/form"
+	"FinalProjectManagementApp/components/icon"
+	"FinalProjectManagementApp/database"
+	"fmt"
+)
+
+templ CompactReviewerForm(props database.ReviewerReportFormProps, formData *database.ReviewerReportFormData) {
+	@modal.Modal(modal.Props{ID: "reviewer-modal", Class: "w-[95vw] max-w-4xl mx-auto my-2"}) {
+		@modal.Header() {
+			<div class="relative px-6 py-2 border-b">
+				<button onclick="closeReviewerModal()" class="absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">
+					×
+				</button>
+				<div class="text-center pr-8">
+					<h2 class="text-lg font-bold text-gray-900 dark:text-white">
+						if props.FormVariant == "en" {
+							if props.IsReadOnly {
+								THESIS REVIEW (VIEW ONLY)
+							} else {
+								THESIS REVIEW
+							}
+						} else {
+							if props.IsReadOnly {
+								BAIGIAMOJO DARBO RECENZIJA (PERŽIŪRA)
+							} else {
+								BAIGIAMOJO DARBO RECENZIJA
+							}
+						}
+					</h2>
+				</div>
+			</div>
+		}
+		@modal.Body() {
+			<div class="px-6 py-3" style="max-height: calc(90vh - 120px); overflow-y: auto;">
+				<!-- Auto-save indicator -->
+				if !props.IsReadOnly {
+					<div class="flex items-center justify-between mb-3">
+						<div id="auto-save-status" class="text-sm text-gray-500 flex items-center gap-2">
+							<span id="save-icon" class="hidden">
+								@icon.Save(icon.Props{Size: 14})
+							</span>
+							<span id="save-text">
+								if props.FormVariant == "en" {
+									Auto-save enabled
+								} else {
+									Automatinis išsaugojimas įjungtas
+								}
+							</span>
+						</div>
+						<div class="text-xs text-gray-400">
+							<span id="last-saved"></span>
+						</div>
+					</div>
+				}
+
+				<form
+					id="compact-reviewer-form"
+					if !props.IsReadOnly {
+						hx-post={ fmt.Sprintf("/reviewer-report/%d/submit", props.StudentRecord.ID) }
+						hx-target="#reviewer-modal"
+						hx-swap="outerHTML"
+					}
+					class="space-y-4"
+					data-student-id={ fmt.Sprintf("%d", props.StudentRecord.ID) }
+				>
+					<!-- Add hidden field to track if this is a draft -->
+					<input type="hidden" name="is_draft" id="is_draft" value="false"/>
+
+					<!-- Rest of your existing form content... -->
+					<!-- Compact Header Info -->
+					<div class="bg-gray-50 dark:bg-gray-800 rounded p-3 space-y-2 text-sm">
+						<div>
+							<span class="font-medium">
+								if props.FormVariant == "en" {
+									Title:
+								} else {
+									Tema:
+								}
+							</span>
+							<span class="ml-2">{ props.StudentRecord.GetLocalizedTitle(props.FormVariant) }</span>
+						</div>
+						<div>
+							<span class="font-medium">
+								if props.FormVariant == "en" {
+									Author:
+								} else {
+									Autorius:
+								}
+							</span>
+							<span class="ml-2">{ props.StudentRecord.GetFullName() }</span>
+						</div>
+					</div>
+
+					<!-- Reviewer Info using Form components -->
+					@form.Item() {
+						@form.Label(form.LabelProps{
+							For: "reviewer_personal_details",
+						}) {
+							if props.FormVariant == "en" {
+								Reviewer Details
+							} else {
+								Recenzento duomenys
+							}
+							if !props.IsReadOnly {
+								<span class="text-red-500 ml-1">*</span>
+							}
+						}
+						@textarea.Textarea(textarea.Props{
+							ID:          "reviewer_personal_details",
+							Name:        "reviewer_personal_details",
+							Value:       formData.ReviewerPersonalDetails,
+							Required:    !props.IsReadOnly,
+							Class:       "text-sm w-full auto-save-field",
+							Rows:        2,
+							Placeholder: getReviewerPlaceholder(props.FormVariant),
+							Disabled:    props.IsReadOnly,
+						})
+						@form.Description() {
+							if props.FormVariant == "en" {
+								Include name, workplace, position, and academic titles
+							} else {
+								Įtraukite vardą, darbovietę, pareigas ir akademinius titulus
+							}
+						}
+					}
+
+					<!-- Review Sections -->
+					<div class="space-y-3">
+						<!-- Section 1-3 -->
+						<div class="border rounded-lg p-3 space-y-3">
+							<!-- Goals -->
+							@form.Item() {
+								@form.Label(form.LabelProps{
+									For:   "review_goals",
+									Class: "flex items-center gap-1",
+								}) {
+									<span class="text-blue-600">1.</span>
+									if props.FormVariant == "en" {
+										Goals & Tasks
+									} else {
+										Tikslai ir uždaviniai
+									}
+									if !props.IsReadOnly {
+										<span class="text-red-500">*</span>
+									}
+								}
+								@textarea.Textarea(textarea.Props{
+									ID:          "review_goals",
+									Name:        "review_goals",
+									Value:       formData.ReviewGoals,
+									Required:    !props.IsReadOnly,
+									Class:       "text-sm w-full auto-save-field",
+									Rows:        3,
+									Placeholder: getGoalsPlaceholder(props.FormVariant),
+									Disabled:    props.IsReadOnly,
+								})
+							}
+
+							<!-- Theory -->
+							@form.Item() {
+								@form.Label(form.LabelProps{
+									For:   "review_theory",
+									Class: "flex items-center gap-1",
+								}) {
+									<span class="text-blue-600">2.</span>
+									if props.FormVariant == "en" {
+										Theory
+									} else {
+										Teorija
+									}
+									if !props.IsReadOnly {
+										<span class="text-red-500">*</span>
+									}
+								}
+								@textarea.Textarea(textarea.Props{
+									ID:          "review_theory",
+									Name:        "review_theory",
+									Value:       formData.ReviewTheory,
+									Required:    !props.IsReadOnly,
+									Class:       "text-sm w-full auto-save-field",
+									Rows:        3,
+									Placeholder: getTheoryPlaceholder(props.FormVariant),
+									Disabled:    props.IsReadOnly,
+								})
+							}
+
+							<!-- Practice -->
+							@form.Item() {
+								@form.Label(form.LabelProps{
+									For:   "review_practical",
+									Class: "flex items-center gap-1",
+								}) {
+									<span class="text-blue-600">3.</span>
+									if props.FormVariant == "en" {
+										Practice
+									} else {
+										Praktika
+									}
+									if !props.IsReadOnly {
+										<span class="text-red-500">*</span>
+									}
+								}
+								@textarea.Textarea(textarea.Props{
+									ID:          "review_practical",
+									Name:        "review_practical",
+									Value:       formData.ReviewPractical,
+									Required:    !props.IsReadOnly,
+									Class:       "text-sm w-full auto-save-field",
+									Rows:        3,
+									Placeholder: getPracticalPlaceholder(props.FormVariant),
+									Disabled:    props.IsReadOnly,
+								})
+							}
+						</div>
+
+						<!-- Continue with other sections, adding auto-save-field class to all inputs... -->
+						<!-- Section 4-6 -->
+						<div class="border rounded-lg p-3 space-y-3">
+							<!-- Connection -->
+							@form.Item() {
+								@form.Label(form.LabelProps{
+									For:   "review_theory_practical_link",
+									Class: "flex items-center gap-1",
+								}) {
+									<span class="text-blue-600">4.</span>
+									if props.FormVariant == "en" {
+										Theory-Practice Link
+									} else {
+										Teorijos-praktikos ryšys
+									}
+									if !props.IsReadOnly {
+										<span class="text-red-500">*</span>
+									}
+								}
+								@textarea.Textarea(textarea.Props{
+									ID:          "review_theory_practical_link",
+									Name:        "review_theory_practical_link",
+									Value:       formData.ReviewTheoryPracticalLink,
+									Required:    !props.IsReadOnly,
+									Class:       "text-sm w-full auto-save-field",
+									Rows:        2,
+									Placeholder: getTheoryPracticalLinkPlaceholder(props.FormVariant),
+									Disabled:    props.IsReadOnly,
+								})
+							}
+
+							<!-- Results -->
+							@form.Item() {
+								@form.Label(form.LabelProps{
+									For:   "review_results",
+									Class: "flex items-center gap-1",
+								}) {
+									<span class="text-blue-600">5.</span>
+									if props.FormVariant == "en" {
+										Results
+									} else {
+										Rezultatai
+									}
+									if !props.IsReadOnly {
+										<span class="text-red-500">*</span>
+									}
+								}
+								@textarea.Textarea(textarea.Props{
+									ID:          "review_results",
+									Name:        "review_results",
+									Value:       formData.ReviewResults,
+									Required:    !props.IsReadOnly,
+									Class:       "text-sm w-full auto-save-field",
+									Rows:        3,
+									Placeholder: getResultsPlaceholder(props.FormVariant),
+									Disabled:    props.IsReadOnly,
+								})
+							}
+
+							<!-- Significance -->
+							@form.Item() {
+								@form.Label(form.LabelProps{
+									For:   "review_practical_significance",
+									Class: "flex items-center gap-1",
+								}) {
+									<span class="text-gray-400">6.</span>
+									if props.FormVariant == "en" {
+										Significance
+									} else {
+										Reikšmė
+									}
+									<span class="text-xs text-gray-500 ml-1">(optional)</span>
+								}
+								@textarea.Textarea(textarea.Props{
+									ID:          "review_practical_significance",
+									Name:        "review_practical_significance",
+									Value:       formData.ReviewPracticalSignificance,
+									Class:       "text-sm w-full auto-save-field",
+									Rows:        2,
+									Placeholder: getPracticalSignificancePlaceholder(props.FormVariant),
+									Disabled:    props.IsReadOnly,
+								})
+							}
+						</div>
+
+						<!-- Evaluation section -->
+						<div class="border rounded-lg p-3">
+							<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+								<!-- Language -->
+								@form.Item() {
+									@form.Label(form.LabelProps{
+										For: "review_language",
+									}) {
+										if props.FormVariant == "en" {
+											Language
+										} else {
+											Kalba
+										}
+										if !props.IsReadOnly {
+											<span class="text-red-500">*</span>
+										}
+									}
+									@textarea.Textarea(textarea.Props{
+										ID:          "review_language",
+										Name:        "review_language",
+										Value:       formData.ReviewLanguage,
+										Required:    !props.IsReadOnly,
+										Class:       "text-sm w-full auto-save-field",
+										Rows:        2,
+										Placeholder: getLanguagePlaceholder(props.FormVariant),
+										Disabled:    props.IsReadOnly,
+									})
+								}
+
+								<!-- Pros -->
+								@form.Item() {
+									@form.Label(form.LabelProps{
+										For: "review_pros",
+									}) {
+										if props.FormVariant == "en" {
+											Pros
+										} else {
+											Privalumai
+										}
+										if !props.IsReadOnly {
+											<span class="text-red-500">*</span>
+										}
+									}
+									@textarea.Textarea(textarea.Props{
+										ID:          "review_pros",
+										Name:        "review_pros",
+										Value:       formData.ReviewPros,
+										Required:    !props.IsReadOnly,
+										Class:       "text-sm w-full auto-save-field",
+										Rows:        2,
+										Placeholder: getProsPlaceholder(props.FormVariant),
+										Disabled:    props.IsReadOnly,
+									})
+								}
+
+								<!-- Cons -->
+								@form.Item() {
+									@form.Label(form.LabelProps{
+										For: "review_cons",
+									}) {
+										if props.FormVariant == "en" {
+											Cons
+										} else {
+											Trūkumai
+										}
+										if !props.IsReadOnly {
+											<span class="text-red-500">*</span>
+										}
+									}
+									@textarea.Textarea(textarea.Props{
+										ID:          "review_cons",
+										Name:        "review_cons",
+										Value:       formData.ReviewCons,
+										Required:    !props.IsReadOnly,
+										Class:       "text-sm w-full auto-save-field",
+										Rows:        2,
+										Placeholder: getConsPlaceholder(props.FormVariant),
+										Disabled:    props.IsReadOnly,
+									})
+								}
+							</div>
+
+							<!-- Questions -->
+							@form.Item(form.ItemProps{Class: "mt-3"}) {
+								@form.Label(form.LabelProps{
+									For: "review_questions",
+								}) {
+									if props.FormVariant == "en" {
+										Questions
+									} else {
+										Klausimai
+									}
+									if !props.IsReadOnly {
+										<span class="text-red-500">*</span>
+									}
+								}
+								@textarea.Textarea(textarea.Props{
+									ID:          "review_questions",
+									Name:        "review_questions",
+									Value:       formData.ReviewQuestions,
+									Required:    !props.IsReadOnly,
+									Class:       "text-sm w-full auto-save-field",
+									Rows:        3,
+									Placeholder: getQuestionsPlaceholder(props.FormVariant),
+									Disabled:    props.IsReadOnly,
+								})
+							}
+
+							<!-- Grade -->
+							@form.Item(form.ItemProps{Class: "mt-3 pt-3 border-t"}) {
+								<div class="flex items-center justify-between">
+									@form.Label(form.LabelProps{
+										For: "grade",
+									}) {
+										if props.FormVariant == "en" {
+											Grade
+										} else {
+											Įvertinimas
+										}
+										if !props.IsReadOnly {
+											<span class="text-red-500">*</span>
+										}
+									}
+									<div class="flex items-center gap-2">
+										@input.Input(input.Props{
+											ID:          "grade",
+											Type:        input.TypeNumber,
+											Name:        "grade",
+											Value:       fmt.Sprintf("%.1f", formData.Grade),
+											Required:    !props.IsReadOnly,
+											Class:       "w-20 text-center auto-save-field",
+											Disabled:    props.IsReadOnly,
+											Attributes: templ.Attributes{
+												"min":  "1",
+												"max":  "10",
+												"step": "0.5",
+											},
+										})
+										<span class="text-sm text-gray-600">/10</span>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+				</form>
+				<div id="modal-result" class="mt-3"></div>
+			</div>
+		}
+		@modal.Footer() {
+			<div class="border-t pt-2 px-6 pb-2">
+				<div class="flex flex-wrap justify-end gap-2">
+					@modal.Close(modal.CloseProps{ModalID: "reviewer-modal"}) {
+						@button.Button(button.Props{
+							Variant: button.VariantGhost,
+							Class:   "h-9 px-4 text-sm",
+						}) {
+							if props.FormVariant == "en" {
+								Close
+							} else {
+								Uždaryti
+							}
+						}
+					}
+					if !props.IsReadOnly {
+						<!-- Save as Draft button -->
+						@button.Button(button.Props{
+							Variant: button.VariantOutline,
+							Class:   "h-9 px-4 text-sm",
+							Attributes: templ.Attributes{
+								"onclick": "saveDraft()",
+							},
+						}) {
+							@icon.Save(icon.Props{Size: 14})
+							<span class="ml-1">
+								if props.FormVariant == "en" {
+									Save Draft
+								} else {
+									Išsaugoti juodraštį
+								}
+							</span>
+						}
+						<!-- Submit button -->
+						@button.Button(button.Props{
+							Type:    button.TypeSubmit,
+							Variant: button.VariantSecondary,
+							Class:   "h-9 px-4 text-sm",
+							Attributes: templ.Attributes{
+								"form":    "compact-reviewer-form",
+								"onclick": "return validateAndSubmit()",
+							},
+						}) {
+							if props.FormVariant == "en" {
+								💾 Submit & Sign
+							} else {
+								💾 Pateikti ir pasirašyti
+							}
+						}
+					}
+				</div>
+			</div>
+		}
+	}
+	@ReviewerModalScripts()
+}
+
+templ ReviewerModalScripts() {
+	<script>
+		// Auto-save functionality
+		let autoSaveTimer;
+		let hasUnsavedChanges = false;
+		const AUTOSAVE_DELAY = 3000; // 3 seconds
+
+		// Modal opening logic
+		(function() {
+			requestAnimationFrame(function() {
+				requestAnimationFrame(function() {
+					const modal = document.getElementById('reviewer-modal');
+					if (modal) {
+						if (window.modalState && window.modalState.openModalId) {
+							const existingModal = document.getElementById(window.modalState.openModalId);
+							if (existingModal && existingModal !== modal) {
+								existingModal.style.display = 'none';
+								existingModal.classList.add('opacity-0');
+							}
+						}
+
+						if (!window.modalState) {
+							window.modalState = { openModalId: null };
+						}
+
+						window.modalState.openModalId = 'reviewer-modal';
+						document.body.style.overflow = 'hidden';
+						modal.style.display = 'flex';
+						modal.offsetHeight;
+						modal.classList.remove('opacity-0', 'hidden');
+						modal.classList.add('opacity-100');
+
+						const content = modal.querySelector('[data-modal-content]');
+						if (content) {
+							content.classList.remove('scale-95', 'opacity-0');
+							content.classList.add('scale-100', 'opacity-100');
+						}
+
+						// Initialize auto-save listeners
+						initializeAutoSave();
+					}
+				});
+			});
+		})();
+
+		function initializeAutoSave() {
+			const form = document.getElementById('compact-reviewer-form');
+			if (!form || form.querySelector('[disabled]')) return; // Don't auto-save in read-only mode
+
+			// Add listeners to all input fields
+			const fields = form.querySelectorAll('.auto-save-field');
+			fields.forEach(field => {
+				field.addEventListener('input', handleFieldChange);
+				field.addEventListener('change', handleFieldChange);
+			});
+		}
+
+		function handleFieldChange() {
+			hasUnsavedChanges = true;
+			clearTimeout(autoSaveTimer);
+
+			// Update status to show saving will occur
+			updateSaveStatus('pending');
+
+			// Set timer for auto-save
+			autoSaveTimer = setTimeout(() => {
+				autoSave();
+			}, AUTOSAVE_DELAY);
+		}
+
+		function updateSaveStatus(status) {
+			const saveIcon = document.getElementById('save-icon');
+			const saveText = document.getElementById('save-text');
+			const lastSaved = document.getElementById('last-saved');
+
+			switch(status) {
+				case 'pending':
+					saveIcon?.classList.remove('hidden');
+					saveText.textContent = 'Changes detected...';
+					saveText.classList.add('text-yellow-600');
+					break;
+				case 'saving':
+					saveIcon?.classList.remove('hidden');
+					saveText.textContent = 'Saving...';
+					saveText.classList.add('text-blue-600');
+					saveText.classList.remove('text-yellow-600', 'text-green-600');
+					break;
+				case 'saved':
+					saveIcon?.classList.remove('hidden');
+					saveText.textContent = 'All changes saved';
+					saveText.classList.remove('text-blue-600', 'text-yellow-600');
+					saveText.classList.add('text-green-600');
+					const now = new Date();
+					lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;
+					hasUnsavedChanges = false;
+					break;
+				case 'error':
+					saveIcon?.classList.add('hidden');
+					saveText.textContent = 'Error saving';
+					saveText.classList.add('text-red-600');
+					break;
+			}
+		}
+
+		function autoSave() {
+			const form = document.getElementById('compact-reviewer-form');
+			const studentId = form.dataset.studentId;
+
+			// Set draft flag
+			document.getElementById('is_draft').value = 'true';
+
+			updateSaveStatus('saving');
+
+			// Gather form data
+			const formData = new FormData(form);
+
+			// Send via HTMX
+			htmx.ajax('POST', `/reviewer-report/${studentId}/save-draft`, {
+				values: Object.fromEntries(formData),
+				target: '#modal-result',
+				swap: 'innerHTML'
+			}).then(() => {
+				updateSaveStatus('saved');
+			}).catch(() => {
+				updateSaveStatus('error');
+			});
+		}
+
+		function saveDraft() {
+			const form = document.getElementById('compact-reviewer-form');
+			const studentId = form.dataset.studentId;
+
+			// Set draft flag
+			document.getElementById('is_draft').value = 'true';
+
+			// Gather form data
+			const formData = new FormData(form);
+
+			// Show saving indicator
+			updateSaveStatus('saving');
+
+			// Send via HTMX
+			htmx.ajax('POST', `/reviewer-report/${studentId}/save-draft`, {
+				values: Object.fromEntries(formData),
+				target: '#modal-result',
+				swap: 'innerHTML'
+			}).then(() => {
+				updateSaveStatus('saved');
+				setTimeout(() => {
+					showSuccessMessage('Draft saved successfully!');
+				}, 500);
+			});
+		}
+
+		function validateAndSubmit() {
+			// Set draft flag to false for final submission
+			document.getElementById('is_draft').value = 'false';
+
+			// Validate form
+			return validateReviewerForm();
+		}
+
+		function validateReviewerForm() {
+			const form = document.getElementById('compact-reviewer-form');
+			let isValid = true;
+
+			// Clear previous errors
+			document.querySelectorAll('[id$="-error"]').forEach(el => el.classList.add('hidden'));
+
+			const requiredFields = [
+				'reviewer_personal_details',
+				'review_goals',
+				'review_theory',
+				'review_practical',
+				'review_theory_practical_link',
+				'review_results',
+				'review_language',
+				'review_pros',
+				'review_cons',
+				'review_questions'
+			];
+
+			for (const fieldName of requiredFields) {
+				const field = form.querySelector(`[name="${fieldName}"]`);
+				if (!field || !field.value.trim()) {
+					isValid = false;
+					field?.classList.add('border-red-500');
+					if (!field?.closest('.border')?.querySelector('.text-red-500')) {
+						field?.focus();
+						break;
+					}
+				} else {
+					field?.classList.remove('border-red-500');
+				}
+			}
+
+			// Validate grade
+			const gradeField = form.querySelector('[name="grade"]');
+			const grade = parseFloat(gradeField?.value || '0');
+			if (!grade || grade < 1 || grade > 10) {
+				isValid = false;
+				gradeField?.classList.add('border-red-500');
+				document.getElementById('grade-error')?.classList.remove('hidden');
+			} else {
+				gradeField?.classList.remove('border-red-500');
+			}
+
+			return isValid;
+		}
+
+		function showSuccessMessage(message) {
+			const result = document.getElementById('modal-result');
+			result.innerHTML = `
+				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+					<div class="flex items-center">
+						<svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						</svg>
+						<span>${message}</span>
+					</div>
+				</div>
+			`;
+
+			setTimeout(() => {
+				result.innerHTML = '';
+			}, 3000);
+		}
+
+		// Warn before closing if there are unsaved changes
+		window.addEventListener('beforeunload', function (e) {
+			if (hasUnsavedChanges) {
+				e.preventDefault();
+				e.returnValue = '';
+			}
+		});
+
+		// Handle form submission
+		document.addEventListener('htmx:afterRequest', function(evt) {
+			if (evt.detail.successful && (
+				evt.target.closest('#modal-result') ||
+				evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved'
+			)) {
+				hasUnsavedChanges = false; // Clear unsaved changes flag
+
+				const isDraft = document.getElementById('is_draft').value === 'true';
+
+				if (!isDraft) {
+					// Final submission - close modal
+					const modal = document.getElementById('reviewer-modal');
+					if (modal && window.modalState) {
+						setTimeout(() => {
+							window.modalState.openModalId = null;
+							document.body.style.overflow = '';
+							// Refresh the student table if it exists
+							const tableContainer = document.getElementById('student-table-container');
+							if (tableContainer) {
+								htmx.ajax('GET', '/students-list', {
+									target: '#student-table-container',
+									values: htmx.values('#filters-form')
+								});
+							}
+						}, 300);
+					}
+				}
+			}
+		});
+
+		// Handle escape key
+		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'reviewer-modal') {
+				if (hasUnsavedChanges) {
+					if (confirm('You have unsaved changes. Are you sure you want to close?')) {
+						closeReviewerModal();
+					}
+				} else {
+					closeReviewerModal();
+				}
+			}
+		});
+
+		function closeReviewerModal() {
+			if (hasUnsavedChanges) {
+				if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
+					return;
+				}
+			}
+
+			const modal = document.getElementById('reviewer-modal');
+			if (modal) {
+				modal.classList.remove('opacity-100');
+				modal.classList.add('opacity-0');
+				setTimeout(() => {
+					modal.style.display = 'none';
+					document.body.style.overflow = '';
+					if (window.modalState) {
+						window.modalState.openModalId = null;
+					}
+					hasUnsavedChanges = false;
+				}, 300);
+			}
+		}
+	</script>
+}
+
+// Keep all existing helper functions...
+
+// Helper functions remain the same...
+func getReviewerPlaceholder(variant string) string {
+	if variant == "en" {
+		return "Name, workplace, position..."
+	}
+	return "Vardas pavardė, darbovietė, pareigos..."
+}
+
+func getGoalsPlaceholder(variant string) string {
+	if variant == "en" {
+		return "Evaluate how well the thesis goals and tasks are formulated..."
+	}
+	return "Įvertinkite, kaip gerai suformuluoti darbo tikslai ir uždaviniai..."
+}
+
+func getTheoryPlaceholder(variant string) string {
+	if variant == "en" {
+		return "Assess the theoretical foundation and literature review..."
+	}
+	return "Įvertinkite teorinį pagrindą ir literatūros apžvalgą..."
+}
+
+func getPracticalPlaceholder(variant string) string {
+	if variant == "en" {
+		return "Evaluate the research methodology and implementation..."
+	}
+	return "Įvertinkite tyrimo metodiką ir įgyvendinimą..."
+}
+
+func getTheoryPracticalLinkPlaceholder(variant string) string {
+	if variant == "en" {
+		return "How well does the practical part relate to the theory..."
+	}
+	return "Kaip gerai praktinė dalis siejasi su teorija..."
+}
+
+func getResultsPlaceholder(variant string) string {
+	if variant == "en" {
+		return "Evaluate the results and conclusions..."
+	}
+	return "Įvertinkite rezultatus ir išvadas..."
+}
+
+func getPracticalSignificancePlaceholder(variant string) string {
+	if variant == "en" {
+		return "Describe the practical applications and significance..."
+	}
+	return "Aprašykite praktinius pritaikymus ir reikšmę..."
+}
+
+func getLanguagePlaceholder(variant string) string {
+	if variant == "en" {
+		return "Evaluate the language quality and clarity..."
+	}
+	return "Įvertinkite kalbos kokybę ir aiškumą..."
+}
+
+func getProsPlaceholder(variant string) string {
+	if variant == "en" {
+		return "List the main strengths of the thesis..."
+	}
+	return "Išvardinkite pagrindinius darbo privalumus..."
+}
+
+func getConsPlaceholder(variant string) string {
+	if variant == "en" {
+		return "List the main weaknesses or areas for improvement..."
+	}
+	return "Išvardinkite pagrindinius trūkumus ar tobulintinas sritis..."
+}
+
+func getQuestionsPlaceholder(variant string) string {
+	if variant == "en" {
+		return "Questions for the student during defense..."
+	}
+	return "Klausimai studentui gynimo metu..."
+}

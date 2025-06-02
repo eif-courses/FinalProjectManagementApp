@@ -3080,3 +3080,27 @@ type ImportOptions struct {
 	AllowedDepartment string `json:"allowed_department"`
 	UserRole          string `json:"user_role"`
 }
+
+// ReviewerReportFormProps for the template
+type ReviewerReportFormProps struct {
+	StudentRecord *StudentRecord
+	IsReadOnly    bool
+	FormVariant   string // "en" or "lt"
+	ReviewerName  string
+}
+
+// ReviewerReportFormData for form data
+type ReviewerReportFormData struct {
+	ReviewerPersonalDetails     string
+	Grade                       float64
+	ReviewGoals                 string
+	ReviewTheory                string
+	ReviewPractical             string
+	ReviewTheoryPracticalLink   string
+	ReviewResults               string
+	ReviewPracticalSignificance string
+	ReviewLanguage              string
+	ReviewPros                  string
+	ReviewCons                  string
+	ReviewQuestions             string
+}

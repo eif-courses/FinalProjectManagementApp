@@ -161,7 +161,7 @@ func CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.Studen
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div></div><!-- Modal Container --> <div id=\"modal-container\" style=\"display: none;\"></div><!-- JavaScript --> <script src=\"/static/js/student-dashboard-compact.js\"></script> <script>\r\n\t\t\tconst currentUserData = {\r\n\t\t\t\tname: \"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div></div><div id=\"modal-container\" style=\"display: none;\"></div><script>\r\n// User data from template - Fixed syntax\r\nconst currentUserData = {\r\n    name: \"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -173,7 +173,7 @@ func CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.Studen
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\",\r\n\t\t\t\temail: \"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\",\r\n    email: \"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -185,7 +185,7 @@ func CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.Studen
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\",\r\n\t\t\t\tstudentId: \"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\",\r\n    studentId: \"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -197,7 +197,7 @@ func CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.Studen
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\",\r\n\t\t\t\tthesisTitle: \"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\",\r\n    thesisTitle: \"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -209,19 +209,19 @@ func CompactStudentDashboard(user *auth.AuthenticatedUser, data *database.Studen
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"\r\n\t\t\t};\r\n\r\n\t\t\t// Handle source code upload form\r\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\r\n\t\t\t\tconst form = document.getElementById('compact-source-form');\r\n\t\t\t\tif (form) {\r\n\t\t\t\t\tform.addEventListener('submit', async function(e) {\r\n\t\t\t\t\t\te.preventDefault();\r\n\r\n\t\t\t\t\t\tconst fileInput = form.querySelector('input[type=\"file\"]');\r\n\t\t\t\t\t\tif (!fileInput.files[0]) {\r\n\t\t\t\t\t\t\talert('Please select a file');\r\n\t\t\t\t\t\t\treturn;\r\n\t\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\t// Debug log to check values\r\n\t\t\t\t\t\tconsole.log('Uploading with data:', currentUserData);\r\n\r\n\t\t\t\t\t\tconst formData = new FormData();\r\n\t\t\t\t\t\tformData.append('source_code', fileInput.files[0]);\r\n\t\t\t\t\t\t// Automatically add user data\r\n\t\t\t\t\t\tformData.append('name', currentUserData.name);\r\n\t\t\t\t\t\tformData.append('student_id', currentUserData.studentId);\r\n\t\t\t\t\t\tformData.append('email', currentUserData.email);\r\n\t\t\t\t\t\tformData.append('thesis_title', currentUserData.thesisTitle || 'Final Thesis Project');\r\n\r\n\t\t\t\t\t\tconst uploadBtn = document.getElementById('compact-upload-btn');\r\n\t\t\t\t\t\tconst progressDiv = document.getElementById('compact-progress');\r\n\t\t\t\t\t\tconst progressBar = document.getElementById('compact-progress-bar');\r\n\t\t\t\t\t\tconst statusText = document.getElementById('compact-status');\r\n\r\n\t\t\t\t\t\tuploadBtn.disabled = true;\r\n\t\t\t\t\t\tuploadBtn.innerHTML = '<span class=\"animate-spin\">⏳</span> Uploading...';\r\n\t\t\t\t\t\tprogressDiv.classList.remove('hidden');\r\n\r\n\t\t\t\t\t\ttry {\r\n\t\t\t\t\t\t\t// Simulate progress\r\n\t\t\t\t\t\t\tlet progress = 0;\r\n\t\t\t\t\t\t\tconst progressInterval = setInterval(() => {\r\n\t\t\t\t\t\t\t\tprogress += Math.random() * 15;\r\n\t\t\t\t\t\t\t\tif (progress > 90) progress = 90;\r\n\t\t\t\t\t\t\t\tprogressBar.style.width = progress + '%';\r\n\t\t\t\t\t\t\t}, 500);\r\n\r\n\t\t\t\t\t\t\tconst response = await fetch('/api/source-code/upload', {\r\n\t\t\t\t\t\t\t\tmethod: 'POST',\r\n\t\t\t\t\t\t\t\tbody: formData\r\n\t\t\t\t\t\t\t});\r\n\r\n\t\t\t\t\t\t\tclearInterval(progressInterval);\r\n\t\t\t\t\t\t\tprogressBar.style.width = '100%';\r\n\r\n\t\t\t\t\t\t\tconst data = await response.json();\r\n\r\n\t\t\t\t\t\t\tif (data.success) {\r\n\t\t\t\t\t\t\t\tstatusText.textContent = '✅ Upload complete!';\r\n\t\t\t\t\t\t\t\tstatusText.classList.remove('text-gray-500');\r\n\t\t\t\t\t\t\t\tstatusText.classList.add('text-green-600');\r\n\r\n\t\t\t\t\t\t\t\t// Show success message\r\n\t\t\t\t\t\t\t\tif (data.repository_info) {\r\n\t\t\t\t\t\t\t\t\tsetTimeout(() => {\r\n\t\t\t\t\t\t\t\t\t\talert(`Upload successful!\\nRepository: ${data.repository_info.name}\\nView at: ${data.repository_info.web_url}`);\r\n\t\t\t\t\t\t\t\t\t\tlocation.reload();\r\n\t\t\t\t\t\t\t\t\t}, 1500);\r\n\t\t\t\t\t\t\t\t} else {\r\n\t\t\t\t\t\t\t\t\tsetTimeout(() => {\r\n\t\t\t\t\t\t\t\t\t\tlocation.reload();\r\n\t\t\t\t\t\t\t\t\t}, 1500);\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t} else {\r\n\t\t\t\t\t\t\t\tthrow new Error(data.error || 'Upload failed');\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t} catch (error) {\r\n\t\t\t\t\t\t\tstatusText.textContent = '❌ ' + error.message;\r\n\t\t\t\t\t\t\tstatusText.classList.remove('text-gray-500');\r\n\t\t\t\t\t\t\tstatusText.classList.add('text-red-600');\r\n\t\t\t\t\t\t\tuploadBtn.disabled = false;\r\n\t\t\t\t\t\t\tuploadBtn.innerHTML = '<svg class=\"w-3 h-3 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"></path></svg> Upload Source Code';\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t});\r\n\r\n\t\t\tconst currentStudentId = ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"\r\n};\r\n\r\nconst currentStudentId = ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Var12, templ_7745c5c3_Err := templruntime.ScriptContentOutsideStringLiteral(data.StudentRecord.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 142, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 60, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, ";\r\n\r\n\t\t\t// Modal Functions\r\n\t\t\tfunction openTopicModal() {\r\n\t\t\t\tconsole.log('openTopicModal called for student:', currentStudentId);\r\n\t\t\t\thtmx.ajax('GET', '/topic-registration/' + currentStudentId, {\r\n\t\t\t\t\ttarget: '#modal-container',\r\n\t\t\t\t\tswap: 'innerHTML'\r\n\t\t\t\t});\r\n\t\t\t\tshowModal();\r\n\t\t\t}\r\n\r\n\t\t\tfunction showModal() {\r\n\t\t\t\tlet modalContainer = document.getElementById('modal-container');\r\n\t\t\t\tif (!modalContainer) {\r\n\t\t\t\t\tmodalContainer = document.createElement('div');\r\n\t\t\t\t\tmodalContainer.id = 'modal-container';\r\n\t\t\t\t\tmodalContainer.className = 'fixed inset-0 z-50';\r\n\t\t\t\t\tdocument.body.appendChild(modalContainer);\r\n\t\t\t\t}\r\n\t\t\t\tmodalContainer.style.display = 'block';\r\n\r\n\t\t\t\t// Focus trap for accessibility\r\n\t\t\t\tsetTimeout(() => {\r\n\t\t\t\t\tconst modal = modalContainer.querySelector('[role=\"dialog\"]');\r\n\t\t\t\t\tif (modal) {\r\n\t\t\t\t\t\tmodal.focus();\r\n\t\t\t\t\t}\r\n\t\t\t\t}, 100);\r\n\t\t\t}\r\n\r\n\t\t\tfunction hideModal() {\r\n\t\t\t\tconst modalContainer = document.getElementById('modal-container');\r\n\t\t\t\tif (modalContainer) {\r\n\t\t\t\t\tmodalContainer.style.display = 'none';\r\n\t\t\t\t\tmodalContainer.innerHTML = '';\r\n\t\t\t\t}\r\n\t\t\t\t// Reset modal state\r\n\t\t\t\tif (window.modalState) {\r\n\t\t\t\t\twindow.modalState.openModalId = null;\r\n\t\t\t\t}\r\n\t\t\t\tdocument.body.style.overflow = '';\r\n\t\t\t}\r\n\r\n\t\t\t// Other modal functions\r\n\t\t\tfunction uploadNewVersion() {\r\n\t\t\t\tconsole.log('Upload new version');\r\n\t\t\t\t// Implementation for uploading new source code version\r\n\t\t\t}\r\n\r\n\t\t\tfunction uploadRecommendation() {\r\n\t\t\t\tconsole.log('Upload recommendation');\r\n\t\t\t\t// Implementation for uploading recommendation\r\n\t\t\t}\r\n\r\n\t\t\tfunction uploadVideo() {\r\n\t\t\t\tconsole.log('Upload video');\r\n\t\t\t\t// Implementation for uploading video\r\n\t\t\t}\r\n\r\n\t\t\tfunction playVideo() {\r\n\t\t\t\tconsole.log('Play video');\r\n\t\t\t\t// Implementation for playing video\r\n\t\t\t}\r\n\r\n\t\t\tfunction viewReport(type, reportId) {\r\n\t\t\t\tconsole.log('View report:', type, reportId);\r\n\t\t\t\t// Implementation for viewing reports\r\n\t\t\t}\r\n\r\n\t\t\t// Event Listeners\r\n\t\t\tdocument.addEventListener('htmx:afterRequest', function(evt) {\r\n\t\t\t\tif (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated') {\r\n\t\t\t\t\thideModal();\r\n\t\t\t\t\t// Reload the page or update the topic section\r\n\t\t\t\t\tlocation.reload();\r\n\t\t\t\t}\r\n\t\t\t});\r\n\r\n\t\t\t// Handle source code upload form\r\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\r\n\t\t\t\tconst form = document.getElementById('compact-source-form');\r\n\t\t\t\tif (form) {\r\n\t\t\t\t\tform.addEventListener('submit', function(e) {\r\n\t\t\t\t\t\te.preventDefault();\r\n\t\t\t\t\t\tconst formData = new FormData(form);\r\n\t\t\t\t\t\tconst uploadBtn = document.getElementById('compact-upload-btn');\r\n\t\t\t\t\t\tconst progressDiv = document.getElementById('compact-progress');\r\n\t\t\t\t\t\tconst progressBar = document.getElementById('compact-progress-bar');\r\n\t\t\t\t\t\tconst statusText = document.getElementById('compact-status');\r\n\r\n\t\t\t\t\t\tuploadBtn.disabled = true;\r\n\t\t\t\t\t\tprogressDiv.classList.remove('hidden');\r\n\r\n\t\t\t\t\t\t// Simulate upload progress\r\n\t\t\t\t\t\tlet progress = 0;\r\n\t\t\t\t\t\tconst interval = setInterval(() => {\r\n\t\t\t\t\t\t\tprogress += 10;\r\n\t\t\t\t\t\t\tprogressBar.style.width = progress + '%';\r\n\r\n\t\t\t\t\t\t\tif (progress >= 100) {\r\n\t\t\t\t\t\t\t\tclearInterval(interval);\r\n\t\t\t\t\t\t\t\tstatusText.textContent = 'Upload complete!';\r\n\t\t\t\t\t\t\t\tsetTimeout(() => {\r\n\t\t\t\t\t\t\t\t\tlocation.reload();\r\n\t\t\t\t\t\t\t\t}, 1500);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}, 200);\r\n\r\n\t\t\t\t\t\t// Actual upload would go here\r\n\t\t\t\t\t\t// fetch('/api/upload/source', { method: 'POST', body: formData })\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t});\r\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, ";\r\n\r\n// Enhanced modal container management\r\nfunction ensureModalContainer() {\r\n    let modalContainer = document.getElementById('modal-container');\r\n    if (!modalContainer) {\r\n        modalContainer = document.createElement('div');\r\n        modalContainer.id = 'modal-container';\r\n        modalContainer.style.display = 'none';\r\n        document.body.appendChild(modalContainer);\r\n    }\r\n    return modalContainer;\r\n}\r\n\r\n// FIXED: Proper modal cleanup that works with HTMX modals\r\nfunction hideModal() {\r\n    const modalContainer = document.getElementById('modal-container');\r\n    if (modalContainer) {\r\n        // Check if there's an HTMX modal inside\r\n        const htmxModal = modalContainer.querySelector('[data-modal]');\r\n\r\n        if (htmxModal) {\r\n            // HTMX modal - use its close function\r\n            const closeButton = htmxModal.querySelector('[data-modal-close]');\r\n            if (closeButton) {\r\n                closeButton.click();\r\n                // Still need to clean up after HTMX close\r\n                setTimeout(() => {\r\n                    cleanupModalContainer();\r\n                }, 350);\r\n                return;\r\n            }\r\n\r\n            // Fallback: manual HTMX modal close\r\n            htmxModal.classList.remove('opacity-100');\r\n            htmxModal.classList.add('opacity-0');\r\n            const content = htmxModal.querySelector('[data-modal-content]');\r\n            if (content) {\r\n                content.classList.remove('scale-100', 'opacity-100');\r\n                content.classList.add('scale-95', 'opacity-0');\r\n            }\r\n\r\n            setTimeout(() => {\r\n                cleanupModalContainer();\r\n            }, 300);\r\n        } else {\r\n            // Simple modal - immediate cleanup\r\n            cleanupModalContainer();\r\n        }\r\n    }\r\n}\r\n\r\n// NEW: Separate cleanup function\r\nfunction cleanupModalContainer() {\r\n    const modalContainer = document.getElementById('modal-container');\r\n    if (modalContainer) {\r\n        modalContainer.innerHTML = '';\r\n        modalContainer.style.display = 'none';\r\n        // CRITICAL: Remove all classes and styles\r\n        modalContainer.className = '';\r\n        modalContainer.removeAttribute('style');\r\n        modalContainer.style.display = 'none';\r\n        document.body.style.overflow = '';\r\n        if (window.modalState) {\r\n            window.modalState.openModalId = null;\r\n        }\r\n    }\r\n}\r\n\r\n// FIXED: Show modal that works with HTMX\r\nfunction showModal() {\r\n    const modalContainer = ensureModalContainer();\r\n    modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50';\r\n    modalContainer.style.display = 'flex';\r\n    document.body.style.overflow = 'hidden';\r\n\r\n    // Check if this is an HTMX modal and let it handle its own animations\r\n    setTimeout(() => {\r\n        const htmxModal = modalContainer.querySelector('[data-modal]');\r\n        if (htmxModal) {\r\n            // HTMX modal will handle its own show logic\r\n            return;\r\n        }\r\n\r\n        // Simple modal focus\r\n        const modal = modalContainer.querySelector('[role=\"dialog\"]');\r\n        if (modal) modal.focus();\r\n    }, 100);\r\n}\r\n\r\n// Modal opening functions\r\nfunction openTopicModal() {\r\n    const modalContainer = ensureModalContainer();\r\n    modalContainer.innerHTML = \"\";\r\n    modalContainer.style.display = 'none';\r\n\r\n    htmx.ajax('GET', '/topic-registration/' + currentStudentId, {\r\n        target: '#modal-container',\r\n        swap: 'innerHTML'\r\n    }).then(() => {\r\n        showModal();\r\n    }).catch((error) => {\r\n        console.error('Error loading topic modal:', error);\r\n        hideModal();\r\n    });\r\n}\r\n\r\nfunction viewReport(type, reportId) {\r\n    console.log('View report:', type, reportId);\r\n\r\n    const modalContainer = ensureModalContainer();\r\n    modalContainer.innerHTML = '';\r\n    modalContainer.style.display = 'none';\r\n\r\n    let url = '';\r\n    if (type === 'supervisor') {\r\n        url = `/supervisor-report/${currentStudentId}/compact-modal?mode=view`;\r\n    } else if (type === 'reviewer') {\r\n        url = `/reviewer-report/${currentStudentId}/compact-modal?mode=view`;\r\n    } else {\r\n        console.warn('Unknown report type:', type);\r\n        return;\r\n    }\r\n\r\n    htmx.ajax('GET', url, {\r\n        target: '#modal-container',\r\n        swap: 'innerHTML'\r\n    }).then(() => {\r\n        showModal();\r\n    }).catch((error) => {\r\n        console.error(`Error loading ${type} report:`, error);\r\n        hideModal();\r\n        alert(`Failed to load ${type} report. Please try again.`);\r\n    });\r\n}\r\n\r\n// Upload Functions\r\nfunction uploadNewVersion() {\r\n    console.log('Upload new version');\r\n    const input = document.createElement('input');\r\n    input.type = 'file';\r\n    input.accept = '.zip';\r\n    input.onchange = async (e) => {\r\n        const file = e.target.files[0];\r\n        if (!file) return;\r\n\r\n        // Show upload progress in a mini modal\r\n        showUploadProgress(file.name);\r\n\r\n        const formData = new FormData();\r\n        formData.append('source_code', file);\r\n        formData.append('name', currentUserData.name);\r\n        formData.append('student_id', currentUserData.studentId);\r\n        formData.append('email', currentUserData.email);\r\n        formData.append('thesis_title', currentUserData.thesisTitle || 'Final Thesis Project');\r\n\r\n        try {\r\n            const response = await fetch('/api/source-code/upload', {\r\n                method: 'POST',\r\n                body: formData\r\n            });\r\n\r\n            const data = await response.json();\r\n            if (data.success) {\r\n                updateUploadProgress(100, 'Upload complete!', 'success');\r\n                setTimeout(() => {\r\n                    hideUploadProgress();\r\n                    location.reload();\r\n                }, 1500);\r\n            } else {\r\n                throw new Error(data.error || 'Upload failed');\r\n            }\r\n        } catch (error) {\r\n            updateUploadProgress(0, 'Upload failed: ' + error.message, 'error');\r\n            setTimeout(hideUploadProgress, 3000);\r\n        }\r\n    };\r\n    input.click();\r\n}\r\n\r\n// NEW: Upload progress functions\r\nfunction showUploadProgress(filename) {\r\n    const progressHtml = `\r\n        <div id=\"upload-progress-modal\" class=\"fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 w-80 border z-[60]\">\r\n            <div class=\"flex items-center justify-between mb-2\">\r\n                <h4 class=\"text-sm font-medium\">Uploading New Version</h4>\r\n                <button onclick=\"hideUploadProgress()\" class=\"text-gray-400 hover:text-gray-600\">\r\n                    <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\r\n                        <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path>\r\n                    </svg>\r\n                </button>\r\n            </div>\r\n            <p class=\"text-xs text-gray-600 mb-2 truncate\">${filename}</p>\r\n            <div class=\"w-full bg-gray-200 rounded-full h-2 mb-2\">\r\n                <div id=\"upload-progress-bar\" class=\"bg-blue-600 h-2 rounded-full transition-all\" style=\"width: 0%\"></div>\r\n            </div>\r\n            <p id=\"upload-status\" class=\"text-xs text-gray-500\">Uploading...</p>\r\n        </div>\r\n    `;\r\n    document.body.insertAdjacentHTML('beforeend', progressHtml);\r\n\r\n    // Animate progress\r\n    let progress = 0;\r\n    const interval = setInterval(() => {\r\n        progress += Math.random() * 20;\r\n        if (progress > 90) {\r\n            clearInterval(interval);\r\n            progress = 90;\r\n        }\r\n        updateUploadProgress(progress);\r\n    }, 300);\r\n}\r\n\r\nfunction updateUploadProgress(percent, status, type) {\r\n    const bar = document.getElementById('upload-progress-bar');\r\n    const statusText = document.getElementById('upload-status');\r\n\r\n    if (bar) bar.style.width = percent + '%';\r\n    if (statusText && status) {\r\n        statusText.textContent = status;\r\n        if (type === 'success') {\r\n            statusText.className = 'text-xs text-green-600';\r\n        } else if (type === 'error') {\r\n            statusText.className = 'text-xs text-red-600';\r\n        }\r\n    }\r\n}\r\n\r\nfunction hideUploadProgress() {\r\n    const modal = document.getElementById('upload-progress-modal');\r\n    if (modal) modal.remove();\r\n}\r\n\r\nfunction uploadRecommendation() {\r\n    console.log('Upload recommendation');\r\n    const modalContainer = ensureModalContainer();\r\n    modalContainer.innerHTML = '';\r\n\r\n    htmx.ajax('POST', '/api/recommendation/upload', {\r\n        target: '#modal-container',\r\n        swap: 'innerHTML'\r\n    }).then(() => {\r\n        showModal();\r\n    }).catch((error) => {\r\n        console.error('Error loading recommendation upload:', error);\r\n        hideModal();\r\n    });\r\n}\r\n\r\nfunction uploadVideo() {\r\n    console.log('Upload video');\r\n    const modalContainer = ensureModalContainer();\r\n    modalContainer.innerHTML = '';\r\n\r\n    htmx.ajax('POST', '/api/video/upload', {\r\n        target: '#modal-container',\r\n        swap: 'innerHTML'\r\n    }).then(() => {\r\n        showModal();\r\n    }).catch((error) => {\r\n        console.error('Error loading video upload:', error);\r\n        hideModal();\r\n    });\r\n}\r\n\r\nfunction playVideo() {\r\n    console.log('Play video');\r\n    window.open(`/api/video/play/${currentStudentId}`, '_blank');\r\n}\r\n\r\n// Event listeners\r\ndocument.addEventListener('DOMContentLoaded', function() {\r\n    // Handle source code upload form\r\n    const form = document.getElementById('compact-source-form');\r\n    if (form) {\r\n        // Add drag and drop support\r\n        const dropZone = form.closest('.border-dashed');\r\n        if (dropZone) {\r\n            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {\r\n                dropZone.addEventListener(eventName, preventDefaults, false);\r\n            });\r\n\r\n            function preventDefaults(e) {\r\n                e.preventDefault();\r\n                e.stopPropagation();\r\n            }\r\n\r\n            ['dragenter', 'dragover'].forEach(eventName => {\r\n                dropZone.addEventListener(eventName, highlight, false);\r\n            });\r\n\r\n            ['dragleave', 'drop'].forEach(eventName => {\r\n                dropZone.addEventListener(eventName, unhighlight, false);\r\n            });\r\n\r\n            function highlight(e) {\r\n                dropZone.classList.add('border-blue-500', 'bg-blue-50');\r\n            }\r\n\r\n            function unhighlight(e) {\r\n                dropZone.classList.remove('border-blue-500', 'bg-blue-50');\r\n            }\r\n\r\n            dropZone.addEventListener('drop', handleDrop, false);\r\n\r\n            function handleDrop(e) {\r\n                const dt = e.dataTransfer;\r\n                const files = dt.files;\r\n\r\n                if (files.length > 0 && files[0].name.endsWith('.zip')) {\r\n                    const fileInput = form.querySelector('input[type=\"file\"]');\r\n                    fileInput.files = files;\r\n                    // Trigger change event to update UI\r\n                    fileInput.dispatchEvent(new Event('change', { bubbles: true }));\r\n                    // Auto-submit form\r\n                    form.dispatchEvent(new Event('submit'));\r\n                } else {\r\n                    alert('Please drop a ZIP file');\r\n                }\r\n            }\r\n        }\r\n\r\n        // Update file input to show selected file\r\n        const fileInput = form.querySelector('input[type=\"file\"]');\r\n        if (fileInput) {\r\n            fileInput.addEventListener('change', function(e) {\r\n                const fileName = e.target.files[0]?.name;\r\n                if (fileName) {\r\n                    const label = form.querySelector('.file-selected');\r\n                    if (!label) {\r\n                        fileInput.insertAdjacentHTML('afterend',\r\n                            `<p class=\"file-selected text-xs text-blue-600 mt-1\">Selected: ${fileName}</p>`\r\n                        );\r\n                    } else {\r\n                        label.textContent = `Selected: ${fileName}`;\r\n                    }\r\n                }\r\n            });\r\n        }\r\n\r\n        form.addEventListener('submit', async function(e) {\r\n            e.preventDefault();\r\n\r\n            const fileInput = form.querySelector('input[type=\"file\"]');\r\n            if (!fileInput.files[0]) {\r\n                alert('Please select a file');\r\n                return;\r\n            }\r\n\r\n            const formData = new FormData();\r\n            formData.append('source_code', fileInput.files[0]);\r\n            formData.append('name', currentUserData.name);\r\n            formData.append('student_id', currentUserData.studentId);\r\n            formData.append('email', currentUserData.email);\r\n            formData.append('thesis_title', currentUserData.thesisTitle || 'Final Thesis Project');\r\n\r\n            const uploadBtn = document.getElementById('compact-upload-btn');\r\n            const progressDiv = document.getElementById('compact-progress');\r\n            const progressBar = document.getElementById('compact-progress-bar');\r\n            const statusText = document.getElementById('compact-status');\r\n\r\n            uploadBtn.disabled = true;\r\n            uploadBtn.innerHTML = '<span class=\"animate-spin\">⏳</span> Uploading...';\r\n            progressDiv.classList.remove('hidden');\r\n\r\n            try {\r\n                let progress = 0;\r\n                const progressInterval = setInterval(() => {\r\n                    progress += Math.random() * 15;\r\n                    if (progress > 90) progress = 90;\r\n                    progressBar.style.width = progress + '%';\r\n                }, 500);\r\n\r\n                const response = await fetch('/api/source-code/upload', {\r\n                    method: 'POST',\r\n                    body: formData\r\n                });\r\n\r\n                clearInterval(progressInterval);\r\n                progressBar.style.width = '100%';\r\n\r\n                const data = await response.json();\r\n\r\n                if (data.success) {\r\n                    statusText.textContent = '✅ Upload complete!';\r\n                    statusText.classList.remove('text-gray-500');\r\n                    statusText.classList.add('text-green-600');\r\n\r\n                    if (data.repository_info) {\r\n                        setTimeout(() => {\r\n                            alert(`Upload successful!\\nRepository: ${data.repository_info.name}\\nView at: ${data.repository_info.web_url}`);\r\n                            location.reload();\r\n                        }, 1500);\r\n                    } else {\r\n                        setTimeout(() => {\r\n                            location.reload();\r\n                        }, 1500);\r\n                    }\r\n                } else {\r\n                    throw new Error(data.error || 'Upload failed');\r\n                }\r\n            } catch (error) {\r\n                statusText.textContent = '❌ ' + error.message;\r\n                statusText.classList.remove('text-gray-500');\r\n                statusText.classList.add('text-red-600');\r\n                uploadBtn.disabled = false;\r\n                uploadBtn.innerHTML = '<svg class=\"w-3 h-3 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"></path></svg> Upload Source Code';\r\n                // Keep progress visible for error\r\n                progressBar.classList.add('bg-red-600');\r\n                progressBar.classList.remove('bg-blue-600');\r\n            }\r\n        });\r\n    }\r\n\r\n    // Enhanced modal close handlers that work with both systems\r\n    document.addEventListener('keydown', function(e) {\r\n        if (e.key === 'Escape') {\r\n            const modalContainer = document.getElementById('modal-container');\r\n            if (modalContainer && modalContainer.style.display !== 'none') {\r\n                hideModal();\r\n            }\r\n        }\r\n    });\r\n\r\n    document.addEventListener('click', function(e) {\r\n        const modalContainer = document.getElementById('modal-container');\r\n        if (modalContainer && e.target === modalContainer) {\r\n            // Check if click is on the backdrop, not on modal content\r\n            const modalContent = modalContainer.querySelector('[data-modal-content], .modal-content');\r\n            if (!modalContent || !modalContent.contains(e.target)) {\r\n                hideModal();\r\n            }\r\n        }\r\n    });\r\n});\r\n\r\n// HTMX event handling\r\ndocument.addEventListener('htmx:beforeRequest', function(evt) {\r\n    if (evt.detail.target && evt.detail.target.id === 'modal-container') {\r\n        const modalContainer = document.getElementById('modal-container');\r\n        if (modalContainer) {\r\n            modalContainer.innerHTML = '';\r\n        }\r\n    }\r\n});\r\n\r\ndocument.addEventListener('htmx:afterRequest', function(evt) {\r\n    if (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated') {\r\n        hideModal();\r\n        location.reload();\r\n    }\r\n\r\n    if (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'supervisorReportSaved' ||\r\n        evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved') {\r\n        hideModal();\r\n    }\r\n});\r\n\r\n// Error handling\r\ndocument.addEventListener('htmx:responseError', function(evt) {\r\n    console.error('HTMX response error:', evt.detail);\r\n    hideModal();\r\n    alert('An error occurred. Please try again.');\r\n});\r\n\r\ndocument.addEventListener('htmx:sendError', function(evt) {\r\n    console.error('HTMX send error:', evt.detail);\r\n    hideModal();\r\n    alert('Network error. Please check your connection and try again.');\r\n});\r\n\r\ndocument.addEventListener('htmx:timeout', function(evt) {\r\n    console.error('HTMX timeout:', evt.detail);\r\n    hideModal();\r\n    alert('Request timed out. Please try again.');\r\n});\r\n\r\n// Cleanup on page events\r\nwindow.addEventListener('beforeunload', function() {\r\n    cleanupModalContainer();\r\n});\r\n\r\nwindow.addEventListener('pagehide', function() {\r\n    cleanupModalContainer();\r\n});\r\n\r\n// IMPORTANT: Clean up on any navigation\r\ndocument.addEventListener('turbo:before-visit', function() {\r\n    cleanupModalContainer();\r\n});\r\n\r\n// FIXED: Only clean up when content is being removed, not when loading\r\ndocument.addEventListener('htmx:beforeSwap', function(evt) {\r\n    // Only cleanup if we're swapping OUT content from the modal container\r\n    // and the new content is empty or we're navigating away\r\n    if (evt.detail.target && evt.detail.target.id === 'modal-container') {\r\n        const xhr = evt.detail.xhr;\r\n        if (xhr && xhr.responseText && xhr.responseText.trim() === '') {\r\n            // Empty response means we're clearing the modal\r\n            setTimeout(cleanupModalContainer, 400);\r\n        }\r\n        // Otherwise, we're loading new content into the modal, so don't cleanup\r\n    }\r\n});\r\n\r\n// DON'T override the HTMX modal functions - let them work naturally\r\n// The HTMX modal system will handle its own close logic\r\n</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -263,7 +263,7 @@ func HorizontalProgressSteps(data *database.StudentDashboardData, locale string)
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("width: " + fmt.Sprintf("%d%%", calculateProgress(data)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 268, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 580, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -372,7 +372,7 @@ func ProgressStep(icon string, label string, completed bool, status string, step
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", step))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 294, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 606, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -390,7 +390,7 @@ func ProgressStep(icon string, label string, completed bool, status string, step
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 298, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 610, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -403,7 +403,7 @@ func ProgressStep(icon string, label string, completed bool, status string, step
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 299, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 611, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -496,7 +496,7 @@ func MiniStatCard(icon string, label string, completed bool, status string) temp
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 318, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 630, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -509,7 +509,7 @@ func MiniStatCard(icon string, label string, completed bool, status string) temp
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 320, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 632, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -522,7 +522,7 @@ func MiniStatCard(icon string, label string, completed bool, status string) temp
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 321, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 633, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -685,7 +685,7 @@ func CompactTopicSection(data *database.StudentDashboardData, locale string) tem
 					var templ_7745c5c3_Var33 string
 					templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(data.TopicRegistration.Title)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 362, Col: 37}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 674, Col: 37}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 					if templ_7745c5c3_Err != nil {
@@ -713,7 +713,7 @@ func CompactTopicSection(data *database.StudentDashboardData, locale string) tem
 					var templ_7745c5c3_Var34 string
 					templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(data.TopicRegistration.Supervisor)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 375, Col: 77}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 687, Col: 77}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 					if templ_7745c5c3_Err != nil {
@@ -839,7 +839,7 @@ func CompactTopicSection(data *database.StudentDashboardData, locale string) tem
 						var templ_7745c5c3_Var37 string
 						templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", data.TopicCommentCount))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 421, Col: 51}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 733, Col: 51}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 						if templ_7745c5c3_Err != nil {
@@ -1392,7 +1392,7 @@ func CompactSourceSection(data *database.StudentDashboardData, locale string) te
 						var templ_7745c5c3_Var48 string
 						templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(data.SourceCodeRepository.UploadedDate.Format("Jan 2, 15:04"))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 606, Col: 80}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 918, Col: 80}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 						if templ_7745c5c3_Err != nil {
@@ -1406,7 +1406,7 @@ func CompactSourceSection(data *database.StudentDashboardData, locale string) te
 						var templ_7745c5c3_Var49 string
 						templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(formatDateLT(data.SourceCodeRepository.UploadedDate))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 608, Col: 70}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 920, Col: 70}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 						if templ_7745c5c3_Err != nil {
@@ -1440,6 +1440,8 @@ func CompactSourceSection(data *database.StudentDashboardData, locale string) te
 }
 
 // Source Upload Form
+// Source Upload Form with improved visibility
+// Source Upload Form with improved visibility
 func SourceUploadFormCompact(locale string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -1461,7 +1463,7 @@ func SourceUploadFormCompact(locale string) templ.Component {
 			templ_7745c5c3_Var50 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "<div class=\"space-y-3\"><div class=\"border-2 border-dashed border-gray-300 rounded-lg p-4 text-center\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "<div class=\"space-y-3\"><div class=\"border-2 border-dashed border-gray-300 rounded-lg p-4 text-center transition-all hover:border-gray-400\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1469,7 +1471,7 @@ func SourceUploadFormCompact(locale string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "<p class=\"text-sm text-gray-600 mb-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "<p class=\"text-sm text-gray-600 mb-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1484,7 +1486,22 @@ func SourceUploadFormCompact(locale string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "</p><form id=\"compact-source-form\" class=\"space-y-2\"><input type=\"file\" name=\"source_code\" accept=\".zip\" required class=\"block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "</p><p class=\"text-xs text-gray-500 mb-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if locale == "en" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "or drag and drop your file here")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "arba nuvilkite failą čia")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "</p><form id=\"compact-source-form\" class=\"space-y-2\"><input type=\"file\" name=\"source_code\" accept=\".zip\" required class=\"block w-full text-sm text-gray-500\r\n                           file:mr-2 file:py-2 file:px-4\r\n                           file:rounded-md file:border-0\r\n                           file:text-sm file:font-medium\r\n                           file:bg-blue-50 file:text-blue-700\r\n                           hover:file:bg-blue-100 file:cursor-pointer\r\n                           cursor-pointer\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1504,17 +1521,17 @@ func SourceUploadFormCompact(locale string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if locale == "en" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "Upload Source Code")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "Upload Source Code")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "Įkelti programos kodą")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "Įkelti programos kodą")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1524,7 +1541,7 @@ func SourceUploadFormCompact(locale string) templ.Component {
 		templ_7745c5c3_Err = button.Button(button.Props{
 			Type:  "submit",
 			Size:  button.SizeIcon,
-			Class: "w-full",
+			Class: "w-full mt-2",
 			Attributes: templ.Attributes{
 				"id": "compact-upload-btn",
 			},
@@ -1532,22 +1549,60 @@ func SourceUploadFormCompact(locale string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "</form><div id=\"compact-progress\" class=\"hidden mt-2\"><div class=\"w-full bg-gray-200 rounded-full h-1\"><div id=\"compact-progress-bar\" class=\"bg-blue-600 h-1 rounded-full\" style=\"width: 0%\"></div></div><p id=\"compact-status\" class=\"text-xs text-gray-500 mt-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "</form><div id=\"compact-progress\" class=\"hidden mt-3\"><div class=\"w-full bg-gray-200 rounded-full h-2 overflow-hidden\"><div id=\"compact-progress-bar\" class=\"bg-blue-600 h-2 rounded-full transition-all duration-300\" style=\"width: 0%\"></div></div><p id=\"compact-status\" class=\"text-xs text-gray-500 mt-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if locale == "en" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "Uploading...")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "Uploading...")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "Įkeliama...")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "Įkeliama...")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "</p></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "</p></div></div><!-- File requirements --><div class=\"text-xs text-gray-500 space-y-1\"><p class=\"flex items-center\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = icon.Info(icon.Props{Size: 12, Class: "mr-1"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if locale == "en" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, "Maximum file size: 50MB")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "Maksimalus failo dydis: 50MB")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "</p><p class=\"flex items-center\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = icon.FileArchive(icon.Props{Size: 12, Class: "mr-1"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if locale == "en" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 142, "Format: ZIP archive only")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 143, "Formatas: tik ZIP archyvas")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 144, "</p></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1613,17 +1668,17 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "📄 ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 145, "📄 ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if locale == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "Documents")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 146, "Documents")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "Dokumentai")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 147, "Dokumentai")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1640,7 +1695,7 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 148, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1656,7 +1711,7 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "<div class=\"space-y-2\"><!-- Thesis PDF --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 149, "<div class=\"space-y-2\"><!-- Thesis PDF --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1664,27 +1719,27 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "<span class=\"text-sm\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 150, "<span class=\"text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if locale == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 142, "Thesis PDF")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 151, "Thesis PDF")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 143, "Darbo PDF")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 152, "Darbo PDF")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 144, "</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 153, "</span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if data.HasThesisPDF && data.ThesisDocument != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 145, "<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-green-600\">✓</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 154, "<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-green-600\">✓</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1716,32 +1771,32 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 146, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 155, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 147, "<span class=\"text-xs text-gray-500\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 156, "<span class=\"text-xs text-gray-500\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if locale == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 148, "Admin upload")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 157, "Admin upload")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 149, "Įkelia administratorius")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 158, "Įkelia administratorius")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 150, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 151, "</div><!-- Company Recommendation --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 160, "</div><!-- Company Recommendation --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1749,27 +1804,27 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 152, "<span class=\"text-sm\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 161, "<span class=\"text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if locale == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 153, "Recommendation")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 162, "Recommendation")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 154, "Rekomendacija")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 163, "Rekomendacija")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 155, "</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 164, "</span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if data.CompanyRecommendation != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 156, "<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-green-600\">✓</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 165, "<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-green-600\">✓</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1801,7 +1856,7 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 157, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 166, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1835,7 +1890,7 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 158, "</div><!-- Video Presentation --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "</div><!-- Video Presentation --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1843,27 +1898,27 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "<span class=\"text-sm\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 168, "<span class=\"text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if locale == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 160, "Video (Optional)")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 169, "Video (Optional)")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 161, "Video (Neprivaloma)")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 170, "Video (Neprivaloma)")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 162, "</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 171, "</span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if data.VideoPresentation != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 163, "<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-green-600\">✓</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 172, "<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-green-600\">✓</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1895,7 +1950,7 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 164, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 173, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1929,7 +1984,7 @@ func CompactDocsSection(data *database.StudentDashboardData, locale string) temp
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 165, "</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 174, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2007,17 +2062,17 @@ func CompactEvalSection(data *database.StudentDashboardData, locale string) temp
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 166, "📋 ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 175, "📋 ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if locale == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "Evaluation")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 176, "Evaluation")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 168, "Vertinimas")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 177, "Vertinimas")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -2034,7 +2089,7 @@ func CompactEvalSection(data *database.StudentDashboardData, locale string) temp
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 169, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 178, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2050,7 +2105,7 @@ func CompactEvalSection(data *database.StudentDashboardData, locale string) temp
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 170, "<div class=\"space-y-2\"><!-- Supervisor Report --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 179, "<div class=\"space-y-2\"><!-- Supervisor Report --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2058,110 +2113,110 @@ func CompactEvalSection(data *database.StudentDashboardData, locale string) temp
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 171, "<span class=\"text-sm\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 180, "<span class=\"text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if locale == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 172, "Supervisor")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, "Supervisor")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 173, "Vadovas")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "Vadovas")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 174, "</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, "</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if data.SupervisorReport != nil && data.SupervisorReport.Grade != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 175, "<span class=\"text-xs font-medium text-blue-600\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, "<span class=\"text-xs font-medium text-blue-600\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if locale == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 176, "Grade: ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, "Grade: ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var67 string
 						templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", *data.SupervisorReport.Grade))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 834, Col: 65}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 1181, Col: 65}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 177, "Balas: ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, "Balas: ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var68 string
 						templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", *data.SupervisorReport.Grade))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 836, Col: 65}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 1183, Col: 65}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 178, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 179, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if data.SupervisorReport != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 180, "<div class=\"flex items-center space-x-2\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "<div class=\"flex items-center space-x-2\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if data.SupervisorReport.IsSigned {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, "<span class=\"text-xs text-green-600\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "<span class=\"text-xs text-green-600\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if locale == "en" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "✓ Signed")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "✓ Signed")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, "✓ Pasirašyta")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "✓ Pasirašyta")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, "</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, "<span class=\"text-xs text-yellow-600\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "<span class=\"text-xs text-yellow-600\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if locale == "en" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, "Draft")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "Draft")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "Juodraštis")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "Juodraštis")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, "</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -2194,88 +2249,22 @@ func CompactEvalSection(data *database.StudentDashboardData, locale string) temp
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "<span class=\"text-xs text-gray-500\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "<span class=\"text-xs text-gray-500\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if locale == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "Pending")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "Pending")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "Laukiama")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "</span>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "</div><!-- Reviewer Report --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = icon.UserCheck(icon.Props{Size: 16, Class: "text-blue-600"}).Render(ctx, templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<span class=\"text-sm\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				if locale == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "Reviewer")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "Recenzentas")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, "</span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				if data.ReviewerReport != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "<span class=\"text-xs font-medium text-blue-600\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if locale == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "Grade: ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var70 string
-						templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f", data.ReviewerReport.Grade))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 895, Col: 64}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "Balas: ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var71 string
-						templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f", data.ReviewerReport.Grade))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 897, Col: 64}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "Laukiama")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -2285,52 +2274,118 @@ func CompactEvalSection(data *database.StudentDashboardData, locale string) temp
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 203, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 203, "</div><!-- Reviewer Report --><div class=\"flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50\"><div class=\"flex items-center space-x-2\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = icon.UserCheck(icon.Props{Size: 16, Class: "text-blue-600"}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, "<span class=\"text-sm\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if locale == "en" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "Reviewer")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 206, "Recenzentas")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 207, "</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if data.ReviewerReport != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, "<div class=\"flex items-center space-x-2\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "<span class=\"text-xs font-medium text-blue-600\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if data.ReviewerReport.IsSigned {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "<span class=\"text-xs text-green-600\">")
+					if locale == "en" {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "Grade: ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						if locale == "en" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 206, "✓ Signed")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 207, "✓ Pasirašyta")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
+						var templ_7745c5c3_Var70 string
+						templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f", data.ReviewerReport.Grade))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 1242, Col: 64}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "</span>")
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "<span class=\"text-xs text-yellow-600\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 210, "Balas: ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var71 string
+						templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f", data.ReviewerReport.Grade))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_dashboard_compact.templ`, Line: 1244, Col: 64}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "</span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if data.ReviewerReport != nil {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 213, "<div class=\"flex items-center space-x-2\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if data.ReviewerReport.IsSigned {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 214, "<span class=\"text-xs text-green-600\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if locale == "en" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 210, "Draft")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 215, "✓ Signed")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "Juodraštis")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 216, "✓ Pasirašyta")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, "</span>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					} else {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 218, "<span class=\"text-xs text-yellow-600\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						if locale == "en" {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 219, "Draft")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						} else {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, "Juodraštis")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 221, "</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -2363,32 +2418,32 @@ func CompactEvalSection(data *database.StudentDashboardData, locale string) temp
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 213, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 222, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 214, "<span class=\"text-xs text-gray-500\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 223, "<span class=\"text-xs text-gray-500\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if locale == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 215, "Pending")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 224, "Pending")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 216, "Laukiama")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 225, "Laukiama")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 226, "</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 218, "</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 227, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

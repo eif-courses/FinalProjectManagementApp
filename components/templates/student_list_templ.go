@@ -81,7 +81,7 @@ func StudentList(user *auth.AuthenticatedUser, students []database.StudentSummar
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div></div><!-- Modal Container --> <div id=\"modal-container\" style=\"display: none;\"></div><script>\r\n            // Clear all filters function\r\n            function clearAllFilters() {\r\n                const searchInput = document.getElementById('search');\r\n                if (searchInput) {\r\n                    searchInput.value = '';\r\n                }\r\n\r\n                document.querySelectorAll('.select-container').forEach(container => {\r\n                    const trigger = container.querySelector('.select-trigger');\r\n                    const hiddenInput = trigger?.querySelector('input[type=\"hidden\"]');\r\n                    const valueEl = trigger?.querySelector('.select-value');\r\n                    const contentId = trigger?.dataset.contentId;\r\n\r\n                    if (hiddenInput) {\r\n                        hiddenInput.value = '';\r\n                    }\r\n\r\n                    if (valueEl) {\r\n                        const inputName = hiddenInput?.name;\r\n                        let placeholder = 'Visos';\r\n                        if (inputName === 'limit') {\r\n                            placeholder = '10';\r\n                            hiddenInput.value = '10';\r\n                        } else if (inputName === 'year') {\r\n                            placeholder = 'Visi metai';\r\n                        }\r\n                        valueEl.textContent = placeholder;\r\n                        valueEl.classList.add('text-muted-foreground');\r\n                    }\r\n\r\n                    if (contentId) {\r\n                        const content = document.getElementById(contentId);\r\n                        if (content) {\r\n                            content.querySelectorAll('.select-item').forEach(item => {\r\n                                item.setAttribute('data-selected', 'false');\r\n                                item.classList.remove('bg-accent', 'text-accent-foreground');\r\n                                const check = item.querySelector('.select-check');\r\n                                if (check) check.classList.replace('opacity-100', 'opacity-0');\r\n                            });\r\n\r\n                            const inputName = hiddenInput?.name;\r\n                            let defaultValue = '';\r\n                            if (inputName === 'limit') {\r\n                                defaultValue = '10';\r\n                            }\r\n\r\n                            const defaultItem = content.querySelector(`.select-item[data-value=\"${defaultValue}\"]`);\r\n                            if (defaultItem) {\r\n                                defaultItem.setAttribute('data-selected', 'true');\r\n                                defaultItem.classList.add('bg-accent', 'text-accent-foreground');\r\n                                const check = defaultItem.querySelector('.select-check');\r\n                                if (check) check.classList.replace('opacity-0', 'opacity-100');\r\n                            }\r\n                        }\r\n                    }\r\n                });\r\n\r\n                htmx.ajax('GET', '/students-list', {\r\n                    target: '#student-table-container',\r\n                    values: { limit: '10', group: '', study_program: '', topic_status: '', year: '', search: '', page: '1' }\r\n                });\r\n            }\r\n\r\nfunction viewStudentRepository(studentId) {\r\n        window.open('/repository/student/' + studentId, '_blank');\r\n    }\r\n\r\n         // Function to view topic registration (read-only)\r\n         function viewTopicRegistration(studentId) {\r\n             console.log('viewTopicRegistration called with:', studentId);\r\n             htmx.ajax('GET', `/topic-registration/${studentId}?mode=view`, {\r\n                 target: '#modal-container',\r\n                 swap: 'innerHTML'\r\n             });\r\n             showModal();\r\n         }\r\n\r\n         // Function to view topic registration form (for review)\r\n         function viewTopicRegistrationForm(studentId) {\r\n             console.log('viewTopicRegistrationForm called with:', studentId);\r\n             htmx.ajax('GET', `/topic-registration/${studentId}?mode=review`, {\r\n                 target: '#modal-container',\r\n                 swap: 'innerHTML'\r\n             });\r\n             showModal();\r\n         }\r\n\r\n\r\n// STUDENTU LISTO ATNAUJINIMAS UZPILDZIUS VADOVO ATSILIEPIMA\r\n// Add this to your main page where the student list is displayed\r\ndocument.addEventListener('supervisorReportSaved', function(event) {\r\n    console.log('Supervisor report saved, refreshing...');\r\n\r\n    // Close any open modals\r\n    const modal = document.getElementById('supervisor-modal');\r\n    if (modal && window.modalState) {\r\n        modal.style.display = 'none';\r\n        window.modalState.openModalId = null;\r\n        document.body.style.overflow = '';\r\n    }\r\n\r\n    // Show success notification\r\n    showSuccessNotification('Supervisor report saved successfully!');\r\n\r\n    // Refresh the student table\r\n    setTimeout(function() {\r\n        window.location.reload(); // Simple and reliable\r\n    }, 1500);\r\n});\r\n\r\nfunction showSuccessNotification(message) {\r\n    // Create notification element\r\n    const notification = document.createElement('div');\r\n    notification.id = 'success-notification';\r\n    notification.className = 'fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm';\r\n    notification.innerHTML = `\r\n        <div class=\"flex items-center\">\r\n            <svg class=\"h-5 w-5 text-green-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\r\n                <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path>\r\n            </svg>\r\n            <div class=\"text-green-600 text-sm font-medium\">${message}</div>\r\n        </div>\r\n    `;\r\n\r\n    // Add to page\r\n    document.body.appendChild(notification);\r\n\r\n    // Remove after 3 seconds\r\n    setTimeout(function() {\r\n        if (notification && notification.parentNode) {\r\n            notification.parentNode.removeChild(notification);\r\n        }\r\n    }, 3000);\r\n}\r\n\r\n///========================================================================================\r\n\r\n\r\n\r\n            function approveRegistration(studentId) {\r\n                console.log('approveRegistration called with:', studentId);\r\n                htmx.ajax('GET', `/topic-registration/${studentId}?mode=review`, {\r\n                    target: '#modal-container',\r\n                    swap: 'innerHTML'\r\n                });\r\n                showModal();\r\n            }\r\n\r\n            // Supervisor Report Functions\r\n // Update editSupervisorReport to check if editing is allowed\r\n function editSupervisorReport(studentId) {\r\n     console.log('DEBUG: editSupervisorReport called for student:', studentId);\r\n\r\n     // Don't include mode parameter for edit - let the handler decide based on status\r\n     htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {\r\n         target: '#modal-container',\r\n         swap: 'innerHTML'\r\n     });\r\n     showModal();\r\n }\r\n\r\n // View function always passes mode=view\r\n function viewSupervisorReport(studentId) {\r\n     console.log('DEBUG: viewSupervisorReport called for student:', studentId);\r\n\r\n     htmx.ajax('GET', '/supervisor-report/' + studentId + '/compact-modal?mode=view', {\r\n         target: '#modal-container',\r\n         swap: 'innerHTML'\r\n     }).then(() => {\r\n         console.log('DEBUG: HTMX request completed');\r\n         showModal();\r\n     }).catch((error) => {\r\n         console.error('DEBUG: HTMX request failed:', error);\r\n     });\r\n }\r\n\r\n    // Update createSupervisorReport to not include mode (allows editing)\r\n    function createSupervisorReport(studentId) {\r\n        htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {\r\n            target: '#modal-container',\r\n            swap: 'innerHTML'\r\n        });\r\n        showModal();\r\n    }\r\n\r\n\r\n\r\n      function showModal() {\r\n          let modalContainer = document.getElementById('modal-container');\r\n          if (!modalContainer) {\r\n              modalContainer = document.createElement('div');\r\n              modalContainer.id = 'modal-container';\r\n              modalContainer.className = 'fixed inset-0 z-50';\r\n              document.body.appendChild(modalContainer);\r\n          }\r\n          modalContainer.style.display = 'block';\r\n\r\n          // Add event listener for HTMX after content loads\r\n          document.addEventListener('htmx:afterSwap', function(evt) {\r\n              if (evt.detail.target.id === 'modal-container') {\r\n                  // Focus trap for accessibility\r\n                  setTimeout(() => {\r\n                      const modal = modalContainer.querySelector('[role=\"dialog\"]');\r\n                      if (modal) {\r\n                          modal.focus();\r\n                      }\r\n                  }, 100);\r\n              }\r\n          });\r\n      }\r\n\r\n                  // Update hideModal to work with TemplUI modals\r\n                  function hideModal() {\r\n                      const modalContainer = document.getElementById('modal-container');\r\n                      if (modalContainer) {\r\n                          modalContainer.style.display = 'none';\r\n                          modalContainer.innerHTML = '';\r\n                      }\r\n                      // Reset modal state\r\n                      if (window.modalState) {\r\n                          window.modalState.openModalId = null;\r\n                      }\r\n                      document.body.style.overflow = '';\r\n                  }\r\n\r\n            // Event Listeners\r\n            document.addEventListener('htmx:afterRequest', function(evt) {\r\n                if (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reportSaved') {\r\n                    hideModal();\r\n                    htmx.ajax('GET', '/students-list', {\r\n                        target: '#student-table-container',\r\n                        values: htmx.values('#filters-form')\r\n                    });\r\n                }\r\n            });\r\n\r\n            // Debug logging\r\n            document.addEventListener('htmx:beforeRequest', function(evt) {\r\n                console.log('HTMX Request URL:', evt.detail.requestConfig.path);\r\n            });\r\n\r\n            // Confirm functions are loaded\r\n            console.log('All functions loaded successfully');\r\n\r\n\r\n\r\n            // ==================================================\r\n            // MODAL FOR IMPORT EXPORT\r\n            // =================================================\r\n            function openImportModal() {\r\n                htmx.ajax('GET', '/admin/import/modal', {\r\n                    target: '#modal-container',\r\n                    swap: 'innerHTML'\r\n                });\r\n                showModal();\r\n            }\r\n\r\n            function closeImportModal(event) {\r\n                if (event && event.target !== event.currentTarget) return;\r\n                hideModal();\r\n            }\r\n\r\n            function handleFileSelect(input) {\r\n                const file = input.files[0];\r\n                const fileInfo = document.getElementById('file-info');\r\n                const fileName = document.getElementById('file-name');\r\n                const fileSize = document.getElementById('file-size');\r\n                const importButton = document.getElementById('import-button');\r\n                const previewSection = document.getElementById('preview-section');\r\n\r\n                if (file) {\r\n                    fileName.textContent = file.name;\r\n                    fileSize.textContent = `(${formatFileSize(file.size)})`;\r\n                    fileInfo.classList.remove('hidden');\r\n                    importButton.disabled = false;\r\n\r\n                    // Show preview for Excel files\r\n                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {\r\n                        previewFile(file);\r\n                    }\r\n                } else {\r\n                    fileInfo.classList.add('hidden');\r\n                    importButton.disabled = true;\r\n                    previewSection.classList.add('hidden');\r\n                }\r\n            }\r\n\r\n            function previewFile(file) {\r\n                const formData = new FormData();\r\n                formData.append('file', file);\r\n                formData.append('preview', 'true');\r\n\r\n                fetch('/admin/import/preview', {\r\n                    method: 'POST',\r\n                    body: formData\r\n                })\r\n                .then(response => response.text())\r\n                .then(html => {\r\n                    document.getElementById('preview-content').innerHTML = html;\r\n                    document.getElementById('preview-section').classList.remove('hidden');\r\n                })\r\n                .catch(error => {\r\n                    console.error('Preview error:', error);\r\n                });\r\n            }\r\n\r\n            function startImport() {\r\n                const fileInput = document.getElementById('import-file');\r\n                const file = fileInput.files[0];\r\n\r\n                if (!file) {\r\n                    alert('Pasirinkite failą');\r\n                    return;\r\n                }\r\n\r\n                const formData = new FormData();\r\n                formData.append('file', file);\r\n                formData.append('overwrite_existing', document.getElementById('overwrite-existing').checked);\r\n                formData.append('validate_emails', document.getElementById('validate-emails').checked);\r\n                formData.append('send_notifications', document.getElementById('send-notifications').checked);\r\n\r\n                const importButton = document.getElementById('import-button');\r\n                const buttonText = document.getElementById('import-button-text');\r\n\r\n                importButton.disabled = true;\r\n                buttonText.textContent = 'Importuojama...';\r\n\r\n                fetch('/admin/import/process', {\r\n                    method: 'POST',\r\n                    body: formData\r\n                })\r\n                .then(response => response.text())\r\n                .then(html => {\r\n                    document.getElementById('import-results').innerHTML = html;\r\n                    document.getElementById('import-results').classList.remove('hidden');\r\n\r\n                    // Hide other sections\r\n                    document.getElementById('preview-section').classList.add('hidden');\r\n\r\n                    // Refresh the student list after successful import\r\n                    setTimeout(() => {\r\n                        hideModal();\r\n                        window.location.reload();\r\n                    }, 3000);\r\n                })\r\n                .catch(error => {\r\n                    console.error('Import error:', error);\r\n                    alert('Importavimo klaida: ' + error.message);\r\n                })\r\n                .finally(() => {\r\n                    importButton.disabled = false;\r\n                    buttonText.textContent = 'Importuoti';\r\n                });\r\n            }\r\n\r\n     function exportData() {\r\n         console.log('Export function called');\r\n\r\n         // Get the form element first\r\n         const filtersForm = document.getElementById('filters-form');\r\n         const searchValue = document.getElementById('search')?.value || '';\r\n\r\n         // Get current filters from the form\r\n         let filters = {};\r\n         if (filtersForm) {\r\n             // Get all form inputs manually\r\n             const formData = new FormData(filtersForm);\r\n             for (let [key, value] of formData.entries()) {\r\n                 filters[key] = value;\r\n             }\r\n         }\r\n\r\n         console.log('Filters:', filters);\r\n         console.log('Search value:', searchValue);\r\n\r\n         // Build query string\r\n         const params = new URLSearchParams();\r\n         if (searchValue) params.append('search', searchValue);\r\n\r\n         // Add all filter values\r\n         Object.keys(filters).forEach(key => {\r\n             if (filters[key] && filters[key] !== '') {\r\n                 params.append(key, filters[key]);\r\n             }\r\n         });\r\n\r\n         const exportUrl = '/admin/export/students?' + params.toString();\r\n         console.log('Export URL:', exportUrl);\r\n\r\n         // Download file\r\n         window.location.href = exportUrl;\r\n     }\r\n\r\n            function formatFileSize(bytes) {\r\n                if (bytes === 0) return '0 Bytes';\r\n                const k = 1024;\r\n                const sizes = ['Bytes', 'KB', 'MB', 'GB'];\r\n                const i = Math.floor(Math.log(bytes) / Math.log(k));\r\n                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];\r\n            }\r\n\r\n\r\n\r\n            // ===================================================\r\n\r\n\r\n\r\n\r\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div></div><!-- Modal Container --> <div id=\"modal-container\" style=\"display: none;\"></div><script>\r\n            // Clear all filters function\r\n            function clearAllFilters() {\r\n                const searchInput = document.getElementById('search');\r\n                if (searchInput) {\r\n                    searchInput.value = '';\r\n                }\r\n\r\n                document.querySelectorAll('.select-container').forEach(container => {\r\n                    const trigger = container.querySelector('.select-trigger');\r\n                    const hiddenInput = trigger?.querySelector('input[type=\"hidden\"]');\r\n                    const valueEl = trigger?.querySelector('.select-value');\r\n                    const contentId = trigger?.dataset.contentId;\r\n\r\n                    if (hiddenInput) {\r\n                        hiddenInput.value = '';\r\n                    }\r\n\r\n                    if (valueEl) {\r\n                        const inputName = hiddenInput?.name;\r\n                        let placeholder = 'Visos';\r\n                        if (inputName === 'limit') {\r\n                            placeholder = '10';\r\n                            hiddenInput.value = '10';\r\n                        } else if (inputName === 'year') {\r\n                            placeholder = 'Visi metai';\r\n                        }\r\n                        valueEl.textContent = placeholder;\r\n                        valueEl.classList.add('text-muted-foreground');\r\n                    }\r\n\r\n                    if (contentId) {\r\n                        const content = document.getElementById(contentId);\r\n                        if (content) {\r\n                            content.querySelectorAll('.select-item').forEach(item => {\r\n                                item.setAttribute('data-selected', 'false');\r\n                                item.classList.remove('bg-accent', 'text-accent-foreground');\r\n                                const check = item.querySelector('.select-check');\r\n                                if (check) check.classList.replace('opacity-100', 'opacity-0');\r\n                            });\r\n\r\n                            const inputName = hiddenInput?.name;\r\n                            let defaultValue = '';\r\n                            if (inputName === 'limit') {\r\n                                defaultValue = '10';\r\n                            }\r\n\r\n                            const defaultItem = content.querySelector(`.select-item[data-value=\"${defaultValue}\"]`);\r\n                            if (defaultItem) {\r\n                                defaultItem.setAttribute('data-selected', 'true');\r\n                                defaultItem.classList.add('bg-accent', 'text-accent-foreground');\r\n                                const check = defaultItem.querySelector('.select-check');\r\n                                if (check) check.classList.replace('opacity-0', 'opacity-100');\r\n                            }\r\n                        }\r\n                    }\r\n                });\r\n\r\n                htmx.ajax('GET', '/students-list', {\r\n                    target: '#student-table-container',\r\n                    values: { limit: '10', group: '', study_program: '', topic_status: '', year: '', search: '', page: '1' }\r\n                });\r\n            }\r\n\r\nfunction viewStudentRepository(studentId) {\r\n        window.open('/repository/student/' + studentId, '_blank');\r\n    }\r\n\r\n         // Function to view topic registration (read-only)\r\n         function viewTopicRegistration(studentId) {\r\n             console.log('viewTopicRegistration called with:', studentId);\r\n             htmx.ajax('GET', `/topic-registration/${studentId}?mode=view`, {\r\n                 target: '#modal-container',\r\n                 swap: 'innerHTML'\r\n             });\r\n             showModal();\r\n         }\r\n\r\n         // Function to view topic registration form (for review)\r\n         function viewTopicRegistrationForm(studentId) {\r\n             console.log('viewTopicRegistrationForm called with:', studentId);\r\n             htmx.ajax('GET', `/topic-registration/${studentId}?mode=review`, {\r\n                 target: '#modal-container',\r\n                 swap: 'innerHTML'\r\n             });\r\n             showModal();\r\n         }\r\n\r\n\r\n// STUDENTU LISTO ATNAUJINIMAS UZPILDZIUS VADOVO ATSILIEPIMA\r\n// Add this to your main page where the student list is displayed\r\ndocument.addEventListener('supervisorReportSaved', function(event) {\r\n    console.log('Supervisor report saved, refreshing...');\r\n\r\n    // Close any open modals\r\n    const modal = document.getElementById('supervisor-modal');\r\n    if (modal && window.modalState) {\r\n        modal.style.display = 'none';\r\n        window.modalState.openModalId = null;\r\n        document.body.style.overflow = '';\r\n    }\r\n\r\n    // Show success notification\r\n    showSuccessNotification('Supervisor report saved successfully!');\r\n\r\n    // Refresh the student table\r\n    setTimeout(function() {\r\n        window.location.reload(); // Simple and reliable\r\n    }, 1500);\r\n});\r\n\r\nfunction showSuccessNotification(message) {\r\n    // Create notification element\r\n    const notification = document.createElement('div');\r\n    notification.id = 'success-notification';\r\n    notification.className = 'fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm';\r\n    notification.innerHTML = `\r\n        <div class=\"flex items-center\">\r\n            <svg class=\"h-5 w-5 text-green-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\r\n                <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path>\r\n            </svg>\r\n            <div class=\"text-green-600 text-sm font-medium\">${message}</div>\r\n        </div>\r\n    `;\r\n\r\n    // Add to page\r\n    document.body.appendChild(notification);\r\n\r\n    // Remove after 3 seconds\r\n    setTimeout(function() {\r\n        if (notification && notification.parentNode) {\r\n            notification.parentNode.removeChild(notification);\r\n        }\r\n    }, 3000);\r\n}\r\n\r\n///========================================================================================\r\n\r\n\r\n\r\n            function approveRegistration(studentId) {\r\n                console.log('approveRegistration called with:', studentId);\r\n                htmx.ajax('GET', `/topic-registration/${studentId}?mode=review`, {\r\n                    target: '#modal-container',\r\n                    swap: 'innerHTML'\r\n                });\r\n                showModal();\r\n            }\r\n\r\n            // Supervisor Report Functions\r\n // Update editSupervisorReport to check if editing is allowed\r\n function editSupervisorReport(studentId) {\r\n     console.log('DEBUG: editSupervisorReport called for student:', studentId);\r\n\r\n     // Don't include mode parameter for edit - let the handler decide based on status\r\n     htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {\r\n         target: '#modal-container',\r\n         swap: 'innerHTML'\r\n     });\r\n     showModal();\r\n }\r\n\r\n // View function always passes mode=view\r\n function viewSupervisorReport(studentId) {\r\n     console.log('DEBUG: viewSupervisorReport called for student:', studentId);\r\n\r\n     htmx.ajax('GET', '/supervisor-report/' + studentId + '/compact-modal?mode=view', {\r\n         target: '#modal-container',\r\n         swap: 'innerHTML'\r\n     }).then(() => {\r\n         console.log('DEBUG: HTMX request completed');\r\n         showModal();\r\n     }).catch((error) => {\r\n         console.error('DEBUG: HTMX request failed:', error);\r\n     });\r\n }\r\n\r\n    // Update createSupervisorReport to not include mode (allows editing)\r\n    function createSupervisorReport(studentId) {\r\n        htmx.ajax('GET', `/supervisor-report/${studentId}/compact-modal`, {\r\n            target: '#modal-container',\r\n            swap: 'innerHTML'\r\n        });\r\n        showModal();\r\n    }\r\n\r\n\r\n\r\n      function showModal() {\r\n          let modalContainer = document.getElementById('modal-container');\r\n          if (!modalContainer) {\r\n              modalContainer = document.createElement('div');\r\n              modalContainer.id = 'modal-container';\r\n              modalContainer.className = 'fixed inset-0 z-50';\r\n              document.body.appendChild(modalContainer);\r\n          }\r\n          modalContainer.style.display = 'block';\r\n\r\n          // Add event listener for HTMX after content loads\r\n          document.addEventListener('htmx:afterSwap', function(evt) {\r\n              if (evt.detail.target.id === 'modal-container') {\r\n                  // Focus trap for accessibility\r\n                  setTimeout(() => {\r\n                      const modal = modalContainer.querySelector('[role=\"dialog\"]');\r\n                      if (modal) {\r\n                          modal.focus();\r\n                      }\r\n                  }, 100);\r\n              }\r\n          });\r\n      }\r\n\r\n                  // Update hideModal to work with TemplUI modals\r\n                  function hideModal() {\r\n                      const modalContainer = document.getElementById('modal-container');\r\n                      if (modalContainer) {\r\n                          modalContainer.style.display = 'none';\r\n                          modalContainer.innerHTML = '';\r\n                      }\r\n                      // Reset modal state\r\n                      if (window.modalState) {\r\n                          window.modalState.openModalId = null;\r\n                      }\r\n                      document.body.style.overflow = '';\r\n                  }\r\n\r\n            // Event Listeners\r\n            document.addEventListener('htmx:afterRequest', function(evt) {\r\n                if (evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reportSaved') {\r\n                    hideModal();\r\n                    htmx.ajax('GET', '/students-list', {\r\n                        target: '#student-table-container',\r\n                        values: htmx.values('#filters-form')\r\n                    });\r\n                }\r\n            });\r\n\r\n            // Debug logging\r\n            document.addEventListener('htmx:beforeRequest', function(evt) {\r\n                console.log('HTMX Request URL:', evt.detail.requestConfig.path);\r\n            });\r\n\r\n            // Confirm functions are loaded\r\n            console.log('All functions loaded successfully');\r\n\r\n\r\n\r\n            // ==================================================\r\n            // MODAL FOR IMPORT EXPORT\r\n            // =================================================\r\n            function openImportModal() {\r\n                htmx.ajax('GET', '/admin/import/modal', {\r\n                    target: '#modal-container',\r\n                    swap: 'innerHTML'\r\n                });\r\n                showModal();\r\n            }\r\n\r\n            function closeImportModal(event) {\r\n                if (event && event.target !== event.currentTarget) return;\r\n                hideModal();\r\n            }\r\n\r\n            function handleFileSelect(input) {\r\n                const file = input.files[0];\r\n                const fileInfo = document.getElementById('file-info');\r\n                const fileName = document.getElementById('file-name');\r\n                const fileSize = document.getElementById('file-size');\r\n                const importButton = document.getElementById('import-button');\r\n                const previewSection = document.getElementById('preview-section');\r\n\r\n                if (file) {\r\n                    fileName.textContent = file.name;\r\n                    fileSize.textContent = `(${formatFileSize(file.size)})`;\r\n                    fileInfo.classList.remove('hidden');\r\n                    importButton.disabled = false;\r\n\r\n                    // Show preview for Excel files\r\n                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {\r\n                        previewFile(file);\r\n                    }\r\n                } else {\r\n                    fileInfo.classList.add('hidden');\r\n                    importButton.disabled = true;\r\n                    previewSection.classList.add('hidden');\r\n                }\r\n            }\r\n\r\n            function previewFile(file) {\r\n                const formData = new FormData();\r\n                formData.append('file', file);\r\n                formData.append('preview', 'true');\r\n\r\n                fetch('/admin/import/preview', {\r\n                    method: 'POST',\r\n                    body: formData\r\n                })\r\n                .then(response => response.text())\r\n                .then(html => {\r\n                    document.getElementById('preview-content').innerHTML = html;\r\n                    document.getElementById('preview-section').classList.remove('hidden');\r\n                })\r\n                .catch(error => {\r\n                    console.error('Preview error:', error);\r\n                });\r\n            }\r\n\r\n            function startImport() {\r\n                const fileInput = document.getElementById('import-file');\r\n                const file = fileInput.files[0];\r\n\r\n                if (!file) {\r\n                    alert('Pasirinkite failą');\r\n                    return;\r\n                }\r\n\r\n                const formData = new FormData();\r\n                formData.append('file', file);\r\n                formData.append('overwrite_existing', document.getElementById('overwrite-existing').checked);\r\n                formData.append('validate_emails', document.getElementById('validate-emails').checked);\r\n                formData.append('send_notifications', document.getElementById('send-notifications').checked);\r\n\r\n                const importButton = document.getElementById('import-button');\r\n                const buttonText = document.getElementById('import-button-text');\r\n\r\n                importButton.disabled = true;\r\n                buttonText.textContent = 'Importuojama...';\r\n\r\n                fetch('/admin/import/process', {\r\n                    method: 'POST',\r\n                    body: formData\r\n                })\r\n                .then(response => response.text())\r\n                .then(html => {\r\n                    document.getElementById('import-results').innerHTML = html;\r\n                    document.getElementById('import-results').classList.remove('hidden');\r\n\r\n                    // Hide other sections\r\n                    document.getElementById('preview-section').classList.add('hidden');\r\n\r\n                    // Refresh the student list after successful import\r\n                    setTimeout(() => {\r\n                        hideModal();\r\n                        window.location.reload();\r\n                    }, 3000);\r\n                })\r\n                .catch(error => {\r\n                    console.error('Import error:', error);\r\n                    alert('Importavimo klaida: ' + error.message);\r\n                })\r\n                .finally(() => {\r\n                    importButton.disabled = false;\r\n                    buttonText.textContent = 'Importuoti';\r\n                });\r\n            }\r\n\r\n     function exportData() {\r\n         console.log('Export function called');\r\n\r\n         // Get the form element first\r\n         const filtersForm = document.getElementById('filters-form');\r\n         const searchValue = document.getElementById('search')?.value || '';\r\n\r\n         // Get current filters from the form\r\n         let filters = {};\r\n         if (filtersForm) {\r\n             // Get all form inputs manually\r\n             const formData = new FormData(filtersForm);\r\n             for (let [key, value] of formData.entries()) {\r\n                 filters[key] = value;\r\n             }\r\n         }\r\n\r\n         console.log('Filters:', filters);\r\n         console.log('Search value:', searchValue);\r\n\r\n         // Build query string\r\n         const params = new URLSearchParams();\r\n         if (searchValue) params.append('search', searchValue);\r\n\r\n         // Add all filter values\r\n         Object.keys(filters).forEach(key => {\r\n             if (filters[key] && filters[key] !== '') {\r\n                 params.append(key, filters[key]);\r\n             }\r\n         });\r\n\r\n         const exportUrl = '/admin/export/students?' + params.toString();\r\n         console.log('Export URL:', exportUrl);\r\n\r\n         // Download file\r\n         window.location.href = exportUrl;\r\n     }\r\n\r\n            function formatFileSize(bytes) {\r\n                if (bytes === 0) return '0 Bytes';\r\n                const k = 1024;\r\n                const sizes = ['Bytes', 'KB', 'MB', 'GB'];\r\n                const i = Math.floor(Math.log(bytes) / Math.log(k));\r\n                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];\r\n            }\r\n\r\n\r\n\r\n            // ===================================================\r\n\r\n           // VIEW REVIEWER FORM\r\n      function viewReview(studentId) {\r\n          console.log('viewReview called with:', studentId);\r\n\r\n          // First, load the modal content via HTMX\r\n          htmx.ajax('GET', `/reviewer-report/${studentId}/compact-modal?mode=view`, {\r\n              target: '#modal-container',\r\n              swap: 'innerHTML'\r\n          }).then(() => {\r\n              // After content is loaded, show the modal container\r\n              const modalContainer = document.getElementById('modal-container');\r\n              if (modalContainer) {\r\n                  modalContainer.style.display = 'block';\r\n\r\n                  // Wait a bit for the modal to be in the DOM, then open it using templUI\r\n                  setTimeout(() => {\r\n                      if (typeof window.openModalById === 'function') {\r\n                          window.openModalById('reviewer-modal');\r\n                      } else {\r\n                          // Fallback if templUI functions aren't available\r\n                          const modal = document.getElementById('reviewer-modal');\r\n                          if (modal) {\r\n                              modal.style.display = 'flex';\r\n                              modal.classList.remove('hidden', 'opacity-0');\r\n                              modal.classList.add('opacity-100');\r\n\r\n                              const content = modal.querySelector('[data-modal-content]');\r\n                              if (content) {\r\n                                  content.classList.remove('scale-95', 'opacity-0');\r\n                                  content.classList.add('scale-100', 'opacity-100');\r\n                              }\r\n                          }\r\n                      }\r\n                  }, 100);\r\n              }\r\n          });\r\n      }\r\n\r\n      // Update createReviewerReport function similarly\r\n      function createReviewerReport(studentId) {\r\n          console.log('createReviewerReport called with:', studentId);\r\n\r\n          htmx.ajax('GET', `/reviewer-report/${studentId}/compact-modal`, {\r\n              target: '#modal-container',\r\n              swap: 'innerHTML'\r\n          }).then(() => {\r\n              const modalContainer = document.getElementById('modal-container');\r\n              if (modalContainer) {\r\n                  modalContainer.style.display = 'block';\r\n\r\n                  setTimeout(() => {\r\n                      if (typeof window.openModalById === 'function') {\r\n                          window.openModalById('reviewer-modal');\r\n                      } else {\r\n                          const modal = document.getElementById('reviewer-modal');\r\n                          if (modal) {\r\n                              modal.style.display = 'flex';\r\n                              modal.classList.remove('hidden', 'opacity-0');\r\n                              modal.classList.add('opacity-100');\r\n\r\n                              const content = modal.querySelector('[data-modal-content]');\r\n                              if (content) {\r\n                                  content.classList.remove('scale-95', 'opacity-0');\r\n                                  content.classList.add('scale-100', 'opacity-100');\r\n                              }\r\n                          }\r\n                      }\r\n                  }, 100);\r\n              }\r\n          });\r\n      }\r\n\r\n           // Add event listener for reviewer report saved\r\n           document.addEventListener('reviewerReportSaved', function(event) {\r\n               console.log('Reviewer report saved, refreshing...');\r\n\r\n               // Close modal\r\n               const modal = document.getElementById('reviewer-modal');\r\n               if (modal && window.modalState) {\r\n                   modal.style.display = 'none';\r\n                   window.modalState.openModalId = null;\r\n                   document.body.style.overflow = '';\r\n               }\r\n\r\n               // Show success notification\r\n               showSuccessNotification('Reviewer report saved successfully!');\r\n\r\n               // Refresh the student table\r\n               setTimeout(function() {\r\n                   window.location.reload();\r\n               }, 1500);\r\n           });\r\n\r\n\r\n\r\n\r\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -314,7 +314,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 						var templ_7745c5c3_Var11 string
 						templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(filters.Limit))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 525, Col: 37}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 618, Col: 37}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 						if templ_7745c5c3_Err != nil {
@@ -324,7 +324,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 						var templ_7745c5c3_Var12 string
 						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(pagination.Limit))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 527, Col: 40}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 620, Col: 40}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
@@ -524,7 +524,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 							var templ_7745c5c3_Var21 string
 							templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(filters.Year))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 559, Col: 37}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 652, Col: 37}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 							if templ_7745c5c3_Err != nil {
@@ -600,7 +600,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 							var templ_7745c5c3_Var25 string
 							templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(year))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 572, Col: 29}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 665, Col: 29}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 							if templ_7745c5c3_Err != nil {
@@ -699,7 +699,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 						var templ_7745c5c3_Var30 string
 						templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(filters.Group)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 591, Col: 23}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 684, Col: 23}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 						if templ_7745c5c3_Err != nil {
@@ -780,7 +780,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 							var templ_7745c5c3_Var34 string
 							templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(group)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 605, Col: 16}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 698, Col: 16}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 							if templ_7745c5c3_Err != nil {
@@ -961,7 +961,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 							var templ_7745c5c3_Var42 string
 							templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(filters.StudyProgram)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 639, Col: 31}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 732, Col: 31}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 							if templ_7745c5c3_Err != nil {
@@ -1054,7 +1054,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 								var templ_7745c5c3_Var46 string
 								templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(program)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 659, Col: 19}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 752, Col: 19}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 								if templ_7745c5c3_Err != nil {
@@ -1236,7 +1236,7 @@ func StudentListFilters(pagination *database.PaginationInfo, filters *database.T
 							var templ_7745c5c3_Var53 string
 							templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(filters.TopicStatus)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 702, Col: 31}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 795, Col: 31}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 							if templ_7745c5c3_Err != nil {
@@ -1886,7 +1886,7 @@ func StudentListTable(user *auth.AuthenticatedUser, students []database.StudentS
 								var templ_7745c5c3_Var79 string
 								templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentGroup)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 810, Col: 29}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 903, Col: 29}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 								if templ_7745c5c3_Err != nil {
@@ -1927,7 +1927,7 @@ func StudentListTable(user *auth.AuthenticatedUser, students []database.StudentS
 							var templ_7745c5c3_Var81 string
 							templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(student.GetDisplayName(currentLocale))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 816, Col: 47}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 909, Col: 47}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
 							if templ_7745c5c3_Err != nil {
@@ -1940,7 +1940,7 @@ func StudentListTable(user *auth.AuthenticatedUser, students []database.StudentS
 							var templ_7745c5c3_Var82 string
 							templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(student.GetLocalizedTitle(currentLocale))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 819, Col: 50}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 912, Col: 50}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 							if templ_7745c5c3_Err != nil {
@@ -2297,7 +2297,7 @@ func DocumentsCell(user *auth.AuthenticatedUser, studentID int, hasSourceCode bo
 		var templ_7745c5c3_Var91 string
 		templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs("docs-" + strconv.Itoa(studentID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 930, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1023, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 		if templ_7745c5c3_Err != nil {
@@ -2310,7 +2310,7 @@ func DocumentsCell(user *auth.AuthenticatedUser, studentID int, hasSourceCode bo
 		var templ_7745c5c3_Var92 string
 		templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(studentID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 932, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1025, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 		if templ_7745c5c3_Err != nil {
@@ -2323,7 +2323,7 @@ func DocumentsCell(user *auth.AuthenticatedUser, studentID int, hasSourceCode bo
 		var templ_7745c5c3_Var93 string
 		templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(user.Role)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 933, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1026, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 		if templ_7745c5c3_Err != nil {
@@ -2366,7 +2366,7 @@ func ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasReport
 			var templ_7745c5c3_Var95 string
 			templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(reviewerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 946, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1039, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
 			if templ_7745c5c3_Err != nil {
@@ -2377,18 +2377,22 @@ func ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasReport
 				return templ_7745c5c3_Err
 			}
 			if hasReport {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, " ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 				if isSigned {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-green-500 rounded-full\"></div><span class=\"text-xs text-green-700\">Pasirašyta</span></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-green-500 rounded-full\"></div><span class=\"text-xs text-green-700\">Pasirašyta</span></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-blue-500 rounded-full\"></div><span class=\"text-xs text-blue-700\">Užpildyta</span></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-blue-500 rounded-full\"></div><span class=\"text-xs text-blue-700\">Užpildyta</span></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, " <div class=\"flex gap-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2396,21 +2400,93 @@ func ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasReport
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-yellow-500 rounded-full\"></div><span class=\"text-xs text-yellow-700\">not_filled</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, " <div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-yellow-500 rounded-full\"></div><span class=\"text-xs text-yellow-700\">Neužpildyta</span></div> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if canCreateReviewerReport(user.Role, reviewerName, user.Email) {
+					templ_7745c5c3_Err = CompactReviewerButton(studentID, "create", "Pildyti recenziją").Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "<div class=\"text-xs text-muted-foreground\">Nepaskirtas</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "<div class=\"text-xs text-muted-foreground\">Nepaskirtas</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+		}
+		return nil
+	})
+}
+
+func CompactReviewerButton(studentID int, action, tooltip string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var96 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var96 == nil {
+			templ_7745c5c3_Var96 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Var97 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			if action == "create" {
+				templ_7745c5c3_Err = icon.Plus(icon.Props{Size: 14}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = icon.PencilLine(icon.Props{Size: 14}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = button.Button(button.Props{
+			Variant: button.VariantGhost,
+			Size:    button.SizeIcon,
+			Class:   "h-6 w-6 p-0",
+			Attributes: templ.Attributes{
+				"onclick": getCompactReviewerAction(studentID, action),
+				"title":   tooltip,
+			},
+		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var97), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
 		return nil
 	})
@@ -2432,45 +2508,45 @@ func SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasR
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var96 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var96 == nil {
-			templ_7745c5c3_Var96 = templ.NopComponent
+		templ_7745c5c3_Var98 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var98 == nil {
+			templ_7745c5c3_Var98 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "<div class=\"space-y-1\"><div class=\"text-xs text-muted-foreground\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "<div class=\"space-y-1\"><div class=\"text-xs text-muted-foreground\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var97 string
-		templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.JoinStringErrs(supervisorEmail)
+		var templ_7745c5c3_Var99 string
+		templ_7745c5c3_Var99, templ_7745c5c3_Err = templ.JoinStringErrs(supervisorEmail)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 976, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1095, Col: 20}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var97))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var99))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if hasReport {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if isSigned {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-green-500 rounded-full\"></div><span class=\"text-xs text-green-700\">Pasirašyta</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-green-500 rounded-full\"></div><span class=\"text-xs text-green-700\">Pasirašyta</span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-blue-500 rounded-full\"></div><span class=\"text-xs text-blue-700\">Užpildyta</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "<div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-blue-500 rounded-full\"></div><span class=\"text-xs text-blue-700\">Užpildyta</span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, " <div class=\"flex gap-1\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, " <div class=\"flex gap-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2478,12 +2554,12 @@ func SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasR
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, " <div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-yellow-500 rounded-full\"></div><span class=\"text-xs text-yellow-700\">Neužpildyta</span></div> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, " <div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-yellow-500 rounded-full\"></div><span class=\"text-xs text-yellow-700\">Neužpildyta</span></div> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2494,7 +2570,7 @@ func SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasR
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2503,61 +2579,6 @@ func SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasR
 }
 
 func CompactIconButton(iconName, action, tooltip string) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var98 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var98 == nil {
-			templ_7745c5c3_Var98 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var99 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-			if !templ_7745c5c3_IsBuffer {
-				defer func() {
-					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err == nil {
-						templ_7745c5c3_Err = templ_7745c5c3_BufErr
-					}
-				}()
-			}
-			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = renderTemplUIIcon(iconName).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			return nil
-		})
-		templ_7745c5c3_Err = button.Button(button.Props{
-			Variant: button.VariantGhost,
-			Size:    button.SizeIcon,
-			Class:   "h-6 w-6 p-0",
-			Attributes: templ.Attributes{
-				"onclick": action,
-				"title":   tooltip,
-			},
-		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var99), templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		return nil
-	})
-}
-
-func CompactSupervisorButton(studentID int, action, tooltip string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2590,6 +2611,61 @@ func CompactSupervisorButton(studentID int, action, tooltip string) templ.Compon
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = renderTemplUIIcon(iconName).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = button.Button(button.Props{
+			Variant: button.VariantGhost,
+			Size:    button.SizeIcon,
+			Class:   "h-6 w-6 p-0",
+			Attributes: templ.Attributes{
+				"onclick": action,
+				"title":   tooltip,
+			},
+		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var101), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func CompactSupervisorButton(studentID int, action, tooltip string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var102 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var102 == nil {
+			templ_7745c5c3_Var102 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Var103 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
 			if action == "create" {
 				templ_7745c5c3_Err = icon.Plus(icon.Props{Size: 14}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
@@ -2611,7 +2687,7 @@ func CompactSupervisorButton(studentID int, action, tooltip string) templ.Compon
 				"onclick": getCompactSupervisorAction(studentID, action),
 				"title":   tooltip,
 			},
-		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var101), templ_7745c5c3_Buffer)
+		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var103), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2635,56 +2711,56 @@ func PaginationComponent(pagination *database.PaginationInfo) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var102 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var102 == nil {
-			templ_7745c5c3_Var102 = templ.NopComponent
+		templ_7745c5c3_Var104 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var104 == nil {
+			templ_7745c5c3_Var104 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "<div class=\"flex items-center justify-between py-4\"><div class=\"text-sm text-muted-foreground\">Rodoma ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var103 string
-		templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa((pagination.Page-1)*pagination.Limit + 1))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1045, Col: 66}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, " - ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var104 string
-		templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(minInt(pagination.Page*pagination.Limit, pagination.Total)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1045, Col: 145}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, " iš ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, "<div class=\"flex items-center justify-between py-4\"><div class=\"text-sm text-muted-foreground\">Rodoma ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var105 string
-		templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(pagination.Total))
+		templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa((pagination.Page-1)*pagination.Limit + 1))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1045, Col: 184}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1164, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var105))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "</div><div class=\"flex items-center gap-2\"><div class=\"flex\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, " - ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var106 string
+		templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(minInt(pagination.Page*pagination.Limit, pagination.Total)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1164, Col: 145}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var106))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, " iš ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var107 string
+		templ_7745c5c3_Var107, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(pagination.Total))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1164, Col: 184}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var107))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 142, "</div><div class=\"flex items-center gap-2\"><div class=\"flex\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if pagination.HasPrev {
-			templ_7745c5c3_Var106 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var108 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -2710,44 +2786,13 @@ func PaginationComponent(pagination *database.PaginationInfo) templ.Component {
 					"hx-target":  "#student-table-container",
 					"hx-include": "#search, #filters-form",
 				},
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var106), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var108), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		for i := maxInt(1, pagination.Page-2); i <= minInt(pagination.TotalPages, pagination.Page+2); i++ {
 			if i == pagination.Page {
-				templ_7745c5c3_Var107 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-					if !templ_7745c5c3_IsBuffer {
-						defer func() {
-							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err == nil {
-								templ_7745c5c3_Err = templ_7745c5c3_BufErr
-							}
-						}()
-					}
-					ctx = templ.InitializeContext(ctx)
-					var templ_7745c5c3_Var108 string
-					templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1068, Col: 24}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var108))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					return nil
-				})
-				templ_7745c5c3_Err = button.Button(button.Props{
-					Variant: button.VariantDefault,
-					Class:   "rounded-none",
-				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var107), templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
 				templ_7745c5c3_Var109 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -2763,9 +2808,40 @@ func PaginationComponent(pagination *database.PaginationInfo) templ.Component {
 					var templ_7745c5c3_Var110 string
 					templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1080, Col: 24}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1187, Col: 24}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var110))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					return nil
+				})
+				templ_7745c5c3_Err = button.Button(button.Props{
+					Variant: button.VariantDefault,
+					Class:   "rounded-none",
+				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var109), templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Var111 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+					if !templ_7745c5c3_IsBuffer {
+						defer func() {
+							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err == nil {
+								templ_7745c5c3_Err = templ_7745c5c3_BufErr
+							}
+						}()
+					}
+					ctx = templ.InitializeContext(ctx)
+					var templ_7745c5c3_Var112 string
+					templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/student_list.templ`, Line: 1199, Col: 24}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2779,14 +2855,14 @@ func PaginationComponent(pagination *database.PaginationInfo) templ.Component {
 						"hx-target":  "#student-table-container",
 						"hx-include": "#search, #filters-form",
 					},
-				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var109), templ_7745c5c3_Buffer)
+				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var111), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
 		if pagination.HasNext {
-			templ_7745c5c3_Var111 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var113 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -2812,12 +2888,12 @@ func PaginationComponent(pagination *database.PaginationInfo) templ.Component {
 					"hx-target":  "#student-table-container",
 					"hx-include": "#search, #filters-form",
 				},
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var111), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var113), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "</div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 143, "</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2841,9 +2917,9 @@ func renderTemplUIIcon(iconName string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var112 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var112 == nil {
-			templ_7745c5c3_Var112 = templ.NopComponent
+		templ_7745c5c3_Var114 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var114 == nil {
+			templ_7745c5c3_Var114 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		switch iconName {
@@ -2934,6 +3010,24 @@ func getCompactSupervisorAction(studentID int, action string) string {
 		return "createSupervisorReport(" + strconv.Itoa(studentID) + ")"
 	}
 	return "editSupervisorReport(" + strconv.Itoa(studentID) + ")"
+}
+
+func getCompactReviewerAction(studentID int, action string) string {
+	if action == "create" {
+		return "createReviewerReport(" + strconv.Itoa(studentID) + ")"
+	}
+	return "editReviewerReport(" + strconv.Itoa(studentID) + ")"
+}
+func canCreateReviewerReport(userRole, reviewerEmail, userEmail string) bool {
+	// Reviewers can only create reports for students they are assigned to
+	if userRole == auth.RoleReviewer && reviewerEmail == userEmail {
+		return true
+	}
+	// Admins can create reviewer reports
+	if userRole == auth.RoleAdmin {
+		return true
+	}
+	return false
 }
 
 var _ = templruntime.GeneratedTemplate

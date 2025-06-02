@@ -438,6 +438,99 @@ function showSuccessNotification(message) {
 
             // ===================================================
 
+           // VIEW REVIEWER FORM
+      function viewReview(studentId) {
+          console.log('viewReview called with:', studentId);
+
+          // First, load the modal content via HTMX
+          htmx.ajax('GET', `/reviewer-report/${studentId}/compact-modal?mode=view`, {
+              target: '#modal-container',
+              swap: 'innerHTML'
+          }).then(() => {
+              // After content is loaded, show the modal container
+              const modalContainer = document.getElementById('modal-container');
+              if (modalContainer) {
+                  modalContainer.style.display = 'block';
+
+                  // Wait a bit for the modal to be in the DOM, then open it using templUI
+                  setTimeout(() => {
+                      if (typeof window.openModalById === 'function') {
+                          window.openModalById('reviewer-modal');
+                      } else {
+                          // Fallback if templUI functions aren't available
+                          const modal = document.getElementById('reviewer-modal');
+                          if (modal) {
+                              modal.style.display = 'flex';
+                              modal.classList.remove('hidden', 'opacity-0');
+                              modal.classList.add('opacity-100');
+
+                              const content = modal.querySelector('[data-modal-content]');
+                              if (content) {
+                                  content.classList.remove('scale-95', 'opacity-0');
+                                  content.classList.add('scale-100', 'opacity-100');
+                              }
+                          }
+                      }
+                  }, 100);
+              }
+          });
+      }
+
+      // Update createReviewerReport function similarly
+      function createReviewerReport(studentId) {
+          console.log('createReviewerReport called with:', studentId);
+
+          htmx.ajax('GET', `/reviewer-report/${studentId}/compact-modal`, {
+              target: '#modal-container',
+              swap: 'innerHTML'
+          }).then(() => {
+              const modalContainer = document.getElementById('modal-container');
+              if (modalContainer) {
+                  modalContainer.style.display = 'block';
+
+                  setTimeout(() => {
+                      if (typeof window.openModalById === 'function') {
+                          window.openModalById('reviewer-modal');
+                      } else {
+                          const modal = document.getElementById('reviewer-modal');
+                          if (modal) {
+                              modal.style.display = 'flex';
+                              modal.classList.remove('hidden', 'opacity-0');
+                              modal.classList.add('opacity-100');
+
+                              const content = modal.querySelector('[data-modal-content]');
+                              if (content) {
+                                  content.classList.remove('scale-95', 'opacity-0');
+                                  content.classList.add('scale-100', 'opacity-100');
+                              }
+                          }
+                      }
+                  }, 100);
+              }
+          });
+      }
+
+           // Add event listener for reviewer report saved
+           document.addEventListener('reviewerReportSaved', function(event) {
+               console.log('Reviewer report saved, refreshing...');
+
+               // Close modal
+               const modal = document.getElementById('reviewer-modal');
+               if (modal && window.modalState) {
+                   modal.style.display = 'none';
+                   window.modalState.openModalId = null;
+                   document.body.style.overflow = '';
+               }
+
+               // Show success notification
+               showSuccessNotification('Reviewer report saved successfully!');
+
+               // Refresh the student table
+               setTimeout(function() {
+                   window.location.reload();
+               }, 1500);
+           });
+
 
 
 
@@ -946,6 +1039,7 @@ templ ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasRepor
 				{ reviewerName }
 			</div>
 			if hasReport {
+				// Report exists - show status and ONLY view button
 				if isSigned {
 					<div class="flex items-center gap-1">
 						<div class="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -957,19 +1051,44 @@ templ ReviewerStatus(user *auth.AuthenticatedUser, reviewerName string, hasRepor
 						<span class="text-xs text-blue-700">Užpildyta</span>
 					</div>
 				}
-				@CompactIconButton("eye", "viewReview("+strconv.Itoa(studentID)+")", "Žiūrėti")
+				<div class="flex gap-1">
+					// Only show VIEW button when report exists
+					@CompactIconButton("eye", "viewReview("+strconv.Itoa(studentID)+")", "Žiūrėti")
+					// NO EDIT BUTTON - once report is filled, it can only be viewed
+				</div>
 			} else {
+				// Report doesn't exist - show create option
 				<div class="flex items-center gap-1">
 					<div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
-					<span class="text-xs text-yellow-700">not_filled</span>
+					<span class="text-xs text-yellow-700">Neužpildyta</span>
 				</div>
+				// Show create button if user can create
+				if canCreateReviewerReport(user.Role, reviewerName, user.Email) {
+					@CompactReviewerButton(studentID, "create", "Pildyti recenziją")
+				}
 			}
 		</div>
 	} else {
 		<div class="text-xs text-muted-foreground">Nepaskirtas</div>
 	}
 }
-
+templ CompactReviewerButton(studentID int, action, tooltip string) {
+	@button.Button(button.Props{
+		Variant: button.VariantGhost,
+		Size:    button.SizeIcon,
+		Class:   "h-6 w-6 p-0",
+		Attributes: templ.Attributes{
+			"onclick": getCompactReviewerAction(studentID, action),
+			"title":   tooltip,
+		},
+	}) {
+		if action == "create" {
+			@icon.Plus(icon.Props{Size: 14})
+		} else {
+			@icon.PencilLine(icon.Props{Size: 14})
+		}
+	}
+}
 templ SupervisorStatus(user *auth.AuthenticatedUser, supervisorEmail string, hasReport bool, isSigned bool, studentID int, topicStatus string) {
 	<div class="space-y-1">
 		<div class="text-xs text-muted-foreground">
@@ -1157,3 +1276,20 @@ func getCompactSupervisorAction(studentID int, action string) string {
 
 
 
+func getCompactReviewerAction(studentID int, action string) string {
+	if action == "create" {
+		return "createReviewerReport(" + strconv.Itoa(studentID) + ")"
+	}
+	return "editReviewerReport(" + strconv.Itoa(studentID) + ")"
+}
+func canCreateReviewerReport(userRole, reviewerEmail, userEmail string) bool {
+	// Reviewers can only create reports for students they are assigned to
+	if userRole == auth.RoleReviewer && reviewerEmail == userEmail {
+		return true
+	}
+	// Admins can create reviewer reports
+	if userRole == auth.RoleAdmin {
+		return true
+	}
+	return false
+}

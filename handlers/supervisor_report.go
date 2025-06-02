@@ -110,6 +110,14 @@ func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, 
 		return
 	}
 
+	// Check if this is a draft save
+	isDraft := r.FormValue("is_draft") == "true"
+	if isDraft {
+		// Redirect to draft handler
+		h.SaveSupervisorDraft(w, r)
+		return
+	}
+
 	// Get supervisor info from context
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -258,17 +266,19 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
 	//existingReport, err := h.getSupervisorReport(data.StudentRecordID)
 	_, err := h.getSupervisorReport(data.StudentRecordID)
 	if err == sql.ErrNoRows {
-		// Create new report using sqlx Named query
+		// Create new report
 		query := `
-			INSERT INTO supervisor_reports (
-				student_record_id, supervisor_comments, supervisor_name,
-				supervisor_position, supervisor_workplace, is_pass_or_failed,
-				other_match, one_match, own_match, join_match, grade, final_comments
-			) VALUES (
-				:student_record_id, :supervisor_comments, :supervisor_name,
-				:supervisor_position, :supervisor_workplace, :is_pass_or_failed,
-				:other_match, :one_match, :own_match, :join_match, :grade, :final_comments
-			)
+            INSERT INTO supervisor_reports (
+                student_record_id, supervisor_comments, supervisor_name,
+                supervisor_position, supervisor_workplace, is_pass_or_failed,
+                other_match, one_match, own_match, join_match, grade, 
+                final_comments, is_signed
+            ) VALUES (
+                :student_record_id, :supervisor_comments, :supervisor_name,
+                :supervisor_position, :supervisor_workplace, :is_pass_or_failed,
+                :other_match, :one_match, :own_match, :join_match, :grade, 
+                :final_comments, :is_signed
+            )
 		`
 
 		// Convert to map for Named exec
@@ -285,6 +295,7 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
 			"join_match":           data.JoinMatch,
 			"grade":                data.Grade,
 			"final_comments":       data.FinalComments,
+			"is_signed":            true, // Set to true for final submission
 		}
 
 		_, err = h.db.NamedExec(query, params)
@@ -295,19 +306,20 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
 	} else {
 		// Update existing report using sqlx Named query
 		query := `
-			UPDATE supervisor_reports SET
-				supervisor_comments = :supervisor_comments,
-				supervisor_position = :supervisor_position,
-				supervisor_workplace = :supervisor_workplace,
-				is_pass_or_failed = :is_pass_or_failed,
-				other_match = :other_match,
-				one_match = :one_match,
-				own_match = :own_match,
-				join_match = :join_match,
-				grade = :grade,
-				final_comments = :final_comments,
-				updated_date = :updated_date
-			WHERE student_record_id = :student_record_id
+            UPDATE supervisor_reports SET
+                supervisor_comments = :supervisor_comments,
+                supervisor_position = :supervisor_position,
+                supervisor_workplace = :supervisor_workplace,
+                is_pass_or_failed = :is_pass_or_failed,
+                other_match = :other_match,
+                one_match = :one_match,
+                own_match = :own_match,
+                join_match = :join_match,
+                grade = :grade,
+                final_comments = :final_comments,
+                updated_date = :updated_date,
+                is_signed = :is_signed
+            WHERE student_record_id = :student_record_id
 		`
 
 		params := map[string]interface{}{
@@ -323,6 +335,7 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
 			"grade":                data.Grade,
 			"final_comments":       data.FinalComments,
 			"updated_date":         time.Now(),
+			"is_signed":            true, // Set to true for final submission
 		}
 
 		_, err = h.db.NamedExec(query, params)
@@ -621,4 +634,216 @@ func (h *SupervisorReportHandler) getModalTitle(language string) string {
 		return "Supervisor Report"
 	}
 	return "Vadovo atsiliepimas"
+}
+
+// SaveSupervisorDraft handles saving supervisor report as draft
+
+// SaveSupervisorDraft handles saving supervisor report as draft
+func (h *SupervisorReportHandler) SaveSupervisorDraft(w http.ResponseWriter, r *http.Request) {
+	log.Printf("DEBUG: Starting supervisor report draft save")
+
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		log.Printf("ERROR: User not found in context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	studentIDStr := chi.URLParam(r, "id")
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		log.Printf("ERROR: Invalid student ID: %v", err)
+		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("DEBUG: Processing draft for student ID: %d", studentID)
+
+	// Get student record
+	student, err := h.getStudentRecord(studentID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get student record: %v", err)
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if user can save draft
+	if user.Role != auth.RoleSupervisor || student.SupervisorEmail != user.Email {
+		log.Printf("ERROR: Access denied - user role: %s, student supervisor: %s, user email: %s",
+			user.Role, student.SupervisorEmail, user.Email)
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	// Parse form data
+	if err := r.ParseForm(); err != nil {
+		log.Printf("ERROR: Failed to parse form: %v", err)
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Parse form data without strict validation for drafts
+	formData, err := h.parseFormDataForDraft(r)
+	if err != nil {
+		log.Printf("ERROR: Failed to parse form data: %v", err)
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Check if report already exists
+	existingReport, err := h.getSupervisorReport(studentID)
+	reportExists := err == nil && existingReport != nil
+
+	tx, err := h.db.Beginx()
+	if err != nil {
+		log.Printf("ERROR: Failed to begin transaction: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	if !reportExists {
+		log.Printf("DEBUG: Creating new draft report")
+		// Create new draft report
+		_, err = tx.Exec(`
+            INSERT INTO supervisor_reports (
+                student_record_id,
+                supervisor_comments,
+                supervisor_name,
+                supervisor_position,
+                supervisor_workplace,
+                is_pass_or_failed,
+                other_match,
+                one_match,
+                own_match,
+                join_match,
+                is_signed,
+                created_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+			studentID,
+			formData.SupervisorComments,
+			user.Name,
+			formData.SupervisorPosition,
+			formData.SupervisorWorkplace,
+			formData.IsPassOrFailed,
+			formData.OtherMatch,
+			formData.OneMatch,
+			formData.OwnMatch,
+			formData.JoinMatch,
+			false, // Not signed for draft
+		)
+
+		if err != nil {
+			log.Printf("ERROR: Failed to insert draft: %v", err)
+			http.Error(w, "Failed to save draft", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Report exists
+		if existingReport.IsSigned {
+			log.Printf("ERROR: Report already signed")
+			http.Error(w, "Report already signed", http.StatusBadRequest)
+			return
+		}
+
+		log.Printf("DEBUG: Updating existing draft report ID: %d", existingReport.ID)
+		// Update existing unsigned report
+		_, err = tx.Exec(`
+            UPDATE supervisor_reports SET
+                supervisor_comments = ?,
+                supervisor_position = ?,
+                supervisor_workplace = ?,
+                is_pass_or_failed = ?,
+                other_match = ?,
+                one_match = ?,
+                own_match = ?,
+                join_match = ?,
+                updated_date = NOW()
+            WHERE id = ?`,
+			formData.SupervisorComments,
+			formData.SupervisorPosition,
+			formData.SupervisorWorkplace,
+			formData.IsPassOrFailed,
+			formData.OtherMatch,
+			formData.OneMatch,
+			formData.OwnMatch,
+			formData.JoinMatch,
+			existingReport.ID,
+		)
+
+		if err != nil {
+			log.Printf("ERROR: Failed to update draft: %v", err)
+			http.Error(w, "Failed to save draft", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Create audit log
+	auditLog := database.AuditLog{
+		UserEmail:    user.Email,
+		UserRole:     user.Role,
+		Action:       "save_supervisor_report_draft",
+		ResourceType: "supervisor_report",
+		ResourceID:   database.NullableString(studentIDStr),
+		Details: func() *string {
+			detailsStr := fmt.Sprintf(`{"student_id":%d,"action":"draft_saved"}`, studentID)
+			return &detailsStr
+		}(),
+		IPAddress: database.NullableString(h.getClientIP(r)),
+		UserAgent: database.NullableString(r.UserAgent()),
+		Success:   true,
+		CreatedAt: time.Now(),
+	}
+
+	// Don't fail if audit log fails
+	if err := h.createAuditLog(auditLog); err != nil {
+		log.Printf("WARNING: Failed to create audit log: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("ERROR: Failed to commit transaction: %v", err)
+		http.Error(w, "Failed to save draft", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("DEBUG: Draft saved successfully")
+
+	// Return success response
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(`<div class="text-xs text-green-600">Draft saved</div>`))
+}
+
+// parseFormDataForDraft is more lenient than parseFormData for draft saves
+func (h *SupervisorReportHandler) parseFormDataForDraft(r *http.Request) (*database.SupervisorReportFormData, error) {
+	// Parse numeric fields with defaults for empty values
+	otherMatch, _ := strconv.ParseFloat(r.FormValue("other_match"), 64)
+	oneMatch, _ := strconv.ParseFloat(r.FormValue("one_match"), 64)
+	ownMatch, _ := strconv.ParseFloat(r.FormValue("own_match"), 64)
+	joinMatch, _ := strconv.ParseFloat(r.FormValue("join_match"), 64)
+
+	// Parse pass/fail - default to false if not set
+	isPassOrFailed := r.FormValue("is_pass_or_failed") == "true"
+
+	// Parse optional grade
+	var grade *int
+	if gradeStr := r.FormValue("grade"); gradeStr != "" {
+		if g, err := strconv.Atoi(gradeStr); err == nil && g >= 1 && g <= 10 {
+			grade = &g
+		}
+	}
+
+	return &database.SupervisorReportFormData{
+		SupervisorComments:  r.FormValue("supervisor_comments"),
+		SupervisorWorkplace: r.FormValue("supervisor_workplace"),
+		SupervisorPosition:  r.FormValue("supervisor_position"),
+		OtherMatch:          otherMatch,
+		OneMatch:            oneMatch,
+		OwnMatch:            ownMatch,
+		JoinMatch:           joinMatch,
+		IsPassOrFailed:      isPassOrFailed,
+		Grade:               grade,
+		FinalComments:       r.FormValue("final_comments"),
+		SubmissionDate:      time.Now(),
+	}, nil
 }

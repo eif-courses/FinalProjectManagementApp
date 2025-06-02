@@ -155,7 +155,8 @@ func SetupRoutes(db *sqlx.DB,
 		}
 
 		r.Get("/supervisor-report/{id}/compact-modal", supervisorReportHandler.GetCompactSupervisorModal)
-		r.Post("/supervisor-report/{id}/submit", supervisorReportHandler.SubmitSupervisorReport) // Add this line
+		r.Post("/supervisor-report/{id}/submit", supervisorReportHandler.SubmitSupervisorReport)  // Add this line
+		r.Post("/supervisor-report/{id}/save-draft", supervisorReportHandler.SaveSupervisorDraft) // FIXED: Added /supervisor-report prefix
 
 		// Upload routes
 		r.Get("/upload", handlers.ShowUploadPage)
@@ -361,6 +362,14 @@ func SetupRoutes(db *sqlx.DB,
 					log.Printf("Topic %s rejected by department head after supervisor approval", topicID)
 				}
 			})
+		})
+
+		// REVIEWER FORM HANDLER
+		r.Route("/reviewer-report", func(r chi.Router) {
+			r.Use(authMiddleware.RequireAuth)
+			r.Get("/{id}/compact-modal", studentListHandler.ReviewerReportModalHandler)
+			r.Post("/{id}/submit", studentListHandler.ReviewerReportSubmitHandler)
+			r.Post("/{id}/save-draft", studentListHandler.ReviewerReportSaveDraftHandler) // Add this
 		})
 
 		// Admin routes - MERGED WITH IMPORT/EXPORT FUNCTIONALITY

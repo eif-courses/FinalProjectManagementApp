@@ -1486,6 +1486,13 @@ func getStudentDocuments(studentID int) ([]database.Document, error) {
 	return documents, nil
 }
 
+func getStringFromNullString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
+}
+
 func getTopicStatus(status sql.NullString) string {
 	if status.Valid {
 		return status.String
@@ -1631,6 +1638,420 @@ func (h *StudentListHandler) validateReviewerToken(token string) (string, error)
 	// This could be JWT, database lookup, etc.
 	// Return the reviewer email if valid
 	return "", fmt.Errorf("not implemented")
+}
+
+// ReviewerReportModalHandler shows the reviewer report modal
+func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	studentIDStr := chi.URLParam(r, "id")
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get student record
+	var student database.StudentRecord
+	err = h.db.Get(&student, "SELECT * FROM student_records WHERE id = ?", studentID)
+	if err != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if user can view/edit this review
+	mode := r.URL.Query().Get("mode")
+	isReadOnly := mode == "view"
+
+	// For reviewers, check if they are assigned to this student
+	if user.Role == auth.RoleReviewer && student.ReviewerEmail != user.Email {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	// Check if report exists
+	var existingReport database.ReviewerReport
+	err = h.db.Get(&existingReport,
+		"SELECT * FROM reviewer_reports WHERE student_record_id = ?", studentID)
+
+	formData := &database.ReviewerReportFormData{}
+	if err == nil {
+		// Report exists
+		formData = &database.ReviewerReportFormData{
+			ReviewerPersonalDetails:     existingReport.ReviewerPersonalDetails,
+			Grade:                       float64(existingReport.Grade),
+			ReviewGoals:                 existingReport.ReviewGoals,
+			ReviewTheory:                existingReport.ReviewTheory,
+			ReviewPractical:             existingReport.ReviewPractical,
+			ReviewTheoryPracticalLink:   existingReport.ReviewTheoryPracticalLink,
+			ReviewResults:               existingReport.ReviewResults,
+			ReviewPracticalSignificance: getStringValue(existingReport.ReviewPracticalSignificance),
+			ReviewLanguage:              existingReport.ReviewLanguage,
+			ReviewPros:                  existingReport.ReviewPros,
+			ReviewCons:                  existingReport.ReviewCons,
+			ReviewQuestions:             existingReport.ReviewQuestions,
+		}
+
+		// If report is signed, force read-only mode
+		if existingReport.IsSigned {
+			isReadOnly = true
+		}
+	} else if err == sql.ErrNoRows {
+		// No report exists - check if user can create one
+		if user.Role != auth.RoleReviewer || student.ReviewerEmail != user.Email {
+			isReadOnly = true
+		}
+	} else {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	// Determine form variant
+	formVariant := "lt"
+	if r.URL.Query().Get("lang") == "en" {
+		formVariant = "en"
+	}
+
+	props := database.ReviewerReportFormProps{
+		StudentRecord: &student,
+		IsReadOnly:    isReadOnly,
+		FormVariant:   formVariant,
+		ReviewerName:  student.ReviewerName,
+	}
+
+	err = templates.CompactReviewerForm(props, formData).Render(r.Context(), w)
+	if err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	}
+}
+
+// ReviewerReportSubmitHandler handles the submission of reviewer reports
+func (h *StudentListHandler) ReviewerReportSubmitHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	studentIDStr := chi.URLParam(r, "id")
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get student record
+	var student database.StudentRecord
+	err = h.db.Get(&student, "SELECT * FROM student_records WHERE id = ?", studentID)
+	if err != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if user can submit review
+	if user.Role != auth.RoleReviewer || student.ReviewerEmail != user.Email {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	// Parse form data
+	err = r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	isDraft := r.FormValue("is_draft") == "true"
+
+	if isDraft {
+		// Redirect to draft handler
+		h.ReviewerReportSaveDraftHandler(w, r)
+		return
+	}
+
+	// Extract grade
+	grade, err := strconv.ParseFloat(r.FormValue("grade"), 64)
+	if err != nil || grade < 1 || grade > 10 {
+		http.Error(w, "Invalid grade", http.StatusBadRequest)
+		return
+	}
+
+	// Check if report already exists
+	var existingReport database.ReviewerReport
+	err = h.db.Get(&existingReport,
+		"SELECT * FROM reviewer_reports WHERE student_record_id = ?", studentID)
+
+	tx, err := h.db.Beginx()
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	if err == sql.ErrNoRows {
+		// Create new report
+		_, err = tx.Exec(`
+            INSERT INTO reviewer_reports (
+                student_record_id,
+                reviewer_personal_details,
+                grade,
+                review_goals,
+                review_theory,
+                review_practical,
+                review_theory_practical_link,
+                review_results,
+                review_practical_significance,
+                review_language,
+                review_pros,
+                review_cons,
+                review_questions,
+                is_signed,
+                created_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+			studentID,
+			r.FormValue("reviewer_personal_details"),
+			grade,
+			r.FormValue("review_goals"),
+			r.FormValue("review_theory"),
+			r.FormValue("review_practical"),
+			r.FormValue("review_theory_practical_link"),
+			r.FormValue("review_results"),
+			r.FormValue("review_practical_significance"),
+			r.FormValue("review_language"),
+			r.FormValue("review_pros"),
+			r.FormValue("review_cons"),
+			r.FormValue("review_questions"),
+			true, // Auto-sign on submission
+		)
+	} else if err == nil && !existingReport.IsSigned {
+		// Update existing unsigned report
+		_, err = tx.Exec(`
+            UPDATE reviewer_reports SET
+                reviewer_personal_details = ?,
+                grade = ?,
+                review_goals = ?,
+                review_theory = ?,
+                review_practical = ?,
+                review_theory_practical_link = ?,
+                review_results = ?,
+                review_practical_significance = ?,
+                review_language = ?,
+                review_pros = ?,
+                review_cons = ?,
+                review_questions = ?,
+                is_signed = ?,
+                updated_date = NOW()
+            WHERE id = ?`,
+			r.FormValue("reviewer_personal_details"),
+			grade,
+			r.FormValue("review_goals"),
+			r.FormValue("review_theory"),
+			r.FormValue("review_practical"),
+			r.FormValue("review_theory_practical_link"),
+			r.FormValue("review_results"),
+			r.FormValue("review_practical_significance"),
+			r.FormValue("review_language"),
+			r.FormValue("review_pros"),
+			r.FormValue("review_cons"),
+			r.FormValue("review_questions"),
+			true,
+			existingReport.ID,
+		)
+	} else {
+		tx.Rollback()
+		http.Error(w, "Report already signed", http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to save report", http.StatusInternalServerError)
+		return
+	}
+
+	// Create audit log
+	auditLog := database.AuditLog{
+		UserEmail:    user.Email,
+		UserRole:     user.Role,
+		Action:       "submit_reviewer_report",
+		ResourceType: "reviewer_reports",
+		ResourceID:   &studentIDStr,
+		Details:      &[]string{fmt.Sprintf("Submitted review for student %s", student.GetFullName())}[0],
+		Success:      true,
+	}
+	database.CreateAuditLog(auditLog)
+
+	err = tx.Commit()
+	if err != nil {
+		http.Error(w, "Failed to save report", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success message
+	w.Header().Set("HX-Trigger", "reviewerReportSaved")
+	w.Write([]byte(`
+        <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+            <div class="flex items-center">
+                <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Recenzija sėkmingai išsaugota ir pasirašyta!</span>
+            </div>
+        </div>
+    `))
+}
+func getStringValue(ns *string) string {
+	if ns != nil {
+		return *ns
+	}
+	return ""
+}
+
+// Add this handler for saving drafts
+func (h *StudentListHandler) ReviewerReportSaveDraftHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	studentIDStr := chi.URLParam(r, "id")
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get student record
+	var student database.StudentRecord
+	err = h.db.Get(&student, "SELECT * FROM student_records WHERE id = ?", studentID)
+	if err != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if user can save draft
+	if user.Role != auth.RoleReviewer || student.ReviewerEmail != user.Email {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	// Parse form data
+	err = r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Extract grade (allow empty for draft)
+	var grade float64
+	if gradeStr := r.FormValue("grade"); gradeStr != "" {
+		grade, _ = strconv.ParseFloat(gradeStr, 64)
+	}
+
+	// Check if report already exists
+	var existingReport database.ReviewerReport
+	err = h.db.Get(&existingReport,
+		"SELECT * FROM reviewer_reports WHERE student_record_id = ?", studentID)
+
+	tx, err := h.db.Beginx()
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	if err == sql.ErrNoRows {
+		// Create new draft report
+		_, err = tx.Exec(`
+            INSERT INTO reviewer_reports (
+                student_record_id,
+                reviewer_personal_details,
+                grade,
+                review_goals,
+                review_theory,
+                review_practical,
+                review_theory_practical_link,
+                review_results,
+                review_practical_significance,
+                review_language,
+                review_pros,
+                review_cons,
+                review_questions,
+                is_signed,
+                created_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+			studentID,
+			r.FormValue("reviewer_personal_details"),
+			grade,
+			r.FormValue("review_goals"),
+			r.FormValue("review_theory"),
+			r.FormValue("review_practical"),
+			r.FormValue("review_theory_practical_link"),
+			r.FormValue("review_results"),
+			r.FormValue("review_practical_significance"),
+			r.FormValue("review_language"),
+			r.FormValue("review_pros"),
+			r.FormValue("review_cons"),
+			r.FormValue("review_questions"),
+			false, // Not signed for draft
+		)
+	} else if err == nil && !existingReport.IsSigned {
+		// Update existing unsigned report
+		_, err = tx.Exec(`
+            UPDATE reviewer_reports SET
+                reviewer_personal_details = ?,
+                grade = ?,
+                review_goals = ?,
+                review_theory = ?,
+                review_practical = ?,
+                review_theory_practical_link = ?,
+                review_results = ?,
+                review_practical_significance = ?,
+                review_language = ?,
+                review_pros = ?,
+                review_cons = ?,
+                review_questions = ?,
+                updated_date = NOW()
+            WHERE id = ?`,
+			r.FormValue("reviewer_personal_details"),
+			grade,
+			r.FormValue("review_goals"),
+			r.FormValue("review_theory"),
+			r.FormValue("review_practical"),
+			r.FormValue("review_theory_practical_link"),
+			r.FormValue("review_results"),
+			r.FormValue("review_practical_significance"),
+			r.FormValue("review_language"),
+			r.FormValue("review_pros"),
+			r.FormValue("review_cons"),
+			r.FormValue("review_questions"),
+			existingReport.ID,
+		)
+	} else {
+		tx.Rollback()
+		http.Error(w, "Report already signed", http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to save draft", http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		http.Error(w, "Failed to save draft", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	w.Write([]byte(`<div class="text-xs text-green-600">Draft saved</div>`))
 }
 
 //========================================================
