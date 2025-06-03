@@ -1705,12 +1705,12 @@ type StudentSummaryView struct {
 	HasReviewerReport    bool            `json:"has_reviewer_report" db:"has_reviewer_report"`       // derived as CASE (1/0)
 	ReviewerReportSigned sql.NullBool    `json:"reviewer_report_signed" db:"reviewer_report_signed"` // rev_rep.is_signed
 	ReviewerGrade        sql.NullFloat64 `json:"reviewer_grade" db:"reviewer_grade"`                 // rev_rep.grade
+	ReviewerQuestions    sql.NullString  `db:"reviewer_questions" json:"reviewer_questions"`
 
 	// From videos
-	HasVideo bool `json:"has_video" db:"has_video"` // derived as CASE (1/0)
-
-	HasSourceCode bool           `db:"has_source_code"` // Add this line
-	RepositoryURL sql.NullString `db:"repository_url"`  // Optional: if you want the URL too
+	HasVideo      bool           `json:"has_video" db:"has_video"` // derived as CASE (1/0)
+	HasSourceCode bool           `db:"has_source_code"`            // Add this line
+	RepositoryURL sql.NullString `db:"repository_url"`             // Optional: if you want the URL too
 
 }
 

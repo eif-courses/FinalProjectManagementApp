@@ -54,9 +54,15 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 		return
 	}
 
-	if !h.canViewRepository(user, studentID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
+	// Extract access code
+	accessCode := h.extractAccessCode(r)
+
+	// Skip permission check for commission members
+	if user.Role != auth.RoleCommissionMember {
+		if !h.canViewRepository(user, studentID) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
 	}
 
 	student, err := h.getStudentRecord(studentID)
@@ -71,11 +77,10 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Get current locale from request
 	currentLocale := h.getCurrentLocale(r)
 
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
-		component := repository.NoRepositoryPage(user, student, currentLocale)
+		component := repository.NoRepositoryPage(user, student, currentLocale, accessCode)
 		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
@@ -90,7 +95,8 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 		}
 	}
 
-	component := repository.RepositoryPage(user, student, repoInfo, repoContents, currentLocale)
+	// Pass accessCode to the component
+	component := repository.RepositoryPage(user, student, repoInfo, repoContents, currentLocale, accessCode)
 	templ.Handler(component).ServeHTTP(w, r)
 }
 
@@ -1318,9 +1324,15 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 
 	filePath := chi.URLParam(r, "*")
 
-	if !h.canViewRepository(user, studentID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
+	// Extract access code
+	accessCode := h.extractAccessCode(r)
+
+	// Skip permission check for commission members
+	if user.Role != auth.RoleCommissionMember {
+		if !h.canViewRepository(user, studentID) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
 	}
 
 	repoInfo, err := h.getStudentRepository(studentID)
@@ -1337,7 +1349,7 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 
 	// For HTMX requests, only return the file viewer component
 	if r.Header.Get("HX-Request") == "true" {
-		component := repository.FileViewer(studentID, filePath, fileContent)
+		component := repository.FileViewer(studentID, filePath, fileContent, accessCode)
 		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
@@ -1345,50 +1357,8 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 	// For full page loads, return the complete page
 	student, _ := h.getStudentRecord(studentID)
 	currentLocale := h.getCurrentLocale(r)
-	component := repository.FileViewerPage(user, student, repoInfo, filePath, fileContent, currentLocale)
+	component := repository.FileViewerPage(user, student, repoInfo, filePath, fileContent, currentLocale, accessCode)
 	templ.Handler(component).ServeHTTP(w, r)
-}
-
-// GetFileContentAPI returns file content as JSON
-func (h *RepositoryHandler) GetFileContentAPI(w http.ResponseWriter, r *http.Request) {
-	user := auth.GetUserFromContext(r.Context())
-	if user == nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	studentIDStr := chi.URLParam(r, "studentId")
-	studentID, err := strconv.Atoi(studentIDStr)
-	if err != nil {
-		http.Error(w, "Invalid student ID", http.StatusBadRequest)
-		return
-	}
-
-	filePath := r.URL.Query().Get("path")
-	if filePath == "" {
-		http.Error(w, "File path required", http.StatusBadRequest)
-		return
-	}
-
-	if !h.canViewRepository(user, studentID) {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	repoInfo, err := h.getStudentRepository(studentID)
-	if err != nil || repoInfo.RepositoryURL == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	fileContent, err := h.getFileContent(*repoInfo.RepositoryURL, filePath)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(fileContent)
 }
 
 // GetRepositoryTree returns the full repository file tree
@@ -1928,7 +1898,6 @@ func (h *RepositoryHandler) escapeHTML(content string) string {
 	return content
 }
 
-// ViewStudentRepositoryPath displays a specific directory using templ
 func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -1945,9 +1914,15 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 
 	dirPath := chi.URLParam(r, "*")
 
-	if !h.canViewRepository(user, studentID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
+	// Extract access code
+	accessCode := h.extractAccessCode(r)
+
+	// Skip permission check for commission members
+	if user.Role != auth.RoleCommissionMember {
+		if !h.canViewRepository(user, studentID) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
 	}
 
 	student, err := h.getStudentRecord(studentID)
@@ -1965,7 +1940,7 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 	currentLocale := h.getCurrentLocale(r)
 
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
-		component := repository.NoRepositoryPage(user, student, currentLocale)
+		component := repository.NoRepositoryPage(user, student, currentLocale, accessCode)
 		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
@@ -1980,11 +1955,80 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 		}
 	}
 
-	component := repository.DirectoryPage(user, student, repoInfo, repoContents, dirPath, currentLocale)
+	// Pass accessCode to the component
+	component := repository.DirectoryPage(user, student, repoInfo, repoContents, dirPath, currentLocale, accessCode)
 	templ.Handler(component).ServeHTTP(w, r)
 }
 
 // GetRepositoryPathAPI returns repository data for a specific path as JSON
+
+// GetFileContentAPI returns file content as JSON for API requests
+func (h *RepositoryHandler) GetFileContentAPI(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Unauthorized",
+		})
+		return
+	}
+
+	studentIDStr := chi.URLParam(r, "studentId")
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Invalid student ID",
+		})
+		return
+	}
+
+	// Get file path from query parameter or URL param
+	filePath := r.URL.Query().Get("path")
+	if filePath == "" {
+		filePath = chi.URLParam(r, "*")
+	}
+
+	if filePath == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "File path required",
+		})
+		return
+	}
+
+	// Skip permission check for commission members
+	if user.Role != auth.RoleCommissionMember {
+		if !h.canViewRepository(user, studentID) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Access denied",
+			})
+			return
+		}
+	}
+
+	repoInfo, err := h.getStudentRepository(studentID)
+	if err != nil || repoInfo.RepositoryURL == nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Repository not found",
+		})
+		return
+	}
+
+	fileContent, err := h.getFileContent(*repoInfo.RepositoryURL, filePath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(fileContent)
+}
 
 // FIX 3: Update GetRepositoryPathAPI method
 func (h *RepositoryHandler) GetRepositoryPathAPI(w http.ResponseWriter, r *http.Request) {
@@ -2450,4 +2494,16 @@ func (h *RepositoryHandler) getCurrentLocale(r *http.Request) string {
 		locale = "lt" // Default to Lithuanian
 	}
 	return locale
+}
+
+// Add this helper method to your RepositoryHandler
+func (h *RepositoryHandler) extractAccessCode(r *http.Request) string {
+	// Extract access code from URL if it's a commission access
+	pathParts := strings.Split(r.URL.Path, "/")
+	for i, part := range pathParts {
+		if part == "commission" && i+1 < len(pathParts) {
+			return pathParts[i+1]
+		}
+	}
+	return ""
 }

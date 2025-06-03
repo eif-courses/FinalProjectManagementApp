@@ -7,9 +7,9 @@ import (
     "path/filepath"
 )
 
-templ FileExplorer(studentID int, currentPath string, files []types.RepositoryFile) {
+templ FileExplorer(studentID int, currentPath string, files []types.RepositoryFile, accessCode string) {
     <div class="container mx-auto px-4 py-6">
-        @Breadcrumb(studentID, currentPath)
+        @Breadcrumb(studentID, currentPath, accessCode)
 
         <div class="file-explorer bg-white">
             <div class="file-header">
@@ -30,7 +30,7 @@ templ FileExplorer(studentID int, currentPath string, files []types.RepositoryFi
                     </div>
                 } else {
                     for _, file := range files {
-                        @FileRow(studentID, currentPath, file)
+                        @FileRow(studentID, currentPath, file, accessCode)
                     }
                 }
             </div>
@@ -38,39 +38,60 @@ templ FileExplorer(studentID int, currentPath string, files []types.RepositoryFi
     </div>
 }
 
-templ FileRow(studentID int, currentPath string, file types.RepositoryFile) {
-    <div class="file-row"
-         if file.Type == "file" {
-             hx-get={ fmt.Sprintf("/repository/student/%d/file/%s", studentID, file.Path) }
-             hx-target="#file-content"
-             hx-swap="innerHTML"
-             style="cursor: pointer;"
-         }>
-        <span class="file-icon">
-            if file.Type == "dir" {
+templ FileRow(studentID int, currentPath string, file types.RepositoryFile, accessCode string) {
+    if file.Type == "file" {
+        if accessCode != "" {
+            <div class="file-row"
+                 hx-get={ fmt.Sprintf("/commission/%s/repository/student/%d/file/%s", accessCode, studentID, file.Path) }
+                 hx-target="#file-content"
+                 hx-swap="innerHTML"
+                 style="cursor: pointer;">
+                <span class="file-icon">
+                    @FileIcon(file.Name)
+                </span>
+                <span class="file-name">{ file.Name }</span>
+                <span class="file-meta">
+                    { formatFileSize(file.Size) }
+                </span>
+            </div>
+        } else {
+            <div class="file-row"
+                 hx-get={ fmt.Sprintf("/repository/student/%d/file/%s", studentID, file.Path) }
+                 hx-target="#file-content"
+                 hx-swap="innerHTML"
+                 style="cursor: pointer;">
+                <span class="file-icon">
+                    @FileIcon(file.Name)
+                </span>
+                <span class="file-name">{ file.Name }</span>
+                <span class="file-meta">
+                    { formatFileSize(file.Size) }
+                </span>
+            </div>
+        }
+    } else {
+        <div class="file-row">
+            <span class="file-icon">
                 <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
                 </svg>
+            </span>
+            if accessCode != "" {
+                <a href={ templ.SafeURL(fmt.Sprintf("/commission/%s/repository/student/%d/browse/%s", accessCode, studentID, file.Path)) }
+                   class="file-name">
+                    { file.Name }
+                </a>
             } else {
-                @FileIcon(file.Name)
+                <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d/browse/%s", studentID, file.Path)) }
+                   class="file-name">
+                    { file.Name }
+                </a>
             }
-        </span>
-
-        if file.Type == "dir" {
-            <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d/browse/%s", studentID, file.Path)) }
-               class="file-name">
-                { file.Name }
-            </a>
-        } else {
-            <span class="file-name">{ file.Name }</span>
-        }
-
-        <span class="file-meta">
-            if file.Type == "file" {
-                { formatFileSize(file.Size) }
-            }
-        </span>
-    </div>
+            <span class="file-meta">
+                Directory
+            </span>
+        </div>
+    }
 }
 
 templ FileIcon(filename string) {
@@ -98,32 +119,49 @@ templ FileIcon(filename string) {
     }
 }
 
-templ Breadcrumb(studentID int, currentPath string) {
+templ Breadcrumb(studentID int, currentPath string, accessCode string) {
     <nav class="breadcrumb">
-        <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d", studentID)) }
-           class="flex items-center gap-1 hover:text-blue-600">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-            </svg>
-            Repository
-        </a>
+        if accessCode != "" {
+            <a href={ templ.SafeURL(fmt.Sprintf("/commission/%s/repository/student/%d", accessCode, studentID)) }
+               class="flex items-center gap-1 hover:text-blue-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Repository
+            </a>
+        } else {
+            <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d", studentID)) }
+               class="flex items-center gap-1 hover:text-blue-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Repository
+            </a>
+        }
 
         if currentPath != "" {
-            @renderPathSegments(studentID, strings.Split(currentPath, "/"))
+            @renderPathSegments(studentID, strings.Split(currentPath, "/"), accessCode)
         }
     </nav>
 }
 
-templ renderPathSegments(studentID int, segments []string) {
+templ renderPathSegments(studentID int, segments []string, accessCode string) {
     for i, segment := range segments {
         <span class="text-gray-400">/</span>
         if i == len(segments) - 1 {
             <span class="text-gray-700">{ segment }</span>
         } else {
-            <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d/browse/%s", studentID, strings.Join(segments[:i+1], "/"))) }
-               class="hover:text-blue-600">
-                { segment }
-            </a>
+            if accessCode != "" {
+                <a href={ templ.SafeURL(fmt.Sprintf("/commission/%s/repository/student/%d/browse/%s", accessCode, studentID, strings.Join(segments[:i+1], "/"))) }
+                   class="hover:text-blue-600">
+                    { segment }
+                </a>
+            } else {
+                <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d/browse/%s", studentID, strings.Join(segments[:i+1], "/"))) }
+                   class="hover:text-blue-600">
+                    { segment }
+                </a>
+            }
         }
     }
 }

@@ -1,0 +1,685 @@
+// components/templates/commission_student_list.templ
+package templates
+
+import (
+	"FinalProjectManagementApp/components/badge"
+	"FinalProjectManagementApp/components/button"
+	"FinalProjectManagementApp/database"
+	"FinalProjectManagementApp/components/icon"
+	"FinalProjectManagementApp/components/input"
+	"FinalProjectManagementApp/components/label"
+	"FinalProjectManagementApp/components/selectbox"
+	"FinalProjectManagementApp/components/table"
+	"database/sql"
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+// Helper functions - these should be at package level
+func getTopicStatusDisplay(status string) string {
+	switch status {
+	case "not_started":
+		return "Nepradėta"
+	case "draft":
+		return "Juodraštis"
+	case "submitted":
+		return "Pateikta"
+	case "supervisor_approved":
+		return "Vadovas patvirtino"
+	case "approved":
+		return "Patvirtinta"
+	case "rejected":
+		return "Atmesta"
+	default:
+		return status
+	}
+}
+
+func getUniqueGroups(students []database.StudentSummaryView) []string {
+	groupMap := make(map[string]bool)
+	for _, student := range students {
+		groupMap[student.StudentGroup] = true
+	}
+
+	var groups []string
+	for group := range groupMap {
+		groups = append(groups, group)
+	}
+	return groups
+}
+
+func getTopicStatusColor(status string) string {
+	switch status {
+	case "approved":
+		return "text-green-600"
+	case "supervisor_approved":
+		return "text-blue-600"
+	case "submitted":
+		return "text-yellow-600"
+	case "rejected", "revision_requested":
+		return "text-red-600"
+	default:
+		return "text-gray-600"
+	}
+}
+func getStringFromNullString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
+}
+
+
+// Commission student list view with filters
+templ CommissionStudentList(accessCode string, students []database.StudentSummaryView, program string, pagination *database.PaginationInfo, searchValue string, filters *database.TemplateFilterParams) {
+	<!DOCTYPE html>
+	<html lang="lt">
+	<head>
+		<title>Student List - { program }</title>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<link rel="stylesheet" href="/assets/css/output.css"/>
+		<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+	</head>
+	<body class="bg-gray-50">
+		<div class="min-h-screen">
+			<!-- Header -->
+			<header class="bg-white shadow">
+				<div class="max-w-7xl mx-auto px-4 py-6">
+					<div class="flex justify-between items-center">
+						<div>
+							<h1 class="text-2xl font-bold text-gray-900">{ program }</h1>
+							<p class="text-sm text-gray-600 mt-1">
+								Commission Access - Total students: { strconv.Itoa(len(students)) }
+							</p>
+						</div>
+						<div class="text-sm text-gray-500">
+							Read-only access
+						</div>
+					</div>
+				</div>
+			</header>
+
+			<!-- Main Content -->
+			<main class="max-w-7xl mx-auto px-4 py-8 space-y-6">
+				<!-- Search Bar -->
+				<div class="bg-white rounded-lg shadow p-4">
+					<div class="relative">
+						<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+							@icon.Search(icon.Props{Size: 20, Class: "text-gray-400"})
+						</div>
+						@input.Input(input.Props{
+							Type:        "text",
+							ID:          "search",
+							Name:        "search",
+							Placeholder: "Ieškoti studentų pagal vardą, pavardę, temą arba el. paštą...",
+							Value:       searchValue,
+							Class:       "pl-10 h-10 w-full",
+							Attributes: templ.Attributes{
+								"hx-get":       fmt.Sprintf("/commission/%s", accessCode),
+								"hx-trigger":   "input changed delay:300ms, search",
+								"hx-target":    "#student-table-container",
+								"hx-include":   "#filters-form",
+								"autocomplete": "off",
+							},
+						})
+					</div>
+				</div>
+
+				<!-- Filters -->
+				<form id="filters-form" hx-get={ fmt.Sprintf("/commission/%s", accessCode) } hx-target="#student-table-container" hx-trigger="change">
+					<div class="bg-white rounded-lg shadow p-4">
+						<div class="flex items-center gap-4 flex-wrap">
+							<!-- Records per page -->
+							<div class="flex items-center gap-2">
+								@label.Label(label.Props{Class: "text-sm font-medium"}) {
+									Kiek rodyti:
+								}
+								@selectbox.SelectBox(selectbox.Props{Class: "min-w-16"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{
+										Name: "limit",
+										Attributes: templ.Attributes{"hx-include": "#search, #filters-form"},
+									}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "10"}) {
+											if filters != nil && filters.Limit > 0 {
+												{ strconv.Itoa(filters.Limit) }
+											} else if pagination != nil {
+												{ strconv.Itoa(pagination.Limit) }
+											} else {
+												10
+											}
+										}
+									}
+									@selectbox.Content() {
+										@selectbox.Item(selectbox.ItemProps{Value: "10", Selected: true}) { 10 }
+										@selectbox.Item(selectbox.ItemProps{Value: "25", Selected: false}) { 25 }
+										@selectbox.Item(selectbox.ItemProps{Value: "50", Selected: false}) { 50 }
+									}
+								}
+							</div>
+
+							<!-- Group filter -->
+							<div class="flex items-center gap-2">
+								@label.Label(label.Props{Class: "text-sm font-medium"}) {
+									Grupė:
+								}
+								@selectbox.SelectBox(selectbox.Props{Class: "min-w-24"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{
+										Name: "group",
+										Attributes: templ.Attributes{"hx-include": "#search, #filters-form"},
+									}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Visos"}) {
+											if filters != nil && filters.Group != "" {
+												{ filters.Group }
+											}
+										}
+									}
+									@selectbox.Content() {
+										@selectbox.Item(selectbox.ItemProps{Value: "", Selected: true}) { Visos }
+										// Get unique groups from students
+										for _, group := range getUniqueGroups(students) {
+											@selectbox.Item(selectbox.ItemProps{
+												Value:    group,
+												Selected: filters != nil && filters.Group == group,
+											}) {
+												{ group }
+											}
+										}
+									}
+								}
+							</div>
+
+							<!-- Topic status filter -->
+							<div class="flex items-center gap-2">
+								@label.Label(label.Props{Class: "text-sm font-medium"}) {
+									Temos būsena:
+								}
+								@selectbox.SelectBox(selectbox.Props{Class: "min-w-28"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{
+										Name: "topic_status",
+										Attributes: templ.Attributes{"hx-include": "#search, #filters-form"},
+									}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Visos"}) {
+											if filters != nil && filters.TopicStatus != "" {
+												{ getTopicStatusDisplay(filters.TopicStatus) }
+											}
+										}
+									}
+									@selectbox.Content() {
+										@selectbox.Item(selectbox.ItemProps{Value: "", Selected: true}) { Visos }
+										@selectbox.Item(selectbox.ItemProps{Value: "not_started"}) { Nepradėta }
+										@selectbox.Item(selectbox.ItemProps{Value: "draft"}) { Juodraštis }
+										@selectbox.Item(selectbox.ItemProps{Value: "submitted"}) { Pateikta }
+										@selectbox.Item(selectbox.ItemProps{Value: "supervisor_approved"}) { Vadovas patvirtino }
+										@selectbox.Item(selectbox.ItemProps{Value: "approved"}) { Patvirtinta }
+										@selectbox.Item(selectbox.ItemProps{Value: "rejected"}) { Atmesta }
+									}
+								}
+							</div>
+
+							<!-- Clear filters -->
+							<div class="ml-auto">
+								@button.Button(button.Props{
+									Type:    button.TypeButton,
+									Variant: button.VariantOutline,
+									Class:   "h-9 px-3 text-sm flex items-center gap-1",
+									Attributes: templ.Attributes{
+										"onclick": fmt.Sprintf("clearFilters('%s')", accessCode),
+									},
+								}) {
+									@icon.X(icon.Props{Size: 16})
+									Atstatyti
+								}
+							</div>
+						</div>
+					</div>
+				</form>
+
+				<!-- Student Table Container -->
+				<div id="student-table-container">
+					@CommissionStudentTable(students, pagination, accessCode)
+				</div>
+			</main>
+		</div>
+
+		<!-- Modal Container for document viewing -->
+		<div id="modal-container" style="display: none;"></div>
+
+		<script>
+			// Clear filters
+			function clearFilters(accessCode) {
+				const searchInput = document.getElementById('search');
+				if (searchInput) {
+					searchInput.value = '';
+				}
+
+				// Reset all select boxes
+				document.querySelectorAll('.select-container').forEach(container => {
+					const trigger = container.querySelector('.select-trigger');
+					const hiddenInput = trigger?.querySelector('input[type="hidden"]');
+					const valueEl = trigger?.querySelector('.select-value');
+
+					if (hiddenInput) {
+						hiddenInput.value = hiddenInput.name === 'limit' ? '10' : '';
+					}
+
+					if (valueEl) {
+						const placeholder = hiddenInput?.name === 'limit' ? '10' : 'Visos';
+						valueEl.textContent = placeholder;
+						valueEl.classList.add('text-muted-foreground');
+					}
+				});
+
+				// Reload with cleared filters
+				htmx.ajax('GET', '/commission/' + accessCode, {
+					target: '#student-table-container',
+					values: { limit: '10', group: '', topic_status: '', search: '', page: '1' }
+				});
+			}
+
+			// View repository
+			function viewStudentRepository(studentId, accessCode) {
+				window.open('/commission/' + accessCode + '/repository/student/' + studentId, '_blank');
+			}
+
+			// View document
+			function viewDocument(documentId) {
+				window.open('/api/public/documents/' + documentId + '/preview', '_blank');
+			}
+
+			// Download document
+			function downloadDocument(documentId) {
+				window.location.href = '/api/public/documents/' + documentId + '/download';
+			}
+
+			// Load documents dynamically
+			document.addEventListener('DOMContentLoaded', function() {
+				const docElements = document.querySelectorAll('[data-load-documents="true"]');
+				docElements.forEach(function(element) {
+					const studentId = element.getAttribute('data-student-id');
+					loadDocuments(studentId);
+				});
+			});
+
+			// Show reviewer questions in a popup
+			function showReviewerQuestions(reviewerName, questions) {
+				// Create modal for questions
+				const modal = document.createElement('div');
+				modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+				modal.onclick = function(e) {
+					if (e.target === modal) {
+						modal.remove();
+					}
+				};
+
+				modal.innerHTML = `
+					<div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+						<div class="p-6 border-b">
+							<h3 class="text-lg font-semibold">Recenzento klausimai</h3>
+							<p class="text-sm text-gray-600 mt-1">${reviewerName}</p>
+						</div>
+						<div class="p-6 overflow-y-auto max-h-[60vh]">
+							<div class="whitespace-pre-wrap text-sm">${questions}</div>
+						</div>
+						<div class="p-4 border-t bg-gray-50">
+							<button onclick="this.closest('.fixed').remove()"
+									class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+								Uždaryti
+							</button>
+						</div>
+					</div>
+				`;
+
+				document.body.appendChild(modal);
+			}
+
+			function viewTopicRegistration(studentId, accessCode) {
+				// Create modal container if it doesn't exist
+				let modalContainer = document.getElementById('topic-modal-container');
+				if (!modalContainer) {
+					modalContainer = document.createElement('div');
+					modalContainer.id = 'topic-modal-container';
+					document.body.appendChild(modalContainer);
+				}
+
+				// Load topic registration modal
+				htmx.ajax('GET', '/commission/' + accessCode + '/topic-registration/' + studentId + '?mode=view', {
+					target: '#topic-modal-container',
+					swap: 'innerHTML'
+				});
+			}
+
+			function loadDocuments(studentId) {
+				fetch('/api/public/students/' + studentId + '/documents')
+					.then(response => response.json())
+					.then(data => {
+						const container = document.getElementById('docs-' + studentId);
+						if (data.documents && data.documents.length > 0) {
+							let html = '<div class="flex flex-wrap gap-1">';
+							data.documents.forEach(doc => {
+								let icon = '📄';
+								let title = doc.type;
+
+								if (doc.type === 'thesis_pdf' || doc.type === 'thesis') {
+									icon = '📕';
+									title = 'Thesis PDF';
+								} else if (doc.type === 'presentation') {
+									icon = '📊';
+									title = 'Presentation';
+								}
+
+								html += `
+									<div class="group relative">
+										<button onclick="${doc.hasPreview ? `viewDocument(${doc.id})` : `downloadDocument(${doc.id})`}"
+											class="text-xs p-1 hover:bg-gray-100 rounded"
+											title="${title}">
+											${icon}
+										</button>
+										<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+											${title}
+											<div class="text-xs">${doc.hasPreview ? 'Click to view' : 'Click to download'}</div>
+										</div>
+									</div>
+								`;
+							});
+							html += '</div>';
+							container.innerHTML = html;
+						} else {
+							container.innerHTML = '<span class="text-xs text-gray-400">-</span>';
+						}
+					})
+					.catch(error => {
+						console.error('Error loading documents:', error);
+						document.getElementById('docs-' + studentId).innerHTML = '<span class="text-xs text-red-500">Error</span>';
+					});
+			}
+		</script>
+	</body>
+	</html>
+}
+
+// Student table component
+templ CommissionStudentTable(students []database.StudentSummaryView, pagination *database.PaginationInfo, accessCode string) {
+	<div class="bg-white rounded-lg shadow overflow-hidden">
+		@table.Table() {
+			@table.Header() {
+				@table.Row() {
+					@table.Head() { Grupė }
+					@table.Head() { Vardas pavardė }
+					@table.Head() { Temos registravimo lapas }
+					@table.Head() { Dokumentai }
+					@table.Head() { Recenzentas }
+				}
+			}
+			@table.Body() {
+				for _, student := range students {
+					@table.Row() {
+						@table.Cell() {
+							@badge.Badge(badge.Props{Variant: badge.VariantDefault, Class: "text-xs"}) {
+								{ student.StudentGroup }
+							}
+						}
+						@table.Cell() {
+							<div class="space-y-1">
+								<div class="font-medium text-sm">
+									{ student.StudentName } { student.StudentLastname }
+								</div>
+								<div class="text-xs text-gray-500">
+									{ student.FinalProjectTitle }
+								</div>
+							</div>
+						}
+						@table.Cell() {
+							@CommissionTopicCell(
+								student.ID,
+								getStringFromNullString(student.TopicStatus),
+								student.TopicApproved,
+								accessCode,
+							)
+						}
+						@table.Cell() {
+							@CommissionDocumentsCell(student.ID, student.HasSourceCode, accessCode)
+						}
+						@table.Cell() {
+							@CommissionReviewerCell(
+								student.ReviewerName,
+								student.HasReviewerReport,
+								student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool,
+								student.ReviewerGrade,
+								student.ReviewerQuestions,
+							)
+						}
+					}
+				}
+			}
+		}
+
+		if pagination != nil {
+			@CommissionPagination(pagination)
+		}
+	</div>
+}
+
+// Documents cell with repository and document links
+templ CommissionDocumentsCell(studentID int, hasSourceCode bool, accessCode string) {
+	<div class="flex items-center gap-1">
+		if hasSourceCode {
+			@button.Button(button.Props{
+				Variant: button.VariantGhost,
+				Size:    button.SizeIcon,
+				Class:   "h-6 w-6 p-0",
+				Attributes: templ.Attributes{
+					"onclick": fmt.Sprintf("viewStudentRepository(%d, '%s')", studentID, accessCode),
+					"title":   "View Repository",
+				},
+			}) {
+				@icon.Github(icon.Props{Size: 14})
+			}
+		} else {
+			<div class="flex items-center justify-center h-6 w-6 p-0">
+				<span class="text-xs text-gray-400" title="No source code">-</span>
+			</div>
+		}
+		<div
+			id={ "docs-" + strconv.Itoa(studentID) }
+			class="text-xs"
+			data-student-id={ strconv.Itoa(studentID) }
+			data-load-documents="true"
+		>
+			<div class="text-gray-400 italic">Kraunama...</div>
+		</div>
+	</div>
+}
+
+// Pagination component
+templ CommissionPagination(pagination *database.PaginationInfo) {
+	<div class="flex items-center justify-between py-4 px-4">
+		<div class="text-sm text-gray-500">
+			Rodoma { strconv.Itoa((pagination.Page-1)*pagination.Limit + 1) } - { strconv.Itoa(minInt(pagination.Page*pagination.Limit, pagination.Total)) } iš { strconv.Itoa(pagination.Total) }
+		</div>
+		<div class="flex items-center gap-2">
+			if pagination.HasPrev {
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Size:    button.SizeIcon,
+					Attributes: templ.Attributes{
+						"hx-get":     "?page=" + strconv.Itoa(pagination.PrevPage),
+						"hx-target":  "#student-table-container",
+						"hx-include": "#search, #filters-form",
+					},
+				}) {
+					@icon.ChevronLeft(icon.Props{Size: 16})
+				}
+			}
+
+			for i := maxInt(1, pagination.Page-2); i <= minInt(pagination.TotalPages, pagination.Page+2); i++ {
+				if i == pagination.Page {
+					@button.Button(button.Props{
+						Variant: button.VariantDefault,
+						Size:    button.SizeIcon,
+					}) {
+						{ strconv.Itoa(i) }
+					}
+				} else {
+					@button.Button(button.Props{
+						Variant: button.VariantOutline,
+						Size:    button.SizeIcon,
+						Attributes: templ.Attributes{
+							"hx-get":     "?page=" + strconv.Itoa(i),
+							"hx-target":  "#student-table-container",
+							"hx-include": "#search, #filters-form",
+						},
+					}) {
+						{ strconv.Itoa(i) }
+					}
+				}
+			}
+
+			if pagination.HasNext {
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Size:    button.SizeIcon,
+					Attributes: templ.Attributes{
+						"hx-get":     "?page=" + strconv.Itoa(pagination.NextPage),
+						"hx-target":  "#student-table-container",
+						"hx-include": "#search, #filters-form",
+					},
+				}) {
+					@icon.ChevronRight(icon.Props{Size: 16})
+				}
+			}
+		</div>
+	</div>
+}
+
+// Enhanced topic cell with better visual feedback
+templ CommissionTopicCell(studentID int, topicStatus string, topicApproved bool, accessCode string) {
+	<div class="flex items-center gap-1">
+		if topicStatus != "" && topicStatus != "not_started" {
+			@button.Button(button.Props{
+				Variant: button.VariantGhost,
+				Size:    button.SizeIcon,
+				Class:   "h-7 w-7 p-0 hover:bg-blue-50",
+				Attributes: templ.Attributes{
+					"onclick": fmt.Sprintf("viewTopicRegistration(%d, '%s')", studentID, accessCode),
+					"title":   "Peržiūrėti temos registravimo lapą",
+				},
+			}) {
+				if topicApproved {
+					<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+					</svg>
+				} else {
+					@icon.FileText(icon.Props{Size: 16, Class: getTopicStatusColor(topicStatus)})
+				}
+			}
+			<span class="text-xs">
+				@getTopicStatusBadge(topicStatus, topicApproved)
+			</span>
+		} else {
+			<span class="text-xs text-gray-400">Nepateikta</span>
+		}
+	</div>
+}
+
+// Enhanced reviewer cell with questions preview
+templ CommissionReviewerCell(reviewerName string, hasReport bool, isSigned bool, reviewerGrade sql.NullFloat64, reviewerQuestions sql.NullString) {
+	if reviewerName != "" {
+		<div class="space-y-1">
+			<div class="flex items-center gap-2">
+				<span class="text-xs font-medium">{ reviewerName }</span>
+				if hasReport && reviewerGrade.Valid && reviewerGrade.Float64 > 0 {
+					@badge.Badge(badge.Props{
+						Variant: badge.VariantDefault,
+						Class: "text-xs px-1.5 py-0 font-bold",
+					}) {
+						{ fmt.Sprintf("%.1f", reviewerGrade.Float64) }
+					}
+				}
+			</div>
+			if hasReport {
+				<div class="text-xs">
+					if isSigned {
+						<span class="text-green-600">✓ Pasirašyta</span>
+					} else {
+						<span class="text-blue-600">Užpildyta</span>
+					}
+				</div>
+				if reviewerQuestions.Valid && reviewerQuestions.String != "" {
+					<div class="mt-1">
+						@button.Button(button.Props{
+							Variant: button.VariantGhost,
+							Size:    button.SizeIcon,
+							Class:   "h-5 w-5 p-0 text-blue-600 hover:text-blue-800",
+							Attributes: templ.Attributes{
+								"onclick": fmt.Sprintf("showReviewerQuestions('%s', '%s')",
+									strings.ReplaceAll(reviewerName, "'", "\\'"),
+									strings.ReplaceAll(reviewerQuestions.String, "'", "\\'")),
+								"title": "Peržiūrėti klausimus",
+							},
+						}) {
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+							</svg>
+						}
+					</div>
+				}
+			} else {
+				<span class="text-xs text-yellow-600">Neužpildyta</span>
+			}
+		</div>
+	} else {
+		<span class="text-xs text-gray-400">Nepaskirtas</span>
+	}
+}
+
+// Topic status badge component
+templ getTopicStatusBadge(status string, approved bool) {
+	if approved {
+		@badge.Badge(badge.Props{
+			Variant: badge.VariantDefault,
+			Class:   "text-xs bg-green-100 text-green-800",
+		}) {
+			Patvirtinta
+		}
+	} else {
+		switch status {
+		case "supervisor_approved":
+			@badge.Badge(badge.Props{
+				Variant: badge.VariantDefault,
+				Class:   "text-xs bg-blue-100 text-blue-800",
+			}) {
+				Vadovas patvirtino
+			}
+		case "submitted":
+			@badge.Badge(badge.Props{
+				Variant: badge.VariantDefault,
+				Class:   "text-xs bg-yellow-100 text-yellow-800",
+			}) {
+				Pateikta
+			}
+		case "rejected":
+			@badge.Badge(badge.Props{
+				Variant: badge.VariantDefault,
+				Class:   "text-xs bg-red-100 text-red-800",
+			}) {
+				Atmesta
+			}
+		case "revision_requested":
+			@badge.Badge(badge.Props{
+				Variant: badge.VariantDefault,
+				Class:   "text-xs bg-orange-100 text-orange-800",
+			}) {
+				Taisytina
+			}
+		default:
+			@badge.Badge(badge.Props{
+				Variant: badge.VariantDefault,
+				Class:   "text-xs",
+			}) {
+				{ status }
+			}
+		}
+	}
+}

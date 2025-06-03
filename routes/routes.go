@@ -3,13 +3,17 @@ package routes
 
 import (
 	"FinalProjectManagementApp/database"
-	"FinalProjectManagementApp/services"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -35,31 +39,14 @@ func SetupRoutes(db *sqlx.DB,
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Compress(5))
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		response := map[string]interface{}{
-			"status":    "healthy",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"service":   "thesis-management-app",
-		}
-		json.NewEncoder(w).Encode(response)
-	})
-
+	// Initialize handlers
 	dashboardHandlers := handlers.NewDashboardHandlers(db)
-
-	// Initialize handlers with database
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
 	topicHandlers := handlers.NewTopicHandlers(db.DB)
 	supervisorReportHandler := handlers.NewSupervisorReportHandler(db)
 	studentListHandler := handlers.NewStudentListHandler(db)
-	//importHandler := handlers.NewImportHandler(db)
-	// Initialize upload handlers
 	uploadHandlers := handlers.NewUploadHandlers(db)
-
-	// Initialize handlers
-	commissionService := services.NewCommissionService(db)
-	commissionHandler := handlers.NewCommissionHandler(commissionService, studentListHandler)
+	commissionHandler := handlers.NewCommissionHandler(db)
 
 	// Get app config for GitHub settings
 	appConfig := database.LoadAppConfig()
@@ -89,6 +76,18 @@ func SetupRoutes(db *sqlx.DB,
 		http.ServeFile(w, r, "./static/favicon.ico")
 	})
 
+	// Health check endpoint
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		response := map[string]interface{}{
+			"status":    "healthy",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"service":   "thesis-management-app",
+		}
+		json.NewEncoder(w).Encode(response)
+	})
+
 	// Public routes
 	r.Group(func(r chi.Router) {
 		// Login page
@@ -103,13 +102,35 @@ func SetupRoutes(db *sqlx.DB,
 		r.Post("/auth/logout", authMiddleware.LogoutHandler)
 	})
 
-	r.Get("/students-list", studentListHandler.StudentTableDisplayHandler)
+	// Public API routes (accessible without auth for commission members)
 	r.Get("/api/documents/{id}", handlers.DocumentsAPIHandler)
+	r.Get("/api/students/{id}/documents", handlers.DocumentsAPIHandler)
 
 	// Reviewer-specific route with token
 	r.Get("/reviewer/students", studentListHandler.ReviewerStudentsList)
 
-	// REMOVED THE FIRST /admin ROUTE GROUP HERE
+	// PUBLIC DOCUMENTS ROUTES
+	r.Get("/api/public/documents/{id}", createPublicDocumentsHandler(db))
+	r.Get("/api/public/students/{id}/documents", createPublicDocumentsHandler(db))
+	r.Get("/api/public/documents/{id}/preview", createPublicDocumentPreviewHandler(db))
+	r.Get("/api/public/documents/{id}/download", createPublicDocumentDownloadHandler(db))
+
+	// Public commission access (no auth required)
+
+	r.Route("/commission/{accessCode}", func(r chi.Router) {
+		r.Get("/", commissionHandler.ShowStudentList)
+
+		// Add repository routes here
+		if repositoryHandler != nil {
+			r.Route("/repository", func(r chi.Router) {
+				r.Get("/student/{studentId}", createCommissionRepositoryHandler(repositoryHandler, db))
+				r.Get("/student/{studentId}/download", createCommissionDownloadHandler(repositoryHandler, db))
+				r.Get("/student/{studentId}/browse/*", createCommissionBrowseHandler(repositoryHandler, db))
+				r.Get("/student/{studentId}/file/*", createCommissionFileHandler(repositoryHandler, db))
+				r.Get("/student/{studentId}/tree", createCommissionTreeHandler(repositoryHandler, db))
+			})
+		}
+	})
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
@@ -160,8 +181,8 @@ func SetupRoutes(db *sqlx.DB,
 		}
 
 		r.Get("/supervisor-report/{id}/compact-modal", supervisorReportHandler.GetCompactSupervisorModal)
-		r.Post("/supervisor-report/{id}/submit", supervisorReportHandler.SubmitSupervisorReport)  // Add this line
-		r.Post("/supervisor-report/{id}/save-draft", supervisorReportHandler.SaveSupervisorDraft) // FIXED: Added /supervisor-report prefix
+		r.Post("/supervisor-report/{id}/submit", supervisorReportHandler.SubmitSupervisorReport)
+		r.Post("/supervisor-report/{id}/save-draft", supervisorReportHandler.SaveSupervisorDraft)
 
 		// Upload routes
 		r.Get("/upload", handlers.ShowUploadPage)
@@ -172,6 +193,9 @@ func SetupRoutes(db *sqlx.DB,
 
 		// Dashboard
 		r.Get("/dashboard", dashboardHandlers.DashboardHandler)
+
+		// Student List
+		r.Get("/students-list", studentListHandler.StudentTableDisplayHandler)
 
 		// Student routes
 		r.Route("/student", func(r chi.Router) {
@@ -211,12 +235,6 @@ func SetupRoutes(db *sqlx.DB,
 				}
 			})
 		})
-
-		// Student List
-		r.Get("/students-list", studentListHandler.StudentTableDisplayHandler)
-
-		// API endpoints for student data
-		r.Get("/api/students/{id}/documents", handlers.DocumentsAPIHandler)
 
 		// Topic registration routes
 		r.Route("/topic", func(r chi.Router) {
@@ -374,13 +392,7 @@ func SetupRoutes(db *sqlx.DB,
 			r.Use(authMiddleware.RequireAuth)
 			r.Get("/{id}/compact-modal", studentListHandler.ReviewerReportModalHandler)
 			r.Post("/{id}/submit", studentListHandler.ReviewerReportSubmitHandler)
-			r.Post("/{id}/save-draft", studentListHandler.ReviewerReportSaveDraftHandler) // Add this
-		})
-
-		// Commission member access routes (no auth required, uses access code)
-		r.Route("/commission/{accessCode}", func(r chi.Router) {
-			r.Get("/", commissionHandler.ShowAccessPage)
-			r.Get("/student/{studentID}", commissionHandler.ViewStudent)
+			r.Post("/{id}/save-draft", studentListHandler.ReviewerReportSaveDraftHandler)
 		})
 
 		// Admin routes - MERGED WITH IMPORT/EXPORT FUNCTIONALITY
@@ -389,12 +401,12 @@ func SetupRoutes(db *sqlx.DB,
 
 			r.Get("/commission", commissionHandler.ShowManagementPage)
 			r.Post("/commission/create", commissionHandler.CreateAccess)
-			r.Get("/commission/list", commissionHandler.ListActiveAccess)
 			r.Delete("/commission/{accessCode}", commissionHandler.DeactivateAccess)
+			r.Get("/commission/list", commissionHandler.ListActiveAccess)
 
 			r.Get("/dashboard", dashboardHandlers.DashboardHandler)
 
-			// Import/Export routes (from the first /admin definition)
+			// Import/Export routes
 			r.Get("/import/modal", studentListHandler.ImportModalHandler)
 			r.Post("/import/preview", studentListHandler.PreviewHandler)
 			r.Post("/import/process", studentListHandler.ProcessImportHandler)
@@ -480,4 +492,385 @@ func SetupRoutes(db *sqlx.DB,
 	})
 
 	return r
+}
+
+// Helper function to validate commission access and return member
+func validateCommissionAccess(db *sqlx.DB, accessCode string) (*database.CommissionMember, error) {
+	var member database.CommissionMember
+	query := `SELECT * FROM commission_members WHERE access_code = ? AND is_active = true`
+	err := db.Get(&member, query, accessCode)
+	if err != nil {
+		return nil, fmt.Errorf("invalid access token")
+	}
+
+	// Check if expired
+	if time.Now().Unix() > member.ExpiresAt {
+		return nil, fmt.Errorf("access token has expired")
+	}
+
+	// Check max access limit
+	if member.MaxAccess > 0 && member.AccessCount >= member.MaxAccess {
+		return nil, fmt.Errorf("access limit reached")
+	}
+
+	return &member, nil
+}
+
+// Commission handler functions
+func createCommissionRepositoryHandler(repositoryHandler *handlers.RepositoryHandler, db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		accessCode := chi.URLParam(r, "accessCode")
+
+		member, err := validateCommissionAccess(db, accessCode)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Update access count
+		updateQuery := `UPDATE commission_members SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+		db.Exec(updateQuery, time.Now().Unix(), member.ID)
+
+		// Create fake authenticated user for commission member
+		fakeUser := &auth.AuthenticatedUser{
+			Email: "commission_" + accessCode,
+			Role:  auth.RoleCommissionMember,
+			Name:  "Commission Member",
+		}
+
+		// Add to context
+		ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+		// Call the handler with authenticated context
+		repositoryHandler.ViewStudentRepository(w, r.WithContext(ctx))
+	}
+}
+
+func createCommissionBrowseHandler(repositoryHandler *handlers.RepositoryHandler, db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		accessCode := chi.URLParam(r, "accessCode")
+
+		member, err := validateCommissionAccess(db, accessCode)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Create fake authenticated user for commission member
+		fakeUser := &auth.AuthenticatedUser{
+			Email:      "commission_" + accessCode,
+			Role:       auth.RoleCommissionMember,
+			Name:       "Commission Member",
+			Department: member.Department,
+		}
+
+		// Add to context
+		ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+		// Call the handler with authenticated context
+		repositoryHandler.ViewStudentRepositoryPath(w, r.WithContext(ctx))
+	}
+}
+
+func createCommissionFileHandler(repositoryHandler *handlers.RepositoryHandler, db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		accessCode := chi.URLParam(r, "accessCode")
+
+		member, err := validateCommissionAccess(db, accessCode)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Create fake authenticated user for commission member
+		fakeUser := &auth.AuthenticatedUser{
+			Email:      "commission_" + accessCode,
+			Role:       auth.RoleCommissionMember,
+			Name:       "Commission Member",
+			Department: member.Department,
+		}
+
+		// Add to context
+		ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+		// Call the handler with authenticated context
+		repositoryHandler.ViewFileContent(w, r.WithContext(ctx))
+	}
+}
+
+func createCommissionTreeHandler(repositoryHandler *handlers.RepositoryHandler, db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		accessCode := chi.URLParam(r, "accessCode")
+
+		member, err := validateCommissionAccess(db, accessCode)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Create fake authenticated user for commission member
+		fakeUser := &auth.AuthenticatedUser{
+			Email:      "commission_" + accessCode,
+			Role:       auth.RoleCommissionMember,
+			Name:       "Commission Member",
+			Department: member.Department,
+		}
+
+		// Add to context
+		ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+		// Call the handler with authenticated context
+		repositoryHandler.GetRepositoryTree(w, r.WithContext(ctx))
+	}
+}
+
+func createCommissionDownloadHandler(repositoryHandler *handlers.RepositoryHandler, db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		accessCode := chi.URLParam(r, "accessCode")
+
+		member, err := validateCommissionAccess(db, accessCode)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Log the download action
+		updateQuery := `UPDATE commission_members SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+		db.Exec(updateQuery, time.Now().Unix(), member.ID)
+
+		// Create fake authenticated user for commission member
+		fakeUser := &auth.AuthenticatedUser{
+			Email:      "commission_" + accessCode,
+			Role:       auth.RoleCommissionMember,
+			Name:       "Commission Member",
+			Department: member.Department,
+		}
+
+		// Add to context
+		ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+		// Call the handler with authenticated context
+		repositoryHandler.DownloadRepository(w, r.WithContext(ctx))
+	}
+}
+
+// PUBLIC ROUTES FOR DOCUMENTS
+
+// In routes.go, add these functions:
+
+// createPublicDocumentsHandler - fetches documents without authentication
+func createPublicDocumentsHandler(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		studentIDStr := chi.URLParam(r, "id")
+		studentID, err := strconv.Atoi(studentIDStr)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":     "Invalid student ID",
+				"documents": []interface{}{},
+			})
+			return
+		}
+
+		// Query documents from database
+		query := `
+            SELECT id, document_type, file_path, uploaded_date, 
+                   file_size, mime_type, original_filename
+            FROM documents 
+            WHERE student_record_id = ?
+            ORDER BY uploaded_date DESC
+        `
+
+		var documents []struct {
+			ID               int       `db:"id"`
+			DocumentType     string    `db:"document_type"`
+			FilePath         string    `db:"file_path"`
+			UploadedDate     time.Time `db:"uploaded_date"`
+			FileSize         *int64    `db:"file_size"`
+			MimeType         *string   `db:"mime_type"`
+			OriginalFilename *string   `db:"original_filename"`
+		}
+
+		err = db.Select(&documents, query, studentID)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":     "Failed to fetch documents",
+				"documents": []interface{}{},
+			})
+			return
+		}
+
+		// Transform for response
+		responseDocuments := make([]map[string]interface{}, 0)
+		for _, doc := range documents {
+			hasPreview := false
+			if doc.MimeType != nil && strings.HasPrefix(*doc.MimeType, "application/pdf") {
+				hasPreview = true
+			}
+
+			docType := doc.DocumentType
+			if docType == "thesis" || docType == "thesis_pdf" {
+				docType = "thesis_pdf"
+			}
+
+			responseDocuments = append(responseDocuments, map[string]interface{}{
+				"id":         doc.ID,
+				"type":       docType,
+				"hasPreview": hasPreview,
+				"filename":   doc.OriginalFilename,
+				"size":       doc.FileSize,
+			})
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"documents": responseDocuments,
+		})
+	}
+}
+
+// createPublicDocumentPreviewHandler - handles document preview without authentication
+func createPublicDocumentPreviewHandler(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		documentIDStr := chi.URLParam(r, "id")
+		documentID, err := strconv.Atoi(documentIDStr)
+		if err != nil {
+			http.Error(w, "Invalid document ID", http.StatusBadRequest)
+			return
+		}
+
+		// Get document info
+		var doc struct {
+			ID               int     `db:"id"`
+			StudentRecordID  int     `db:"student_record_id"`
+			DocumentType     string  `db:"document_type"`
+			FilePath         string  `db:"file_path"`
+			MimeType         *string `db:"mime_type"`
+			OriginalFilename *string `db:"original_filename"`
+		}
+
+		query := `SELECT id, student_record_id, document_type, file_path, mime_type, original_filename 
+                  FROM documents WHERE id = ?`
+		err = db.Get(&doc, query, documentID)
+		if err != nil {
+			http.Error(w, "Document not found", http.StatusNotFound)
+			return
+		}
+
+		// Check if document can be previewed
+		if doc.MimeType == nil || !strings.HasPrefix(*doc.MimeType, "application/pdf") {
+			http.Error(w, "Document cannot be previewed", http.StatusBadRequest)
+			return
+		}
+
+		// Read file
+		filePath := doc.FilePath
+		if !filepath.IsAbs(filePath) {
+			// Assuming uploads are in ./uploads directory
+			filePath = filepath.Join("./uploads", filePath)
+		}
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Printf("Error opening file %s: %v", filePath, err)
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+		defer file.Close()
+
+		// Get file info
+		fileInfo, err := file.Stat()
+		if err != nil {
+			http.Error(w, "Error reading file", http.StatusInternalServerError)
+			return
+		}
+
+		// Set headers for PDF viewing
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", "inline; filename=\""+*doc.OriginalFilename+"\"")
+		w.Header().Set("Content-Length", strconv.FormatInt(fileInfo.Size(), 10))
+
+		// Copy file to response
+		_, err = io.Copy(w, file)
+		if err != nil {
+			log.Printf("Error serving file: %v", err)
+		}
+	}
+}
+
+// createPublicDocumentDownloadHandler - handles document download without authentication
+func createPublicDocumentDownloadHandler(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		documentIDStr := chi.URLParam(r, "id")
+		documentID, err := strconv.Atoi(documentIDStr)
+		if err != nil {
+			http.Error(w, "Invalid document ID", http.StatusBadRequest)
+			return
+		}
+
+		// Get document info
+		var doc struct {
+			ID               int     `db:"id"`
+			StudentRecordID  int     `db:"student_record_id"`
+			DocumentType     string  `db:"document_type"`
+			FilePath         string  `db:"file_path"`
+			MimeType         *string `db:"mime_type"`
+			OriginalFilename *string `db:"original_filename"`
+		}
+
+		query := `SELECT id, student_record_id, document_type, file_path, mime_type, original_filename 
+                  FROM documents WHERE id = ?`
+		err = db.Get(&doc, query, documentID)
+		if err != nil {
+			http.Error(w, "Document not found", http.StatusNotFound)
+			return
+		}
+
+		// Read file
+		filePath := doc.FilePath
+		if !filepath.IsAbs(filePath) {
+			// Assuming uploads are in ./uploads directory
+			filePath = filepath.Join("./uploads", filePath)
+		}
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Printf("Error opening file %s: %v", filePath, err)
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+		defer file.Close()
+
+		// Get file info
+		fileInfo, err := file.Stat()
+		if err != nil {
+			http.Error(w, "Error reading file", http.StatusInternalServerError)
+			return
+		}
+
+		// Determine content type
+		contentType := "application/octet-stream"
+		if doc.MimeType != nil {
+			contentType = *doc.MimeType
+		}
+
+		// Set download headers
+		filename := "document"
+		if doc.OriginalFilename != nil {
+			filename = *doc.OriginalFilename
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+		w.Header().Set("Content-Length", strconv.FormatInt(fileInfo.Size(), 10))
+
+		// Copy file to response
+		_, err = io.Copy(w, file)
+		if err != nil {
+			log.Printf("Error serving file: %v", err)
+		}
+	}
 }

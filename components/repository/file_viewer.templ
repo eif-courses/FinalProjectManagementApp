@@ -4,7 +4,7 @@ import (
     "FinalProjectManagementApp/types"
 )
 
-templ FileViewer(studentID int, filePath string, content *types.FileContent) {
+templ FileViewer(studentID int, filePath string, content *types.FileContent, accessCode string) {
     <div id="file-content" class="container mx-auto px-4 py-6">
         <div class="code-viewer">
             <div class="code-header">

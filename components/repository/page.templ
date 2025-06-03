@@ -8,10 +8,10 @@ import (
     "fmt"
 )
 
-templ RepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, currentLocale string) {
+templ RepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, currentLocale string, accessCode string) {
     @RepositoryLayout(user, student, repoInfo, currentLocale) {
         <div class="space-y-6">
-            @RepositoryHeader(student, repoInfo, contents.Stats)
+            @RepositoryHeader(student, repoInfo, contents.Stats, accessCode)
 
             if contents.Error != "" {
                 <div class="bg-red-50 border border-red-200 rounded-md p-4">
@@ -23,17 +23,17 @@ templ RepositoryPage(user *auth.AuthenticatedUser, student *database.StudentReco
                     </div>
                 </div>
             } else {
-                @FileExplorer(student.ID, "", contents.Files)
+                @FileExplorer(student.ID, "", contents.Files, accessCode)
                 <div id="file-content"></div>
             }
         </div>
     }
 }
 
-templ DirectoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string, currentLocale string) {
+templ DirectoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string, currentLocale string, accessCode string) {
     @RepositoryLayout(user, student, repoInfo, currentLocale) {
         <div class="space-y-6">
-            @RepositoryHeader(student, repoInfo, contents.Stats)
+            @RepositoryHeader(student, repoInfo, contents.Stats, accessCode)
 
             if contents.Error != "" {
                 <div class="bg-red-50 border border-red-200 rounded-md p-4">
@@ -45,14 +45,14 @@ templ DirectoryPage(user *auth.AuthenticatedUser, student *database.StudentRecor
                     </div>
                 </div>
             } else {
-                @FileExplorer(student.ID, dirPath, contents.Files)
+                @FileExplorer(student.ID, dirPath, contents.Files, accessCode)
                 <div id="file-content"></div>
             }
         </div>
     }
 }
 
-templ NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, currentLocale string) {
+templ NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRecord, currentLocale string, accessCode string) {
     @templates.Layout(user, currentLocale, "No Repository - " + student.StudentName + " " + student.StudentLastname) {
         <div class="max-w-md mx-auto text-center py-12">
             <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,18 +83,28 @@ templ NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRe
                 </dl>
             </div>
 
-            <a href="/students-list"
-               class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                Back to Student List
-            </a>
+             if accessCode != "" {
+                           <a href={ templ.SafeURL(fmt.Sprintf("/commission/%s", accessCode)) }
+                              class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+                               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                               </svg>
+                               Back to Commission List
+                           </a>
+                       } else {
+                           <a href="/students-list"
+                              class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+                               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                               </svg>
+                               Back to Student List
+                           </a>
+                       }
         </div>
     }
 }
 
-templ FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, filePath string, content *types.FileContent, currentLocale string) {
+templ FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, filePath string, content *types.FileContent, currentLocale string, accessCode string) {
     @RepositoryLayout(user, student, repoInfo, currentLocale) {
         <div class="space-y-6">
             <div class="bg-white rounded-lg shadow-lg p-6">
@@ -104,16 +114,23 @@ templ FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentReco
                         <p class="text-gray-600">{ student.StudentName } { student.StudentLastname } • { student.StudyProgram }</p>
                     </div>
                     <div class="flex gap-3">
-                        <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d", student.ID)) }
-                           class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
-                            ← Back to Repository
-                        </a>
+                        if accessCode != "" {
+                            <a href={ templ.SafeURL(fmt.Sprintf("/commission/%s/repository/student/%d", accessCode, student.ID)) }
+                               class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                ← Back to Repository
+                            </a>
+                        } else {
+                            <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d", student.ID)) }
+                               class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                ← Back to Repository
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
 
-            @Breadcrumb(student.ID, filePath)
-            @FileViewer(student.ID, filePath, content)
+            @Breadcrumb(student.ID, filePath, accessCode)
+            @FileViewer(student.ID, filePath, content, accessCode)
         </div>
     }
 }
