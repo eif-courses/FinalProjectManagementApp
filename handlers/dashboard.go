@@ -5,9 +5,12 @@ import (
 	"FinalProjectManagementApp/auth"
 	"FinalProjectManagementApp/components/templates"
 	"FinalProjectManagementApp/database"
+	"database/sql"
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -216,51 +219,90 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*database.Stu
 	err := h.db.Get(&studentRecord,
 		"SELECT * FROM student_records WHERE student_email = ?", email)
 	if err != nil {
-		return nil, err
+		log.Printf("Error getting student record for email %s: %v", email, err)
+		return nil, fmt.Errorf("student record not found: %w", err)
 	}
+
+	log.Printf("Found student: %s %s, Group: %s, Program: %s",
+		studentRecord.StudentName, studentRecord.StudentLastname,
+		studentRecord.StudentGroup, studentRecord.StudyProgram)
+
 	data.StudentRecord = &studentRecord
 
-	// Get documents
+	// Initialize fields to prevent nil errors
+	data.Documents = []database.Document{}
+	data.Videos = []database.Video{}
+	data.TopicCommentCount = 0
+	data.HasUnreadComments = false
+
+	// Get topic registration comments count
+	err = h.db.Get(&data.TopicCommentCount,
+		`SELECT COUNT(*) FROM topic_registration_comments tc
+         JOIN project_topic_registrations ptr ON tc.topic_registration_id = ptr.id
+         WHERE ptr.student_record_id = ?`, studentRecord.ID)
+	if err != nil {
+		log.Printf("Error getting comment count: %v", err)
+		data.TopicCommentCount = 0
+	}
+
+	// Check for unread comments
+	var unreadCount int
+	err = h.db.Get(&unreadCount,
+		`SELECT COUNT(*) FROM topic_registration_comments tc
+         JOIN project_topic_registrations ptr ON tc.topic_registration_id = ptr.id
+         WHERE ptr.student_record_id = ? AND tc.is_read = FALSE`, studentRecord.ID)
+	if err == nil {
+		data.HasUnreadComments = unreadCount > 0
+	}
+
+	// Get documents with detailed logging
 	var documents []database.Document
 	err = h.db.Select(&documents,
 		"SELECT * FROM documents WHERE student_record_id = ? ORDER BY uploaded_date DESC",
 		studentRecord.ID)
-	if err == nil {
+	if err != nil {
+		log.Printf("Error getting documents: %v", err)
+	} else {
+		log.Printf("Found %d documents for student %d", len(documents), studentRecord.ID)
 		data.Documents = documents
 
 		// Process documents by type
-		for _, doc := range documents {
-			switch doc.DocumentType {
-			case "thesis_pdf", "thesis", "FINAL_THESIS.PDF":
+		for i := range documents {
+			doc := &documents[i]
+			log.Printf("Document type: %s, ID: %d", doc.DocumentType, doc.ID)
+
+			switch strings.ToLower(doc.DocumentType) {
+			case "thesis_pdf", "thesis", "final_thesis.pdf":
 				data.HasThesisPDF = true
-				data.ThesisDocument = &doc
-			case "thesis_source_code", "SOURCE_CODE":
-				data.SourceCodeRepository = &doc
+				data.ThesisDocument = doc
+			case "thesis_source_code", "source_code":
+				data.SourceCodeRepository = doc
 				data.HasSourceCode = true
-				// Set source code status from document upload status
 				if doc.UploadStatus != "" {
 					data.SourceCodeStatus = doc.UploadStatus
 				} else {
 					data.SourceCodeStatus = "uploaded"
 				}
-			case "company_recommendation", "RECOMMENDATION.PDF":
-				data.CompanyRecommendation = &doc
+				log.Printf("Found source code: %s", doc.OriginalFilename)
+			case "company_recommendation", "recommendation.pdf":
+				data.CompanyRecommendation = doc
 			}
 		}
 	}
 
-	// Get videos separately (not from documents table)
+	// Get videos
 	var videos []database.Video
 	err = h.db.Select(&videos,
 		"SELECT * FROM videos WHERE student_record_id = ? ORDER BY created_at DESC",
 		studentRecord.ID)
-	if err == nil {
+	if err != nil {
+		log.Printf("Error getting videos: %v", err)
+	} else {
 		data.Videos = videos
-
-		// Find the first ready video as presentation
-		for _, video := range videos {
+		for i := range videos {
+			video := &videos[i]
 			if video.Status == "ready" {
-				data.VideoPresentation = &video // This is now *Video, not *Document
+				data.VideoPresentation = video
 				data.HasVideo = true
 				break
 			}
@@ -275,6 +317,8 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*database.Stu
 	if err == nil {
 		data.SupervisorReport = &supervisorReport
 		data.HasSupervisorReport = true
+	} else if err != sql.ErrNoRows {
+		log.Printf("Error getting supervisor report: %v", err)
 	}
 
 	// Get reviewer report
@@ -285,9 +329,11 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*database.Stu
 	if err == nil {
 		data.ReviewerReport = &reviewerReport
 		data.HasReviewerReport = true
+	} else if err != sql.ErrNoRows {
+		log.Printf("Error getting reviewer report: %v", err)
 	}
 
-	// Get topic registration and status
+	// Get topic registration
 	var topicRegistration database.ProjectTopicRegistration
 	err = h.db.Get(&topicRegistration,
 		"SELECT * FROM project_topic_registrations WHERE student_record_id = ? ORDER BY created_at DESC LIMIT 1",
@@ -297,13 +343,16 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*database.Stu
 		data.TopicStatus = topicRegistration.Status
 		data.HasTopicApproved = topicRegistration.Status == "approved"
 	} else {
+		if err != sql.ErrNoRows {
+			log.Printf("Error getting topic registration: %v", err)
+		}
 		data.TopicStatus = "not_submitted"
 		data.HasTopicApproved = false
 	}
 
-	// Set defense info
-	data.DefenseScheduled = studentRecord.DefenseDate != nil
-	if data.DefenseScheduled && studentRecord.DefenseDate != nil {
+	// Handle defense info
+	if studentRecord.DefenseDate != nil {
+		data.DefenseScheduled = true
 		data.DefenseDate = studentRecord.GetDefenseDateFormatted()
 		data.DefenseLocation = studentRecord.DefenseLocation
 	}
