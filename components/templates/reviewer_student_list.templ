@@ -1,0 +1,116 @@
+package templates
+
+import (
+    "strconv"
+    "FinalProjectManagementApp/database"
+)
+
+templ ReviewerStudentList(accessToken string, students []database.StudentSummaryView, reviewerName string, pagination *database.PaginationInfo) {
+    <!DOCTYPE html>
+    <html lang="lt">
+    <head>
+        <title>Reviewer Dashboard - { reviewerName }</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <link rel="stylesheet" href="/assets/css/output.css"/>
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    </head>
+    <body class="bg-gray-50">
+        <div class="min-h-screen">
+            <header class="bg-white shadow">
+                <div class="max-w-7xl mx-auto px-4 py-6">
+                    <h1 class="text-2xl font-bold text-gray-900">Reviewer Dashboard</h1>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Welcome, { reviewerName } - Total students: { strconv.Itoa(len(students)) }
+                    </p>
+                </div>
+            </header>
+
+            <main class="max-w-7xl mx-auto px-4 py-8">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Title</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            for _, student := range students {
+                                <tr class="border-b">
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <div class="font-medium">{ student.StudentName } { student.StudentLastname }</div>
+                                            <div class="text-sm text-gray-500">{ student.StudentGroup }</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm">{ student.FinalProjectTitle }</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        if student.HasReviewerReport {
+                                            if student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    ✓ Completed
+                                                </span>
+                                            } else {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                    Draft Saved
+                                                </span>
+                                            }
+                                        } else {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                Not Started
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button
+                                            onclick={ openReviewModal(student.ID) }
+                                            class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                                            if student.HasReviewerReport {
+                                                Edit Review
+                                            } else {
+                                                Write Review
+                                            }
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+
+        <!-- Modal Container -->
+        <div id="modal-container"></div>
+
+        <script>
+            function openReviewModal(studentId) {
+                htmx.ajax('GET', '/reviewer/' + '{ accessToken }' + '/student/' + studentId + '/review', {
+                    target: '#modal-container',
+                    swap: 'innerHTML'
+                });
+            }
+        </script>
+    </body>
+    </html>
+}
+
+// Helper script function for opening modal
+script openReviewModal(studentId int) {
+    return templ.ComponentScript{
+        Name: "openReviewModal",
+        Function: fmt.Sprintf(`
+            function openReviewModal(studentId) {
+                htmx.ajax('GET', '/reviewer/' + '%s' + '/student/' + studentId + '/review', {
+                    target: '#modal-container',
+                    swap: 'innerHTML'
+                });
+            }
+        `, accessToken),
+    }
+}

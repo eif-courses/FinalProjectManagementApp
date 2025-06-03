@@ -4,6 +4,7 @@ import (
 	"FinalProjectManagementApp/auth"
 	"FinalProjectManagementApp/components/templates"
 	"FinalProjectManagementApp/database"
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
@@ -2055,3 +2056,170 @@ func (h *StudentListHandler) ReviewerReportSaveDraftHandler(w http.ResponseWrite
 }
 
 //========================================================
+
+// Add at the end of student_list.go file
+
+// ========================================================
+// REVIEWER TOKEN-BASED ACCESS METHODS
+// ========================================================
+
+// ShowReviewerStudentsWithToken - Show students for reviewer using access token
+func (h *StudentListHandler) ShowReviewerStudentsWithToken(w http.ResponseWriter, r *http.Request) {
+	accessToken := chi.URLParam(r, "accessToken")
+
+	// Validate reviewer access
+	reviewerToken, err := h.validateReviewerAccessToken(accessToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Update access count
+	h.updateReviewerAccessCount(reviewerToken.ID)
+
+	// Get students assigned to this reviewer
+	students, err := h.getReviewerStudents(reviewerToken.ReviewerEmail)
+	if err != nil {
+		http.Error(w, "Failed to load students", http.StatusInternalServerError)
+		return
+	}
+
+	// Get pagination info
+	pagination := &database.PaginationInfo{
+		Page:       1,
+		Limit:      50,
+		Total:      len(students),
+		TotalPages: 1,
+		HasPrev:    false,
+		HasNext:    false,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err = templates.ReviewerStudentList(accessToken, students, reviewerToken.ReviewerName, pagination).Render(r.Context(), w)
+	if err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	}
+}
+
+// ReviewerReportModalHandlerWithToken - Show reviewer report form using token
+func (h *StudentListHandler) ReviewerReportModalHandlerWithToken(w http.ResponseWriter, r *http.Request) {
+	accessToken := chi.URLParam(r, "accessToken")
+	studentIDStr := chi.URLParam(r, "studentId")
+
+	// Validate reviewer access
+	reviewerToken, err := h.validateReviewerAccessToken(accessToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Update access count
+	h.updateReviewerAccessCount(reviewerToken.ID)
+
+	// Create fake authenticated user for reviewer
+	fakeUser := &auth.AuthenticatedUser{
+		Email:      reviewerToken.ReviewerEmail,
+		Role:       auth.RoleReviewer,
+		Name:       reviewerToken.ReviewerName,
+		Department: reviewerToken.Department,
+	}
+
+	// Add to context and update URL params
+	ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", studentIDStr)
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+
+	// Call the existing handler
+	h.ReviewerReportModalHandler(w, r.WithContext(ctx))
+}
+
+// ReviewerReportSubmitHandlerWithToken - Handle report submission using token
+func (h *StudentListHandler) ReviewerReportSubmitHandlerWithToken(w http.ResponseWriter, r *http.Request) {
+	accessToken := chi.URLParam(r, "accessToken")
+	studentIDStr := chi.URLParam(r, "studentId")
+
+	// Validate reviewer access
+	reviewerToken, err := h.validateReviewerAccessToken(accessToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Create fake authenticated user
+	fakeUser := &auth.AuthenticatedUser{
+		Email:      reviewerToken.ReviewerEmail,
+		Role:       auth.RoleReviewer,
+		Name:       reviewerToken.ReviewerName,
+		Department: reviewerToken.Department,
+	}
+
+	// Add to context and update URL params
+	ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", studentIDStr)
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+
+	// Determine if this is a draft save
+	isDraft := r.FormValue("is_draft") == "true"
+
+	// Call the appropriate handler
+	if isDraft {
+		h.ReviewerReportSaveDraftHandler(w, r.WithContext(ctx))
+	} else {
+		h.ReviewerReportSubmitHandler(w, r.WithContext(ctx))
+	}
+}
+
+// Database helper methods for reviewer access tokens
+func (h *StudentListHandler) validateReviewerAccessToken(accessToken string) (*database.ReviewerAccessToken, error) {
+	var token database.ReviewerAccessToken
+	query := `SELECT * FROM reviewer_access_tokens WHERE access_token = ? AND is_active = true`
+
+	err := h.db.Get(&token, query, accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("invalid access token")
+	}
+
+	if !token.CanAccess() {
+		return nil, fmt.Errorf("access token expired or limit reached")
+	}
+
+	return &token, nil
+}
+
+func (h *StudentListHandler) updateReviewerAccessCount(tokenID int) {
+	query := `UPDATE reviewer_access_tokens SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+	h.db.Exec(query, time.Now().Unix(), tokenID)
+}
+
+func (h *StudentListHandler) getReviewerStudents(reviewerEmail string) ([]database.StudentSummaryView, error) {
+	query := `
+        SELECT 
+            sr.id,
+            sr.student_group,
+            sr.student_name,
+            sr.student_lastname,
+            sr.student_email,
+            sr.final_project_title,
+            sr.supervisor_email,
+            sr.reviewer_email,
+            sr.reviewer_name,
+            COALESCE(ptr.status, '') as topic_status,
+            CASE WHEN ptr.status = 'approved' THEN 1 ELSE 0 END as topic_approved,
+            EXISTS(SELECT 1 FROM documents d WHERE d.student_record_id = sr.id AND d.document_type LIKE '%source%') as has_source_code,
+            COALESCE(rr.id IS NOT NULL, false) as has_reviewer_report,
+            COALESCE(rr.is_signed, false) as reviewer_report_signed,
+            rr.grade as reviewer_grade,
+            rr.review_questions as reviewer_questions
+        FROM student_records sr
+        LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id AND ptr.status = 'approved'
+        LEFT JOIN reviewer_reports rr ON sr.id = rr.student_record_id
+        WHERE sr.reviewer_email = ?
+        ORDER BY sr.student_name, sr.student_lastname
+    `
+
+	var students []database.StudentSummaryView
+	err := h.db.Select(&students, query, reviewerEmail)
+	return students, err
+}

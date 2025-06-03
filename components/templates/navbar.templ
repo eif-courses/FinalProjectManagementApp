@@ -114,10 +114,12 @@ templ RoleBasedNavigation(user *auth.AuthenticatedUser) {
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
             @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
             @NavLink("/admin/commission", "key", "Komisijos", getCurrentPath() == "/admin/commission")
+            @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", getCurrentPath() == "/admin/reviewer-access")
         } else if user.Role == "department_head" {
             @NavLink("/department", "building", "Katedra", getCurrentPath() == "/department")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
             @NavLink("/admin/commission", "key", "Komisijos", getCurrentPath() == "/admin/commission")
+            @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", getCurrentPath() == "/admin/reviewer-access")
         } else if user.Role == "supervisor" {
             @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
@@ -349,10 +351,12 @@ templ MobileRoleBasedNav(user *auth.AuthenticatedUser) {
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
         @MobileNavLink("/manage", "users", "Vadovavimas")
         @MobileNavLink("/admin/commission", "key", "Komisijos")
+        @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai")
     } else if user.Role == "department_head" {
         @MobileNavLink("/department", "building", "Katedra")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
         @MobileNavLink("/admin/commission", "key", "Komisijos")
+        @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai")
     } else if user.Role == "supervisor" {
         @MobileNavLink("/manage", "users", "Vadovavimas")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")

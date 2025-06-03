@@ -3022,3 +3022,28 @@ type CommissionMember struct {
 	AccessLevel          string         `db:"access_level"`
 	CommissionType       string         `db:"commission_type"`
 }
+
+// REVIEWER TYPES
+type ReviewerAccessToken struct {
+	ID             int    `db:"id" json:"id"`
+	ReviewerEmail  string `db:"reviewer_email" json:"reviewer_email"`
+	ReviewerName   string `db:"reviewer_name" json:"reviewer_name"`
+	AccessToken    string `db:"access_token" json:"access_token"`
+	Department     string `db:"department" json:"department"`
+	CreatedAt      int64  `db:"created_at" json:"created_at"`
+	ExpiresAt      int64  `db:"expires_at" json:"expires_at"`
+	MaxAccess      int    `db:"max_access" json:"max_access"`
+	AccessCount    int    `db:"access_count" json:"access_count"`
+	LastAccessedAt *int64 `db:"last_accessed_at" json:"last_accessed_at"`
+	IsActive       bool   `db:"is_active" json:"is_active"`
+	CreatedBy      string `db:"created_by" json:"created_by"`
+}
+
+func (rat *ReviewerAccessToken) IsExpired() bool {
+	return time.Now().Unix() > rat.ExpiresAt
+}
+
+func (rat *ReviewerAccessToken) CanAccess() bool {
+	return rat.IsActive && !rat.IsExpired() &&
+		(rat.MaxAccess == 0 || rat.AccessCount < rat.MaxAccess)
+}

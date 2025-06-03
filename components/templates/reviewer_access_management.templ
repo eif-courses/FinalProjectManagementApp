@@ -1,0 +1,117 @@
+package templates
+
+import (
+    "strconv"
+    "time"
+    "FinalProjectManagementApp/auth"
+        "FinalProjectManagementApp/components/icon"
+    "FinalProjectManagementApp/database"
+)
+
+templ ReviewerAccessManagement(tokens []database.ReviewerAccessToken, reviewers []string, user *auth.AuthenticatedUser) {
+    @Layout(user, "lt", "Reviewer Access Management") {
+        <div class="space-y-6">
+            <!-- Header -->
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-foreground">Reviewer Access Management</h1>
+                <p class="text-muted-foreground">Create and manage reviewer access tokens</p>
+            </div>
+
+            <!-- Create New Access Form -->
+            <div class="bg-card rounded-lg shadow border p-6">
+                <h2 class="text-lg font-semibold mb-4">Create Reviewer Access</h2>
+                <form hx-post="/admin/reviewer-access/create" hx-target="#result" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Reviewer Email</label>
+                            <select name="reviewer_email" required class="w-full border rounded px-3 py-2">
+                                <option value="">Select Reviewer</option>
+                                for _, reviewer := range reviewers {
+                                    <option value={ reviewer }>{ reviewer }</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Reviewer Name</label>
+                            <input type="text" name="reviewer_name" required class="w-full border rounded px-3 py-2"/>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Department</label>
+                            <input type="text" name="department" class="w-full border rounded px-3 py-2"/>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Valid for (days)</label>
+                            <input type="number" name="days_valid" value="30" min="1" class="w-full border rounded px-3 py-2"/>
+                        </div>
+                    </div>
+                    <button type="submit" class="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90">
+                        Create Access Token
+                    </button>
+                </form>
+                <div id="result" class="mt-4"></div>
+            </div>
+
+            <!-- Active Tokens Table -->
+            <div class="bg-card rounded-lg shadow border overflow-hidden">
+                <h2 class="text-lg font-semibold p-6 border-b">Active Reviewer Access Tokens</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-muted/50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Reviewer</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Access Link</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Created</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Expires</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Used</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            for _, token := range tokens {
+                                <tr>
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <div class="font-medium">{ token.ReviewerName }</div>
+                                            <div class="text-sm text-muted-foreground">{ token.ReviewerEmail }</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="space-y-1">
+                                            <div class="font-mono text-xs text-muted-foreground">{ token.AccessToken }</div>
+                                            <a href={ templ.URL("/reviewer/" + token.AccessToken) }
+                                               target="_blank"
+                                               class="text-primary hover:underline text-sm inline-flex items-center gap-1">
+                                                Open Link
+                                                @icon.ExternalLink(icon.Props{Size: 12})
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        { time.Unix(token.CreatedAt, 0).Format("2006-01-02 15:04") }
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        { time.Unix(token.ExpiresAt, 0).Format("2006-01-02 15:04") }
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        { strconv.Itoa(token.AccessCount) }
+                                        if token.MaxAccess > 0 {
+                                            <span class="text-muted-foreground">/ { strconv.Itoa(token.MaxAccess) }</span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button
+                                            hx-delete={ "/admin/reviewer-access/" + token.AccessToken }
+                                            hx-confirm="Are you sure you want to deactivate this access?"
+                                            class="text-destructive hover:text-destructive/90 text-sm font-medium">
+                                            Deactivate
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}

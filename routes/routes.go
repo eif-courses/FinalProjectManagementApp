@@ -48,6 +48,8 @@ func SetupRoutes(db *sqlx.DB,
 	uploadHandlers := handlers.NewUploadHandlers(db)
 	commissionHandler := handlers.NewCommissionHandler(db)
 
+	reviewerAccessHandler := handlers.NewReviewerAccessHandler(db)
+
 	// Get app config for GitHub settings
 	appConfig := database.LoadAppConfig()
 
@@ -119,6 +121,7 @@ func SetupRoutes(db *sqlx.DB,
 
 	r.Route("/commission/{accessCode}", func(r chi.Router) {
 		r.Get("/", commissionHandler.ShowStudentList)
+		r.Get("/topic-registration/{studentId}", createCommissionTopicRegistrationHandler(db))
 
 		// Add repository routes here
 		if repositoryHandler != nil {
@@ -387,6 +390,13 @@ func SetupRoutes(db *sqlx.DB,
 			})
 		})
 
+		// Reviewer-specific routes with token (no auth required)
+		r.Route("/reviewer/{accessToken}", func(r chi.Router) {
+			r.Get("/", studentListHandler.ShowReviewerStudentsWithToken)
+			r.Get("/student/{studentId}/review", studentListHandler.ReviewerReportModalHandlerWithToken)
+			r.Post("/student/{studentId}/review/submit", studentListHandler.ReviewerReportSubmitHandlerWithToken)
+		})
+
 		// REVIEWER FORM HANDLER
 		r.Route("/reviewer-report", func(r chi.Router) {
 			r.Use(authMiddleware.RequireAuth)
@@ -398,6 +408,10 @@ func SetupRoutes(db *sqlx.DB,
 		// Admin routes - MERGED WITH IMPORT/EXPORT FUNCTIONALITY
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(authMiddleware.RequireRole(auth.RoleAdmin, auth.RoleDepartmentHead))
+
+			r.Get("/reviewer-access", reviewerAccessHandler.ShowManagementPage)
+			r.Post("/reviewer-access/create", reviewerAccessHandler.CreateReviewerAccess)
+			r.Delete("/reviewer-access/{accessToken}", reviewerAccessHandler.DeactivateReviewerAccess)
 
 			r.Get("/commission", commissionHandler.ShowManagementPage)
 			r.Post("/commission/create", commissionHandler.CreateAccess)
@@ -872,5 +886,48 @@ func createPublicDocumentDownloadHandler(db *sqlx.DB) http.HandlerFunc {
 		if err != nil {
 			log.Printf("Error serving file: %v", err)
 		}
+	}
+}
+
+// Add this function to routes.go
+func createCommissionTopicRegistrationHandler(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		accessCode := chi.URLParam(r, "accessCode")
+		studentIDStr := chi.URLParam(r, "studentId")
+
+		// Validate student ID format
+		_, err := strconv.Atoi(studentIDStr)
+		if err != nil {
+			http.Error(w, "Invalid student ID", http.StatusBadRequest)
+			return
+		}
+
+		// Validate commission access
+		member, err := validateCommissionAccess(db, accessCode)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Update access count
+		updateQuery := `UPDATE commission_members SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+		db.Exec(updateQuery, time.Now().Unix(), member.ID)
+
+		// Create topic handler with database connection
+		topicHandlers := handlers.NewTopicHandlers(db.DB)
+
+		// Create fake authenticated user for commission member
+		fakeUser := &auth.AuthenticatedUser{
+			Email:      "commission_" + accessCode,
+			Role:       auth.RoleCommissionMember,
+			Name:       "Commission Member",
+			Department: member.Department,
+		}
+
+		// Add to context
+		ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+		// Call the topic registration modal handler
+		topicHandlers.ShowTopicRegistrationModal(w, r.WithContext(ctx))
 	}
 }
