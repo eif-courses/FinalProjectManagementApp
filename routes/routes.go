@@ -111,6 +111,13 @@ func SetupRoutes(db *sqlx.DB,
 	// Reviewer-specific route with token
 	r.Get("/reviewer/students", studentListHandler.ReviewerStudentsList)
 
+	// Reviewer-specific routes with token (no auth required)
+	r.Route("/reviewer/{accessToken}", func(r chi.Router) {
+		r.Get("/", studentListHandler.ShowReviewerStudentsWithToken)
+		r.Get("/student/{studentId}/review", studentListHandler.ReviewerReportModalHandlerWithToken)
+		r.Post("/student/{studentId}/review/submit", studentListHandler.ReviewerReportSubmitHandlerWithToken)
+	})
+
 	// PUBLIC DOCUMENTS ROUTES
 	r.Get("/api/public/documents/{id}", createPublicDocumentsHandler(db))
 	r.Get("/api/public/students/{id}/documents", createPublicDocumentsHandler(db))
@@ -388,13 +395,6 @@ func SetupRoutes(db *sqlx.DB,
 					log.Printf("Topic %s rejected by department head after supervisor approval", topicID)
 				}
 			})
-		})
-
-		// Reviewer-specific routes with token (no auth required)
-		r.Route("/reviewer/{accessToken}", func(r chi.Router) {
-			r.Get("/", studentListHandler.ShowReviewerStudentsWithToken)
-			r.Get("/student/{studentId}/review", studentListHandler.ReviewerReportModalHandlerWithToken)
-			r.Post("/student/{studentId}/review/submit", studentListHandler.ReviewerReportSubmitHandlerWithToken)
 		})
 
 		// REVIEWER FORM HANDLER

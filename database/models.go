@@ -2983,6 +2983,7 @@ type ReviewerReportFormProps struct {
 	IsReadOnly    bool
 	FormVariant   string // "en" or "lt"
 	ReviewerName  string
+	AccessToken   string // Add this field
 }
 
 // ReviewerReportFormData for form data
