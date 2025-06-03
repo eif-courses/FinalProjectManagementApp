@@ -68,23 +68,42 @@ func (h *DashboardHandlers) renderStudentDashboard(w http.ResponseWriter, r *htt
 	data, err := h.getStudentDashboardData(user.Email)
 	if err != nil {
 		log.Printf("Error getting student dashboard data: %v", err)
-		// Fall back to basic dashboard
-		err = templates.Dashboard(user, "Student Dashboard").Render(r.Context(), w)
+
+		// Option 1: Create empty student data structure
+		data = &database.StudentDashboardData{
+			StudentRecord: &database.StudentRecord{
+				ID:                0,
+				StudentNumber:     "N/A",
+				StudentGroup:      "N/A",
+				StudyProgram:      "N/A",
+				FinalProjectTitle: "",
+			},
+			TopicRegistration:     nil,
+			SourceCodeRepository:  nil,
+			HasThesisPDF:          false,
+			ThesisDocument:        nil,
+			CompanyRecommendation: nil,
+			VideoPresentation:     nil,
+			SupervisorReport:      nil,
+			ReviewerReport:        nil,
+			TopicCommentCount:     0,
+			HasUnreadComments:     false,
+		}
+
+		// Still render the student dashboard with empty data
+		err = templates.CompactStudentDashboard(user, data, locale).Render(r.Context(), w)
 		if err != nil {
-			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			log.Printf("Error rendering compact student dashboard with empty data: %v", err)
+			http.Error(w, "Failed to render dashboard", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	// Render student dashboard with data
+	// Render student dashboard with actual data
 	err = templates.CompactStudentDashboard(user, data, locale).Render(r.Context(), w)
 	if err != nil {
 		log.Printf("Error rendering compact student dashboard: %v", err)
-		// Fall back to basic dashboard
-		err = templates.Dashboard(user, "Student Dashboard").Render(r.Context(), w)
-		if err != nil {
-			http.Error(w, "Failed to render template", http.StatusInternalServerError)
-		}
+		http.Error(w, "Failed to render dashboard", http.StatusInternalServerError)
 	}
 }
 
