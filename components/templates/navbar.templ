@@ -110,18 +110,14 @@ templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
 templ RoleBasedNavigation(user *auth.AuthenticatedUser) {
     <div class="flex items-center space-x-2">
         if user.Role == "admin" {
-            @NavLink("/admin", "shield-check", "Administravimas", getCurrentPath() == "/admin")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
-            @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
-            @NavLink("/admin/commission", "key", "Komisijos", getCurrentPath() == "/admin/commission")
+            @NavLink("/admin/commission", "key", "Komisija", getCurrentPath() == "/admin/commission")
             @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", getCurrentPath() == "/admin/reviewer-access")
         } else if user.Role == "department_head" {
-            @NavLink("/department", "building", "Katedra", getCurrentPath() == "/department")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
-            @NavLink("/admin/commission", "key", "Komisijos", getCurrentPath() == "/admin/commission")
+            @NavLink("/admin/commission", "key", "Komisija", getCurrentPath() == "/admin/commission")
             @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", getCurrentPath() == "/admin/reviewer-access")
         } else if user.Role == "supervisor" {
-            @NavLink("/manage", "users", "Vadovavimas", getCurrentPath() == "/manage")
             @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
         } else if user.Role == "reviewer" {
             @NavLink("/reviews", "file-text", "Recenzijos", getCurrentPath() == "/reviews")
@@ -347,18 +343,14 @@ templ MobileNavigation(user *auth.AuthenticatedUser, currentLocale string) {
 
 templ MobileRoleBasedNav(user *auth.AuthenticatedUser) {
     if user.Role == "admin" {
-        @MobileNavLink("/admin", "shield-check", "Administravimas")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
-        @MobileNavLink("/manage", "users", "Vadovavimas")
-        @MobileNavLink("/admin/commission", "key", "Komisijos")
+        @MobileNavLink("/admin/commission", "key", "Komisija")
         @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai")
     } else if user.Role == "department_head" {
-        @MobileNavLink("/department", "building", "Katedra")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
-        @MobileNavLink("/admin/commission", "key", "Komisijos")
+        @MobileNavLink("/admin/commission", "key", "Komisija")
         @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai")
     } else if user.Role == "supervisor" {
-        @MobileNavLink("/manage", "users", "Vadovavimas")
         @MobileNavLink("/students-list", "graduation-cap", "Studentai")
     } else if user.Role == "reviewer" {
         @MobileNavLink("/reviews", "file-text", "Recenzijos")

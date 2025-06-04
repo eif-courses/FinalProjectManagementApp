@@ -119,12 +119,43 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"px-6 py-3\" style=\"max-height: calc(90vh - 120px); overflow-y: auto;\"><!-- Auto-save indicator -->")
+				var templ_7745c5c3_Var5 = []any{"px-6 py-3", templ.KV("modal-body-readonly", props.IsReadOnly)}
+				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var5...)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var6 string
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var5).String())
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 1, Col: 0}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" style=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var7 string
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(getModalBodyStyle(props.IsReadOnly))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 41, Col: 125}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\"><!-- Auto-save indicator -->")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex items-center justify-between mb-3\"><div id=\"auto-save-status\" class=\"text-sm text-gray-500 flex items-center gap-2\"><span id=\"save-icon\" class=\"hidden\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex items-center justify-between mb-3\"><div id=\"auto-save-status\" class=\"text-sm text-gray-500 flex items-center gap-2\"><span id=\"save-icon\" class=\"hidden\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -132,120 +163,68 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span> <span id=\"save-text\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span> <span id=\"save-text\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if props.FormVariant == "en" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "Auto-save enabled")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "Auto-save enabled")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "Automatinis išsaugojimas įjungtas")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "Automatinis išsaugojimas įjungtas")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span></div><div class=\"text-xs text-gray-400\"><span id=\"last-saved\"></span></div></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</span></div><div class=\"text-xs text-gray-400\"><span id=\"last-saved\"></span></div></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 				if !props.IsReadOnly {
 					if props.AccessToken != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<form id=\"compact-reviewer-form\" hx-post=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var5 string
-						templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/reviewer/%s/student/%d/review/submit", props.AccessToken, props.StudentRecord.ID))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 67, Col: 133}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" hx-target=\"#reviewer-modal\" hx-swap=\"outerHTML\" class=\"space-y-4\" data-student-id=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var6 string
-						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", props.StudentRecord.ID))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 71, Col: 87}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-access-token=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var7 string
-						templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(props.AccessToken)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 72, Col: 65}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\">")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = formContent(props, formData).Render(ctx, templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</form>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<form id=\"compact-reviewer-form\" hx-post=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<form id=\"compact-reviewer-form\" hx-post=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var8 string
-						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/reviewer-report/%d/submit", props.StudentRecord.ID))
+						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/reviewer/%s/student/%d/review/submit", props.AccessToken, props.StudentRecord.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 79, Col: 103}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 67, Col: 133}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" hx-target=\"#reviewer-modal\" hx-swap=\"outerHTML\" class=\"space-y-4\" data-student-id=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" hx-target=\"#reviewer-modal\" hx-swap=\"outerHTML\" class=\"space-y-4\" data-student-id=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var9 string
 						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", props.StudentRecord.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 83, Col: 87}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 71, Col: 87}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" data-access-token=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" data-access-token=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var10 string
 						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(props.AccessToken)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 84, Col: 65}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 72, Col: 65}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -253,39 +232,91 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</form>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					} else {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<form id=\"compact-reviewer-form\" hx-post=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var11 string
+						templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/reviewer-report/%d/submit", props.StudentRecord.ID))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 79, Col: 103}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" hx-target=\"#reviewer-modal\" hx-swap=\"outerHTML\" class=\"space-y-4\" data-student-id=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var12 string
+						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", props.StudentRecord.ID))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 83, Col: 87}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" data-access-token=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var13 string
+						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(props.AccessToken)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 84, Col: 65}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = formContent(props, formData).Render(ctx, templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<form id=\"compact-reviewer-form\" class=\"space-y-4\" data-student-id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<form id=\"compact-reviewer-form\" class=\"space-y-4\" data-student-id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var11 string
-					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", props.StudentRecord.ID))
+					var templ_7745c5c3_Var14 string
+					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", props.StudentRecord.ID))
 					if templ_7745c5c3_Err != nil {
 						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 93, Col: 83}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" data-access-token=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" data-access-token=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var12 string
-					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(props.AccessToken)
+					var templ_7745c5c3_Var15 string
+					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(props.AccessToken)
 					if templ_7745c5c3_Err != nil {
 						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 94, Col: 61}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -293,12 +324,12 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</form>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</form>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div id=\"modal-result\" class=\"mt-3\"></div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div id=\"modal-result\" class=\"mt-3\"></div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -308,11 +339,11 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Var13 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var16 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -324,11 +355,11 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div class=\"border-t pt-2 px-6 pb-2\"><div class=\"flex flex-wrap justify-end gap-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<div class=\"border-t pt-2 px-6 pb-2\"><div class=\"flex flex-wrap justify-end gap-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Var14 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_Var17 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 					if !templ_7745c5c3_IsBuffer {
@@ -340,7 +371,7 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Var15 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_Var18 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 						if !templ_7745c5c3_IsBuffer {
@@ -353,12 +384,12 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 						}
 						ctx = templ.InitializeContext(ctx)
 						if props.FormVariant == "en" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "Close")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "Close")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "Uždaryti")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "Uždaryti")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -368,22 +399,22 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 					templ_7745c5c3_Err = button.Button(button.Props{
 						Variant: button.VariantGhost,
 						Class:   "h-9 px-4 text-sm",
-					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var15), templ_7745c5c3_Buffer)
+					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = modal.Close(modal.CloseProps{ModalID: "reviewer-modal"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = modal.Close(modal.CloseProps{ModalID: "reviewer-modal"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<!-- Save as Draft button --> ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<!-- Save as Draft button --> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Var16 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_Var19 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 						if !templ_7745c5c3_IsBuffer {
@@ -399,22 +430,22 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, " <span class=\"ml-1\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " <span class=\"ml-1\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if props.FormVariant == "en" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "Save Draft")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "Save Draft")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "Išsaugoti juodraštį")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "Išsaugoti juodraštį")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -424,17 +455,17 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 						Variant: button.VariantOutline,
 						Class:   "h-9 px-4 text-sm",
 						Attributes: templ.Attributes{
-							"onclick": "saveDraft()",
+							"onclick": "reviewerSaveDraft()",
 						},
-					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " <!-- Submit button --> ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, " <!-- Submit button --> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Var17 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_Var20 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 						if !templ_7745c5c3_IsBuffer {
@@ -447,12 +478,12 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 						}
 						ctx = templ.InitializeContext(ctx)
 						if props.FormVariant == "en" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "💾 Submit & Sign")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "💾 Submit & Sign")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "💾 Pateikti ir pasirašyti")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "💾 Pateikti ir pasirašyti")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -465,20 +496,20 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 						Class:   "h-9 px-4 text-sm",
 						Attributes: templ.Attributes{
 							"form":    "compact-reviewer-form",
-							"onclick": "return validateAndSubmit()",
+							"onclick": "return reviewerValidateAndSubmit()",
 						},
-					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
+					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = modal.Footer().Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = modal.Footer().Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -488,7 +519,7 @@ func CompactReviewerForm(props database.ReviewerReportFormProps, formData *datab
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ReviewerModalScripts(props.AccessToken).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ReviewerModalScripts(props.AccessToken, props.IsReadOnly).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -512,50 +543,32 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var18 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var18 == nil {
-			templ_7745c5c3_Var18 = templ.NopComponent
+		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var21 == nil {
+			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<!-- Add hidden field to track if this is a draft --><input type=\"hidden\" name=\"is_draft\" id=\"is_draft\" value=\"false\"><!-- Compact Header Info --><div class=\"bg-gray-50 dark:bg-gray-800 rounded p-3 space-y-2 text-sm\"><div><span class=\"font-medium\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<!-- Add hidden field to track if this is a draft --><input type=\"hidden\" name=\"is_draft\" id=\"is_draft\" value=\"false\"><!-- Add style for read-only textareas -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if props.IsReadOnly {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<style>\r\n           textarea[disabled] {\r\n               resize: none;\r\n               overflow: hidden;\r\n               background-color: transparent;\r\n               border-color: transparent;\r\n               padding: 0.5rem;\r\n               min-height: unset !important;\r\n               height: auto !important;\r\n               white-space: pre-wrap;\r\n               word-wrap: break-word;\r\n           }\r\n           textarea[disabled]:focus {\r\n               outline: none;\r\n               box-shadow: none;\r\n           }\r\n           /* Ensure the modal body is scrollable */\r\n           .modal-body-readonly {\r\n               max-height: calc(90vh - 120px);\r\n               overflow-y: auto;\r\n           }\r\n       </style>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<!-- Compact Header Info --><div class=\"bg-gray-50 dark:bg-gray-800 rounded p-3 space-y-2 text-sm\"><div><span class=\"font-medium\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if props.FormVariant == "en" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "Title:")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "Title:")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "Tema:")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</span> <span class=\"ml-2\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(props.StudentRecord.GetLocalizedTitle(props.FormVariant))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 173, Col: 89}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</span></div><div><span class=\"font-medium\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if props.FormVariant == "en" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "Author:")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "Autorius:")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "Tema:")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -564,129 +577,44 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(props.StudentRecord.GetFullName())
+		var templ_7745c5c3_Var22 string
+		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(props.StudentRecord.GetLocalizedTitle(props.FormVariant))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 183, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 199, Col: 89}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</span></div></div><!-- Reviewer Info using Form components -->")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var21 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-			if !templ_7745c5c3_IsBuffer {
-				defer func() {
-					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err == nil {
-						templ_7745c5c3_Err = templ_7745c5c3_BufErr
-					}
-				}()
-			}
-			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var22 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-				if !templ_7745c5c3_IsBuffer {
-					defer func() {
-						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err == nil {
-							templ_7745c5c3_Err = templ_7745c5c3_BufErr
-						}
-					}()
-				}
-				ctx = templ.InitializeContext(ctx)
-				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "Reviewer Details")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "Recenzento duomenys")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<span class=\"text-red-500 ml-1\">*</span>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				return nil
-			})
-			templ_7745c5c3_Err = form.Label(form.LabelProps{
-				For: "reviewer_personal_details",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var22), templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, " ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = textarea.Textarea(textarea.Props{
-				ID:          "reviewer_personal_details",
-				Name:        "reviewer_personal_details",
-				Value:       formData.ReviewerPersonalDetails,
-				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        2,
-				Placeholder: getReviewerPlaceholder(props.FormVariant),
-				Disabled:    props.IsReadOnly,
-			}).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, " ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Var23 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-				if !templ_7745c5c3_IsBuffer {
-					defer func() {
-						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err == nil {
-							templ_7745c5c3_Err = templ_7745c5c3_BufErr
-						}
-					}()
-				}
-				ctx = templ.InitializeContext(ctx)
-				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "Include name, workplace, position, and academic titles")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "Įtraukite vardą, darbovietę, pareigas ir akademinius titulus")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				return nil
-			})
-			templ_7745c5c3_Err = form.Description().Render(templ.WithChildren(ctx, templ_7745c5c3_Var23), templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			return nil
-		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</span></div><div><span class=\"font-medium\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<!-- Review Sections --><div class=\"space-y-3\"><!-- Section 1-3 --><div class=\"border rounded-lg p-3 space-y-3\"><!-- Goals -->")
+		if props.FormVariant == "en" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "Author:")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "Autorius:")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</span> <span class=\"ml-2\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var23 string
+		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(props.StudentRecord.GetFullName())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 209, Col: 66}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</span></div></div><!-- Reviewer Info using Form components -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -714,27 +642,142 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<span class=\"text-blue-600\">1.</span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "Goals & Tasks")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "Reviewer Details")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "Tikslai ir uždaviniai")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "Recenzento duomenys")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<span class=\"text-red-500 ml-1\">*</span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				return nil
+			})
+			templ_7745c5c3_Err = form.Label(form.LabelProps{
+				For: "reviewer_personal_details",
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = textarea.Textarea(textarea.Props{
+				ID:          "reviewer_personal_details",
+				Name:        "reviewer_personal_details",
+				Value:       formData.ReviewerPersonalDetails,
+				Required:    !props.IsReadOnly,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsSmall(props.IsReadOnly),
+				Placeholder: getReviewerPlaceholder(props.FormVariant),
+				Disabled:    props.IsReadOnly,
+			}).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if !props.IsReadOnly {
+				templ_7745c5c3_Var26 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+					if !templ_7745c5c3_IsBuffer {
+						defer func() {
+							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err == nil {
+								templ_7745c5c3_Err = templ_7745c5c3_BufErr
+							}
+						}()
+					}
+					ctx = templ.InitializeContext(ctx)
+					if props.FormVariant == "en" {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "Include name, workplace, position, and academic titles")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					} else {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "Įtraukite vardą, darbovietę, pareigas ir akademinius titulus")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					return nil
+				})
+				templ_7745c5c3_Err = form.Description().Render(templ.WithChildren(ctx, templ_7745c5c3_Var26), templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var24), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<!-- Review Sections --><div class=\"space-y-3\"><!-- Section 1-3 --><div class=\"border rounded-lg p-3 space-y-3\"><!-- Goals -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Var27 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Var28 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+				if !templ_7745c5c3_IsBuffer {
+					defer func() {
+						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err == nil {
+							templ_7745c5c3_Err = templ_7745c5c3_BufErr
+						}
+					}()
+				}
+				ctx = templ.InitializeContext(ctx)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<span class=\"text-blue-600\">1.</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if props.FormVariant == "en" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "Goals & Tasks")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "Tikslai ir uždaviniai")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, " ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if !props.IsReadOnly {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -744,11 +787,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For:   "review_goals",
 				Class: "flex items-center gap-1",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var28), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -757,8 +800,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_goals",
 				Value:       formData.ReviewGoals,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        3,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsLarge(props.IsReadOnly),
 				Placeholder: getGoalsPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -767,15 +810,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var24), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var27), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<!-- Theory -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<!-- Theory -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var26 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var29 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -787,7 +830,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var27 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var30 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -799,27 +842,27 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<span class=\"text-blue-600\">2.</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<span class=\"text-blue-600\">2.</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "Theory")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "Theory")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "Teorija")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "Teorija")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -829,11 +872,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For:   "review_theory",
 				Class: "flex items-center gap-1",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var27), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var30), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -842,8 +885,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_theory",
 				Value:       formData.ReviewTheory,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        3,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsLarge(props.IsReadOnly),
 				Placeholder: getTheoryPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -852,15 +895,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var26), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var29), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<!-- Practice -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<!-- Practice -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var28 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var31 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -872,7 +915,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var29 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var32 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -884,27 +927,27 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<span class=\"text-blue-600\">3.</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<span class=\"text-blue-600\">3.</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "Practice")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "Practice")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "Praktika")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "Praktika")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -914,11 +957,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For:   "review_practical",
 				Class: "flex items-center gap-1",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var29), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var32), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -927,8 +970,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_practical",
 				Value:       formData.ReviewPractical,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        3,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsLarge(props.IsReadOnly),
 				Placeholder: getPracticalPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -937,15 +980,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var28), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var31), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "</div><!-- Section 4-6 --><div class=\"border rounded-lg p-3 space-y-3\"><!-- Connection -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "</div><!-- Section 4-6 --><div class=\"border rounded-lg p-3 space-y-3\"><!-- Connection -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var30 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var33 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -957,7 +1000,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var31 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var34 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -969,27 +1012,27 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<span class=\"text-blue-600\">4.</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<span class=\"text-blue-600\">4.</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "Theory-Practice Link")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "Theory-Practice Link")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "Teorijos-praktikos ryšys")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "Teorijos-praktikos ryšys")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -999,11 +1042,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For:   "review_theory_practical_link",
 				Class: "flex items-center gap-1",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var31), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var34), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1012,8 +1055,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_theory_practical_link",
 				Value:       formData.ReviewTheoryPracticalLink,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        2,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsSmall(props.IsReadOnly),
 				Placeholder: getTheoryPracticalLinkPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1022,15 +1065,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var30), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var33), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<!-- Results -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<!-- Results -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var32 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var35 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1042,7 +1085,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var33 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var36 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1054,27 +1097,27 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<span class=\"text-blue-600\">5.</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<span class=\"text-blue-600\">5.</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "Results")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "Results")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "Rezultatai")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "Rezultatai")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1084,11 +1127,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For:   "review_results",
 				Class: "flex items-center gap-1",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var33), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var36), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1097,8 +1140,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_results",
 				Value:       formData.ReviewResults,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        3,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsLarge(props.IsReadOnly),
 				Placeholder: getResultsPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1107,15 +1150,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var32), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var35), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<!-- Significance -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "<!-- Significance -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var34 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var37 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1127,7 +1170,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var35 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var38 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1139,22 +1182,22 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<span class=\"text-gray-400\">6.</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "<span class=\"text-gray-400\">6.</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "Significance")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "Significance")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "Reikšmė")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "Reikšmė")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, " <span class=\"text-xs text-gray-500 ml-1\">(optional)</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, " <span class=\"text-xs text-gray-500 ml-1\">(optional)</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1163,11 +1206,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For:   "review_practical_significance",
 				Class: "flex items-center gap-1",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var35), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var38), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1175,8 +1218,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				ID:          "review_practical_significance",
 				Name:        "review_practical_significance",
 				Value:       formData.ReviewPracticalSignificance,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        2,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsSmall(props.IsReadOnly),
 				Placeholder: getPracticalSignificancePlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1185,15 +1228,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var34), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var37), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "</div><!-- Evaluation section --><div class=\"border rounded-lg p-3\"><div class=\"grid grid-cols-1 md:grid-cols-3 gap-3\"><!-- Language -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "</div><!-- Evaluation section --><div class=\"border rounded-lg p-3\"><div class=\"grid grid-cols-1 md:grid-cols-3 gap-3\"><!-- Language -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var36 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var39 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1205,7 +1248,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var37 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var40 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1218,22 +1261,22 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}
 				ctx = templ.InitializeContext(ctx)
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "Language")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "Language")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "Kalba")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "Kalba")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1242,11 +1285,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			})
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For: "review_language",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var37), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var40), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1255,8 +1298,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_language",
 				Value:       formData.ReviewLanguage,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        2,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsSmall(props.IsReadOnly),
 				Placeholder: getLanguagePlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1265,15 +1308,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var36), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var39), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "<!-- Pros -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "<!-- Pros -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var38 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var41 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1285,7 +1328,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var39 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var42 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1298,22 +1341,22 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}
 				ctx = templ.InitializeContext(ctx)
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "Pros")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "Pros")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "Privalumai")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "Privalumai")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1322,11 +1365,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			})
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For: "review_pros",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var39), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var42), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1335,8 +1378,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_pros",
 				Value:       formData.ReviewPros,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        2,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsSmall(props.IsReadOnly),
 				Placeholder: getProsPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1345,15 +1388,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var38), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var41), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<!-- Cons -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "<!-- Cons -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var40 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var43 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1365,7 +1408,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var41 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var44 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1378,22 +1421,22 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}
 				ctx = templ.InitializeContext(ctx)
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "Cons")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "Cons")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "Trūkumai")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "Trūkumai")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1402,11 +1445,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			})
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For: "review_cons",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var41), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var44), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1415,8 +1458,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_cons",
 				Value:       formData.ReviewCons,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        2,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsSmall(props.IsReadOnly),
 				Placeholder: getConsPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1425,15 +1468,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var40), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var43), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "</div><!-- Questions -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "</div><!-- Questions -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var42 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var45 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1445,7 +1488,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Var43 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var46 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1458,22 +1501,22 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}
 				ctx = templ.InitializeContext(ctx)
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "Questions")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "Questions")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "Klausimai")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "Klausimai")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1482,11 +1525,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			})
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For: "review_questions",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var43), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var46), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1495,8 +1538,8 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:        "review_questions",
 				Value:       formData.ReviewQuestions,
 				Required:    !props.IsReadOnly,
-				Class:       "text-sm w-full auto-save-field",
-				Rows:        3,
+				Class:       getTextareaClass(props.IsReadOnly),
+				Rows:        getTextareaRowsLarge(props.IsReadOnly),
 				Placeholder: getQuestionsPlaceholder(props.FormVariant),
 				Disabled:    props.IsReadOnly,
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1505,15 +1548,15 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item(form.ItemProps{Class: "mt-3"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var42), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item(form.ItemProps{Class: "mt-3"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var45), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "<!-- Grade -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "<!-- Grade -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var44 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var47 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1525,11 +1568,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "<div class=\"flex items-center justify-between\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "<div class=\"flex items-center justify-between\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Var45 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var48 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1542,22 +1585,22 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				}
 				ctx = templ.InitializeContext(ctx)
 				if props.FormVariant == "en" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "Grade")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "Grade")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "Įvertinimas")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "Įvertinimas")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if !props.IsReadOnly {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "<span class=\"text-red-500\">*</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "<span class=\"text-red-500\">*</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1566,11 +1609,11 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			})
 			templ_7745c5c3_Err = form.Label(form.LabelProps{
 				For: "grade",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var45), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var48), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "<div class=\"flex items-center gap-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "<div class=\"flex items-center gap-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1580,7 +1623,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 				Name:     "grade",
 				Value:    fmt.Sprintf("%.1f", formData.Grade),
 				Required: !props.IsReadOnly,
-				Class:    "w-20 text-center auto-save-field",
+				Class:    getInputClass(props.IsReadOnly),
 				Disabled: props.IsReadOnly,
 				Attributes: templ.Attributes{
 					"min":  "1",
@@ -1591,17 +1634,17 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "<span class=\"text-sm text-gray-600\">/10</span></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "<span class=\"text-sm text-gray-600\">/10</span></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = form.Item(form.ItemProps{Class: "mt-3 pt-3 border-t"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var44), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = form.Item(form.ItemProps{Class: "mt-3 pt-3 border-t"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var47), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1609,7 +1652,7 @@ func formContent(props database.ReviewerReportFormProps, formData *database.Revi
 	})
 }
 
-func ReviewerModalScripts(accessToken string) templ.Component {
+func ReviewerModalScripts(accessToken string, isReadOnly bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1625,24 +1668,36 @@ func ReviewerModalScripts(accessToken string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var46 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var46 == nil {
-			templ_7745c5c3_Var46 = templ.NopComponent
+		templ_7745c5c3_Var49 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var49 == nil {
+			templ_7745c5c3_Var49 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "<script>\r\n        // Store access token\r\n        const accessToken = ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "<script>\r\n        (function() {\r\n            // Store access token\r\n            const reviewerAccessToken = ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var47, templ_7745c5c3_Err := templruntime.ScriptContentOutsideStringLiteral(accessToken)
+		templ_7745c5c3_Var50, templ_7745c5c3_Err := templruntime.ScriptContentOutsideStringLiteral(accessToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 542, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 571, Col: 54}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, ";\r\n\r\n        // Auto-save functionality\r\n        let autoSaveTimer;\r\n        let hasUnsavedChanges = false;\r\n        const AUTOSAVE_DELAY = 3000; // 3 seconds\r\n\r\n        // Modal opening logic\r\n        (function() {\r\n            requestAnimationFrame(function() {\r\n                requestAnimationFrame(function() {\r\n                    const modal = document.getElementById('reviewer-modal');\r\n                    if (modal) {\r\n                        if (window.modalState && window.modalState.openModalId) {\r\n                            const existingModal = document.getElementById(window.modalState.openModalId);\r\n                            if (existingModal && existingModal !== modal) {\r\n                                existingModal.style.display = 'none';\r\n                                existingModal.classList.add('opacity-0');\r\n                            }\r\n                        }\r\n\r\n                        if (!window.modalState) {\r\n                            window.modalState = { openModalId: null };\r\n                        }\r\n\r\n                        window.modalState.openModalId = 'reviewer-modal';\r\n                        document.body.style.overflow = 'hidden';\r\n                        modal.style.display = 'flex';\r\n                        modal.offsetHeight;\r\n                        modal.classList.remove('opacity-0', 'hidden');\r\n                        modal.classList.add('opacity-100');\r\n\r\n                        const content = modal.querySelector('[data-modal-content]');\r\n                        if (content) {\r\n                            content.classList.remove('scale-95', 'opacity-0');\r\n                            content.classList.add('scale-100', 'opacity-100');\r\n                        }\r\n\r\n                        // Initialize auto-save listeners\r\n                        initializeAutoSave();\r\n                    }\r\n                });\r\n            });\r\n        })();\r\n\r\n        function initializeAutoSave() {\r\n            const form = document.getElementById('compact-reviewer-form');\r\n            if (!form || form.querySelector('[disabled]')) return; // Don't auto-save in read-only mode\r\n\r\n            // Add listeners to all input fields\r\n            const fields = form.querySelectorAll('.auto-save-field');\r\n            fields.forEach(field => {\r\n                field.addEventListener('input', handleFieldChange);\r\n                field.addEventListener('change', handleFieldChange);\r\n            });\r\n        }\r\n\r\n        function handleFieldChange() {\r\n            hasUnsavedChanges = true;\r\n            clearTimeout(autoSaveTimer);\r\n\r\n            // Update status to show saving will occur\r\n            updateSaveStatus('pending');\r\n\r\n            // Set timer for auto-save\r\n            autoSaveTimer = setTimeout(() => {\r\n                autoSave();\r\n            }, AUTOSAVE_DELAY);\r\n        }\r\n\r\n        function updateSaveStatus(status) {\r\n            const saveIcon = document.getElementById('save-icon');\r\n            const saveText = document.getElementById('save-text');\r\n            const lastSaved = document.getElementById('last-saved');\r\n\r\n            switch(status) {\r\n                case 'pending':\r\n                    saveIcon?.classList.remove('hidden');\r\n                    saveText.textContent = 'Changes detected...';\r\n                    saveText.classList.add('text-yellow-600');\r\n                    break;\r\n                case 'saving':\r\n                    saveIcon?.classList.remove('hidden');\r\n                    saveText.textContent = 'Saving...';\r\n                    saveText.classList.add('text-blue-600');\r\n                    saveText.classList.remove('text-yellow-600', 'text-green-600');\r\n                    break;\r\n                case 'saved':\r\n                    saveIcon?.classList.remove('hidden');\r\n                    saveText.textContent = 'All changes saved';\r\n                    saveText.classList.remove('text-blue-600', 'text-yellow-600');\r\n                    saveText.classList.add('text-green-600');\r\n                    const now = new Date();\r\n                    lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;\r\n                    hasUnsavedChanges = false;\r\n                    break;\r\n                case 'error':\r\n                    saveIcon?.classList.add('hidden');\r\n                    saveText.textContent = 'Error saving';\r\n                    saveText.classList.add('text-red-600');\r\n                    break;\r\n            }\r\n        }\r\n\r\n        function autoSave() {\r\n            const form = document.getElementById('compact-reviewer-form');\r\n            const studentId = form.dataset.studentId;\r\n\r\n            // Set draft flag\r\n            document.getElementById('is_draft').value = 'true';\r\n\r\n            updateSaveStatus('saving');\r\n\r\n            // Use token-based URL if available\r\n            let submitUrl;\r\n            if (accessToken) {\r\n                submitUrl = `/reviewer/${accessToken}/student/${studentId}/review/submit`;\r\n            } else {\r\n                submitUrl = `/reviewer-report/${studentId}/save-draft`;\r\n            }\r\n\r\n            // Gather form data\r\n            const formData = new FormData(form);\r\n\r\n            // Send via HTMX\r\n            htmx.ajax('POST', submitUrl, {\r\n                values: Object.fromEntries(formData),\r\n                target: '#modal-result',\r\n                swap: 'innerHTML'\r\n            }).then(() => {\r\n                updateSaveStatus('saved');\r\n            }).catch(() => {\r\n                updateSaveStatus('error');\r\n            });\r\n        }\r\n\r\n        function saveDraft() {\r\n            const form = document.getElementById('compact-reviewer-form');\r\n            const studentId = form.dataset.studentId;\r\n\r\n            // Set draft flag\r\n            document.getElementById('is_draft').value = 'true';\r\n\r\n            // Gather form data\r\n            const formData = new FormData(form);\r\n\r\n            // Show saving indicator\r\n            updateSaveStatus('saving');\r\n\r\n            // Use token-based URL if available\r\n            let submitUrl;\r\n            if (accessToken) {\r\n                submitUrl = `/reviewer/${accessToken}/student/${studentId}/review/submit`;\r\n            } else {\r\n                submitUrl = `/reviewer-report/${studentId}/save-draft`;\r\n            }\r\n\r\n            // Send via HTMX\r\n            htmx.ajax('POST', submitUrl, {\r\n                values: Object.fromEntries(formData),\r\n                target: '#modal-result',\r\n                swap: 'innerHTML'\r\n            }).then(() => {\r\n                updateSaveStatus('saved');\r\n                setTimeout(() => {\r\n                    showSuccessMessage('Draft saved successfully!');\r\n                }, 500);\r\n            });\r\n        }\r\n\r\n        function validateAndSubmit() {\r\n            // Set draft flag to false for final submission\r\n            document.getElementById('is_draft').value = 'false';\r\n\r\n            // Validate form\r\n            return validateReviewerForm();\r\n        }\r\n\r\n        function validateReviewerForm() {\r\n            const form = document.getElementById('compact-reviewer-form');\r\n            let isValid = true;\r\n\r\n            // Clear previous errors\r\n            document.querySelectorAll('[id$=\"-error\"]').forEach(el => el.classList.add('hidden'));\r\n\r\n            const requiredFields = [\r\n                'reviewer_personal_details',\r\n                'review_goals',\r\n                'review_theory',\r\n                'review_practical',\r\n                'review_theory_practical_link',\r\n                'review_results',\r\n                'review_language',\r\n                'review_pros',\r\n                'review_cons',\r\n                'review_questions'\r\n            ];\r\n\r\n            for (const fieldName of requiredFields) {\r\n                const field = form.querySelector(`[name=\"${fieldName}\"]`);\r\n                if (!field || !field.value.trim()) {\r\n                    isValid = false;\r\n                    field?.classList.add('border-red-500');\r\n                    if (!field?.closest('.border')?.querySelector('.text-red-500')) {\r\n                        field?.focus();\r\n                        break;\r\n                    }\r\n                } else {\r\n                    field?.classList.remove('border-red-500');\r\n                }\r\n            }\r\n\r\n            // Validate grade\r\n            const gradeField = form.querySelector('[name=\"grade\"]');\r\n            const grade = parseFloat(gradeField?.value || '0');\r\n            if (!grade || grade < 1 || grade > 10) {\r\n                isValid = false;\r\n                gradeField?.classList.add('border-red-500');\r\n                document.getElementById('grade-error')?.classList.remove('hidden');\r\n            } else {\r\n                gradeField?.classList.remove('border-red-500');\r\n            }\r\n\r\n            return isValid;\r\n        }\r\n\r\n        function showSuccessMessage(message) {\r\n            const result = document.getElementById('modal-result');\r\n            result.innerHTML = `\r\n                <div class=\"bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded\">\r\n                    <div class=\"flex items-center\">\r\n                        <svg class=\"h-5 w-5 text-green-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\r\n                            <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path>\r\n                        </svg>\r\n                        <span>${message}</span>\r\n                    </div>\r\n                </div>\r\n            `;\r\n\r\n            setTimeout(() => {\r\n                result.innerHTML = '';\r\n            }, 3000);\r\n        }\r\n\r\n        // Warn before closing if there are unsaved changes\r\n        window.addEventListener('beforeunload', function (e) {\r\n            if (hasUnsavedChanges) {\r\n                e.preventDefault();\r\n                e.returnValue = '';\r\n            }\r\n        });\r\n\r\n        // Handle form submission\r\n        document.addEventListener('htmx:afterRequest', function(evt) {\r\n            if (evt.detail.successful && (\r\n                evt.target.closest('#modal-result') ||\r\n                evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved'\r\n            )) {\r\n                hasUnsavedChanges = false; // Clear unsaved changes flag\r\n\r\n                const isDraft = document.getElementById('is_draft').value === 'true';\r\n\r\n                if (!isDraft) {\r\n                    // Final submission - close modal\r\n                    const modal = document.getElementById('reviewer-modal');\r\n                    if (modal && window.modalState) {\r\n                        setTimeout(() => {\r\n                            window.modalState.openModalId = null;\r\n                            document.body.style.overflow = '';\r\n                            // Refresh the page\r\n                            window.location.reload();\r\n                        }, 300);\r\n                    }\r\n                }\r\n            }\r\n        });\r\n\r\n        // Handle escape key\r\n        document.addEventListener('keydown', function(e) {\r\n            if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'reviewer-modal') {\r\n                if (hasUnsavedChanges) {\r\n                    if (confirm('You have unsaved changes. Are you sure you want to close?')) {\r\n                        closeReviewerModal();\r\n                    }\r\n                } else {\r\n                    closeReviewerModal();\r\n                }\r\n            }\r\n        });\r\n\r\n        function closeReviewerModal() {\r\n            if (hasUnsavedChanges) {\r\n                if (!confirm('You have unsaved changes. Are you sure you want to close?')) {\r\n                    return;\r\n                }\r\n            }\r\n\r\n            const modal = document.getElementById('reviewer-modal');\r\n            if (modal) {\r\n                modal.classList.remove('opacity-100');\r\n                modal.classList.add('opacity-0');\r\n                setTimeout(() => {\r\n                    modal.style.display = 'none';\r\n                    document.body.style.overflow = '';\r\n                    if (window.modalState) {\r\n                        window.modalState.openModalId = null;\r\n                    }\r\n                    hasUnsavedChanges = false;\r\n                }, 300);\r\n            }\r\n        }\r\n    </script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, ";\r\n            const isReadOnly = ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Var51, templ_7745c5c3_Err := templruntime.ScriptContentOutsideStringLiteral(isReadOnly)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_form_compact.templ`, Line: 572, Col: 44}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var51)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, ";\r\n\r\n            // Auto-resize textareas for read-only mode\r\n            if (isReadOnly) {\r\n                const autoResizeTextarea = function(textarea) {\r\n                    // Reset styles to get accurate measurement\r\n                    textarea.style.height = 'auto';\r\n                    textarea.style.overflow = 'hidden';\r\n                    textarea.style.minHeight = 'unset';\r\n\r\n                    // Get the scroll height\r\n                    const scrollHeight = textarea.scrollHeight;\r\n\r\n                    // Set the height with a small buffer\r\n                    textarea.style.height = (scrollHeight + 4) + 'px';\r\n                };\r\n\r\n                // Initial resize after modal opens\r\n                setTimeout(function() {\r\n                    const textareas = document.querySelectorAll('textarea.read-only-textarea');\r\n                    textareas.forEach(textarea => {\r\n                        autoResizeTextarea(textarea);\r\n                    });\r\n\r\n                    // Also resize on window resize\r\n                    window.addEventListener('resize', function() {\r\n                        textareas.forEach(textarea => {\r\n                            autoResizeTextarea(textarea);\r\n                        });\r\n                    });\r\n                }, 100);\r\n            }\r\n\r\n            // Auto-save functionality - encapsulated in function scope\r\n            let autoSaveTimer;\r\n            let hasUnsavedChanges = false;\r\n            const AUTOSAVE_DELAY = 3000; // 3 seconds\r\n\r\n            // Modal opening logic\r\n            (function() {\r\n                requestAnimationFrame(function() {\r\n                    requestAnimationFrame(function() {\r\n                        const modal = document.getElementById('reviewer-modal');\r\n                        if (modal) {\r\n                            if (window.modalState && window.modalState.openModalId) {\r\n                                const existingModal = document.getElementById(window.modalState.openModalId);\r\n                                if (existingModal && existingModal !== modal) {\r\n                                    existingModal.style.display = 'none';\r\n                                    existingModal.classList.add('opacity-0');\r\n                                }\r\n                            }\r\n\r\n                            if (!window.modalState) {\r\n                                window.modalState = { openModalId: null };\r\n                            }\r\n\r\n                            window.modalState.openModalId = 'reviewer-modal';\r\n                            document.body.style.overflow = 'hidden';\r\n                            modal.style.display = 'flex';\r\n                            modal.offsetHeight;\r\n                            modal.classList.remove('opacity-0', 'hidden');\r\n                            modal.classList.add('opacity-100');\r\n\r\n                            const content = modal.querySelector('[data-modal-content]');\r\n                            if (content) {\r\n                                content.classList.remove('scale-95', 'opacity-0');\r\n                                content.classList.add('scale-100', 'opacity-100');\r\n                            }\r\n\r\n                            // Initialize auto-save listeners\r\n                            if (!isReadOnly) {\r\n                                initializeAutoSave();\r\n                            }\r\n                        }\r\n                    });\r\n                });\r\n            })();\r\n\r\n            function initializeAutoSave() {\r\n                const form = document.getElementById('compact-reviewer-form');\r\n                if (!form || form.querySelector('[disabled]')) return;\r\n\r\n                const fields = form.querySelectorAll('.auto-save-field');\r\n                fields.forEach(field => {\r\n                    field.addEventListener('input', handleFieldChange);\r\n                    field.addEventListener('change', handleFieldChange);\r\n                });\r\n            }\r\n\r\n            function handleFieldChange() {\r\n                hasUnsavedChanges = true;\r\n                clearTimeout(autoSaveTimer);\r\n                updateSaveStatus('pending');\r\n                autoSaveTimer = setTimeout(() => {\r\n                    autoSave();\r\n                }, AUTOSAVE_DELAY);\r\n            }\r\n\r\n            function updateSaveStatus(status) {\r\n                const saveIcon = document.getElementById('save-icon');\r\n                const saveText = document.getElementById('save-text');\r\n                const lastSaved = document.getElementById('last-saved');\r\n\r\n                switch(status) {\r\n                    case 'pending':\r\n                        saveIcon?.classList.remove('hidden');\r\n                        saveText.textContent = 'Changes detected...';\r\n                        saveText.classList.add('text-yellow-600');\r\n                        break;\r\n                    case 'saving':\r\n                        saveIcon?.classList.remove('hidden');\r\n                        saveText.textContent = 'Saving...';\r\n                        saveText.classList.add('text-blue-600');\r\n                        saveText.classList.remove('text-yellow-600', 'text-green-600');\r\n                        break;\r\n                    case 'saved':\r\n                        saveIcon?.classList.remove('hidden');\r\n                        saveText.textContent = 'All changes saved';\r\n                        saveText.classList.remove('text-blue-600', 'text-yellow-600');\r\n                        saveText.classList.add('text-green-600');\r\n                        const now = new Date();\r\n                        lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;\r\n                        hasUnsavedChanges = false;\r\n                        break;\r\n                    case 'error':\r\n                        saveIcon?.classList.add('hidden');\r\n                        saveText.textContent = 'Error saving';\r\n                        saveText.classList.add('text-red-600');\r\n                        break;\r\n                }\r\n            }\r\n\r\n            function autoSave() {\r\n                const form = document.getElementById('compact-reviewer-form');\r\n                const studentId = form.dataset.studentId;\r\n\r\n                document.getElementById('is_draft').value = 'true';\r\n                updateSaveStatus('saving');\r\n\r\n                let submitUrl;\r\n                if (reviewerAccessToken) {\r\n                    submitUrl = `/reviewer/${reviewerAccessToken}/student/${studentId}/review/submit`;\r\n                } else {\r\n                    submitUrl = `/reviewer-report/${studentId}/save-draft`;\r\n                }\r\n\r\n                const formData = new FormData(form);\r\n\r\n                htmx.ajax('POST', submitUrl, {\r\n                    values: Object.fromEntries(formData),\r\n                    target: '#modal-result',\r\n                    swap: 'innerHTML'\r\n                }).then(() => {\r\n                    updateSaveStatus('saved');\r\n                }).catch(() => {\r\n                    updateSaveStatus('error');\r\n                });\r\n            }\r\n\r\n            // Make functions available in window scope with unique names\r\n            window.reviewerSaveDraft = function() {\r\n                const form = document.getElementById('compact-reviewer-form');\r\n                const studentId = form.dataset.studentId;\r\n\r\n                document.getElementById('is_draft').value = 'true';\r\n                const formData = new FormData(form);\r\n                updateSaveStatus('saving');\r\n\r\n                let submitUrl;\r\n                if (reviewerAccessToken) {\r\n                    submitUrl = `/reviewer/${reviewerAccessToken}/student/${studentId}/review/submit`;\r\n                } else {\r\n                    submitUrl = `/reviewer-report/${studentId}/save-draft`;\r\n                }\r\n\r\n                htmx.ajax('POST', submitUrl, {\r\n                    values: Object.fromEntries(formData),\r\n                    target: '#modal-result',\r\n                    swap: 'innerHTML'\r\n                }).then(() => {\r\n                    updateSaveStatus('saved');\r\n                    setTimeout(() => {\r\n                        showSuccessMessage('Draft saved successfully!');\r\n                    }, 500);\r\n                });\r\n            };\r\n\r\n            window.reviewerValidateAndSubmit = function() {\r\n                document.getElementById('is_draft').value = 'false';\r\n                return validateReviewerForm();\r\n            };\r\n\r\n            function validateReviewerForm() {\r\n                const form = document.getElementById('compact-reviewer-form');\r\n                let isValid = true;\r\n\r\n                document.querySelectorAll('[id$=\"-error\"]').forEach(el => el.classList.add('hidden'));\r\n\r\n                const requiredFields = [\r\n                    'reviewer_personal_details',\r\n                    'review_goals',\r\n                    'review_theory',\r\n                    'review_practical',\r\n                    'review_theory_practical_link',\r\n                    'review_results',\r\n                    'review_language',\r\n                    'review_pros',\r\n                    'review_cons',\r\n                    'review_questions'\r\n                ];\r\n\r\n                for (const fieldName of requiredFields) {\r\n                    const field = form.querySelector(`[name=\"${fieldName}\"]`);\r\n                    if (!field || !field.value.trim()) {\r\n                        isValid = false;\r\n                        field?.classList.add('border-red-500');\r\n                        if (!field?.closest('.border')?.querySelector('.text-red-500')) {\r\n                            field?.focus();\r\n                            break;\r\n                        }\r\n                    } else {\r\n                        field?.classList.remove('border-red-500');\r\n                    }\r\n                }\r\n\r\n                const gradeField = form.querySelector('[name=\"grade\"]');\r\n                const grade = parseFloat(gradeField?.value || '0');\r\n                if (!grade || grade < 1 || grade > 10) {\r\n                    isValid = false;\r\n                    gradeField?.classList.add('border-red-500');\r\n                    document.getElementById('grade-error')?.classList.remove('hidden');\r\n                } else {\r\n                    gradeField?.classList.remove('border-red-500');\r\n                }\r\n\r\n                return isValid;\r\n            }\r\n\r\n            function showSuccessMessage(message) {\r\n                const result = document.getElementById('modal-result');\r\n                result.innerHTML = `\r\n                    <div class=\"bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded\">\r\n                        <div class=\"flex items-center\">\r\n                            <svg class=\"h-5 w-5 text-green-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\r\n                                <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path>\r\n                            </svg>\r\n                            <span>${message}</span>\r\n                        </div>\r\n                    </div>\r\n                `;\r\n\r\n                setTimeout(() => {\r\n                    result.innerHTML = '';\r\n                }, 3000);\r\n            }\r\n\r\n            // Event listeners\r\n            const beforeUnloadHandler = function(e) {\r\n                if (hasUnsavedChanges && !isReadOnly) {\r\n                    e.preventDefault();\r\n                    e.returnValue = '';\r\n                }\r\n            };\r\n            window.addEventListener('beforeunload', beforeUnloadHandler);\r\n\r\n            const htmxAfterRequestHandler = function(evt) {\r\n                if (evt.detail.successful && (\r\n                    evt.target.closest('#modal-result') ||\r\n                    evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved'\r\n                )) {\r\n                    hasUnsavedChanges = false;\r\n\r\n                    const isDraft = document.getElementById('is_draft').value === 'true';\r\n\r\n                    if (!isDraft) {\r\n                        const modal = document.getElementById('reviewer-modal');\r\n                        if (modal && window.modalState) {\r\n                            setTimeout(() => {\r\n                                window.modalState.openModalId = null;\r\n                                document.body.style.overflow = '';\r\n                                window.location.reload();\r\n                            }, 300);\r\n                        }\r\n                    }\r\n                }\r\n            };\r\n            document.addEventListener('htmx:afterRequest', htmxAfterRequestHandler);\r\n\r\n            const keydownHandler = function(e) {\r\n                if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'reviewer-modal') {\r\n                    if (hasUnsavedChanges && !isReadOnly) {\r\n                        if (confirm('You have unsaved changes. Are you sure you want to close?')) {\r\n                            closeReviewerModal();\r\n                        }\r\n                    } else {\r\n                        closeReviewerModal();\r\n                    }\r\n                }\r\n            };\r\n            document.addEventListener('keydown', keydownHandler);\r\n\r\n            // Store cleanup function\r\n            window.reviewerModalCleanup = function() {\r\n                window.removeEventListener('beforeunload', beforeUnloadHandler);\r\n                document.removeEventListener('htmx:afterRequest', htmxAfterRequestHandler);\r\n                document.removeEventListener('keydown', keydownHandler);\r\n                clearTimeout(autoSaveTimer);\r\n            };\r\n        })();\r\n\r\n        // Global functions that don't conflict\r\n        window.closeReviewerModal = function() {\r\n            // Call cleanup if it exists\r\n            if (window.reviewerModalCleanup) {\r\n                window.reviewerModalCleanup();\r\n            }\r\n\r\n            const modal = document.getElementById('reviewer-modal');\r\n            if (modal) {\r\n                modal.classList.remove('opacity-100');\r\n                modal.classList.add('opacity-0');\r\n                setTimeout(() => {\r\n                    modal.style.display = 'none';\r\n                    document.body.style.overflow = '';\r\n                    if (window.modalState) {\r\n                        window.modalState.openModalId = null;\r\n                    }\r\n\r\n                    // Clean up modal container\r\n                    const modalContainer = document.getElementById('modal-container');\r\n                    if (modalContainer) {\r\n                        modalContainer.innerHTML = '';\r\n                        modalContainer.style.display = 'none';\r\n                    }\r\n                }, 300);\r\n            }\r\n        };\r\n    </script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1650,7 +1705,7 @@ func ReviewerModalScripts(accessToken string) templ.Component {
 	})
 }
 
-// Helper functions remain the same
+// Helper functions
 func getReviewerPlaceholder(variant string) string {
 	if variant == "en" {
 		return "Name, workplace, position..."
@@ -1726,6 +1781,42 @@ func getQuestionsPlaceholder(variant string) string {
 		return "Questions for the student during defense..."
 	}
 	return "Klausimai studentui gynimo metu..."
+}
+
+// New helper functions for conditional styling
+func getModalBodyStyle(isReadOnly bool) string {
+	if isReadOnly {
+		return "overflow-y: auto;"
+	}
+	return "max-height: calc(90vh - 120px); overflow-y: auto;"
+}
+
+func getTextareaClass(isReadOnly bool) string {
+	if isReadOnly {
+		return "text-sm w-full read-only-textarea"
+	}
+	return "text-sm w-full auto-save-field"
+}
+
+func getTextareaRowsSmall(isReadOnly bool) int {
+	if isReadOnly {
+		return 0 // Let auto-resize handle it
+	}
+	return 2
+}
+
+func getTextareaRowsLarge(isReadOnly bool) int {
+	if isReadOnly {
+		return 0 // Let auto-resize handle it
+	}
+	return 3
+}
+
+func getInputClass(isReadOnly bool) string {
+	if isReadOnly {
+		return "w-20 text-center border-transparent bg-transparent"
+	}
+	return "w-20 text-center auto-save-field"
 }
 
 var _ = templruntime.GeneratedTemplate

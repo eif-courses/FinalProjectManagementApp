@@ -2097,12 +2097,14 @@ func (h *StudentListHandler) ReviewerReportSubmitHandlerWithToken(w http.Respons
 	// Validate reviewer access
 	reviewerToken, err := h.validateReviewerAccessToken(accessToken)
 	if err != nil {
+		log.Printf("Error validating reviewer token: %v", err)
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	studentID, err := strconv.Atoi(studentIDStr)
 	if err != nil {
+		log.Printf("Error parsing student ID: %v", err)
 		http.Error(w, "Invalid student ID", http.StatusBadRequest)
 		return
 	}
@@ -2112,6 +2114,7 @@ func (h *StudentListHandler) ReviewerReportSubmitHandlerWithToken(w http.Respons
 	err = h.db.Get(&student, "SELECT * FROM student_records WHERE id = ? AND reviewer_email = ?",
 		studentID, reviewerToken.ReviewerEmail)
 	if err != nil {
+		log.Printf("Error finding student: %v (studentID: %d, reviewerEmail: %s)", err, studentID, reviewerToken.ReviewerEmail)
 		http.Error(w, "Student not found or access denied", http.StatusNotFound)
 		return
 	}
@@ -2119,17 +2122,30 @@ func (h *StudentListHandler) ReviewerReportSubmitHandlerWithToken(w http.Respons
 	// Parse form data
 	err = r.ParseForm()
 	if err != nil {
+		log.Printf("Error parsing form: %v", err)
 		http.Error(w, "Invalid form data", http.StatusBadRequest)
 		return
 	}
 
+	// Log all form values for debugging
+	log.Printf("Form values received:")
+	for key, values := range r.Form {
+		log.Printf("  %s: %v", key, values)
+	}
+
 	isDraft := r.FormValue("is_draft") == "true"
+	log.Printf("Is draft: %v", isDraft)
 
 	// Extract grade
-	grade, err := strconv.ParseFloat(r.FormValue("grade"), 64)
-	if err != nil && !isDraft {
-		http.Error(w, "Invalid grade", http.StatusBadRequest)
-		return
+	var grade float64
+	gradeStr := r.FormValue("grade")
+	if gradeStr != "" {
+		grade, err = strconv.ParseFloat(gradeStr, 64)
+		if err != nil && !isDraft {
+			log.Printf("Error parsing grade: %v", err)
+			http.Error(w, "Invalid grade", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Check if report already exists
@@ -2137,16 +2153,22 @@ func (h *StudentListHandler) ReviewerReportSubmitHandlerWithToken(w http.Respons
 	err = h.db.Get(&existingReport,
 		"SELECT * FROM reviewer_reports WHERE student_record_id = ?", studentID)
 
+	reportExists := err == nil
+	log.Printf("Report exists: %v (err: %v)", reportExists, err)
+
 	tx, err := h.db.Beginx()
 	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
 
-	if err == sql.ErrNoRows {
+	if !reportExists {
 		// Create new report
-		_, err = tx.Exec(`
+		log.Printf("Creating new report for student %d", studentID)
+
+		result, err := tx.Exec(`
             INSERT INTO reviewer_reports (
                 student_record_id,
                 reviewer_personal_details,
@@ -2179,9 +2201,23 @@ func (h *StudentListHandler) ReviewerReportSubmitHandlerWithToken(w http.Respons
 			r.FormValue("review_questions"),
 			!isDraft, // Sign if not draft
 		)
-	} else if err == nil && !existingReport.IsSigned {
+
+		if err != nil {
+			log.Printf("Error inserting report: %v", err)
+			tx.Rollback()
+			http.Error(w, fmt.Sprintf("Failed to save report: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		lastID, _ := result.LastInsertId()
+		log.Printf("Insert successful - Rows affected: %d, Last ID: %d", rowsAffected, lastID)
+
+	} else if !existingReport.IsSigned {
 		// Update existing unsigned report
-		_, err = tx.Exec(`
+		log.Printf("Updating existing report ID: %d", existingReport.ID)
+
+		result, err := tx.Exec(`
             UPDATE reviewer_reports SET
                 reviewer_personal_details = ?,
                 grade = ?,
@@ -2213,22 +2249,38 @@ func (h *StudentListHandler) ReviewerReportSubmitHandlerWithToken(w http.Respons
 			!isDraft,
 			existingReport.ID,
 		)
+
+		if err != nil {
+			log.Printf("Error updating report: %v", err)
+			tx.Rollback()
+			http.Error(w, fmt.Sprintf("Failed to update report: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		log.Printf("Update successful - Rows affected: %d", rowsAffected)
+
 	} else {
+		log.Printf("Report already signed")
 		tx.Rollback()
 		http.Error(w, "Report already signed", http.StatusBadRequest)
 		return
 	}
 
+	err = tx.Commit()
 	if err != nil {
-		tx.Rollback()
+		log.Printf("Error committing transaction: %v", err)
 		http.Error(w, "Failed to save report", http.StatusInternalServerError)
 		return
 	}
 
-	err = tx.Commit()
+	log.Printf("Transaction committed successfully")
+
+	// Update access count in reviewer token
+	updateQuery := `UPDATE reviewer_access_tokens SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+	_, err = h.db.Exec(updateQuery, time.Now().Unix(), reviewerToken.ID)
 	if err != nil {
-		http.Error(w, "Failed to save report", http.StatusInternalServerError)
-		return
+		log.Printf("Error updating access count: %v", err)
 	}
 
 	if isDraft {

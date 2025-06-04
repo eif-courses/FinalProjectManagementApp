@@ -38,7 +38,7 @@ templ CompactReviewerForm(props database.ReviewerReportFormProps, formData *data
             </div>
         }
         @modal.Body() {
-            <div class="px-6 py-3" style="max-height: calc(90vh - 120px); overflow-y: auto;">
+    <div class={ "px-6 py-3", templ.KV("modal-body-readonly", props.IsReadOnly) } style={ getModalBodyStyle(props.IsReadOnly) }>
                 <!-- Auto-save indicator -->
                 if !props.IsReadOnly {
                     <div class="flex items-center justify-between mb-3">
@@ -116,12 +116,12 @@ templ CompactReviewerForm(props database.ReviewerReportFormProps, formData *data
                     }
                     if !props.IsReadOnly {
                         <!-- Save as Draft button -->
-                        @button.Button(button.Props{
-                            Variant: button.VariantOutline,
-                            Class:   "h-9 px-4 text-sm",
-                            Attributes: templ.Attributes{
-                                "onclick": "saveDraft()",
-                            },
+                       @button.Button(button.Props{
+                           Variant: button.VariantOutline,
+                           Class:   "h-9 px-4 text-sm",
+                           Attributes: templ.Attributes{
+                               "onclick": "reviewerSaveDraft()",
+                           },
                         }) {
                             @icon.Save(icon.Props{Size: 14})
                             <span class="ml-1">
@@ -133,14 +133,14 @@ templ CompactReviewerForm(props database.ReviewerReportFormProps, formData *data
                             </span>
                         }
                         <!-- Submit button -->
-                        @button.Button(button.Props{
-                            Type:    button.TypeSubmit,
-                            Variant: button.VariantSecondary,
-                            Class:   "h-9 px-4 text-sm",
-                            Attributes: templ.Attributes{
-                                "form":    "compact-reviewer-form",
-                                "onclick": "return validateAndSubmit()",
-                            },
+                      @button.Button(button.Props{
+                          Type:    button.TypeSubmit,
+                          Variant: button.VariantSecondary,
+                          Class:   "h-9 px-4 text-sm",
+                          Attributes: templ.Attributes{
+                              "form":    "compact-reviewer-form",
+                              "onclick": "return reviewerValidateAndSubmit()",
+                          },
                         }) {
                             if props.FormVariant == "en" {
                                 💾 Submit & Sign
@@ -153,12 +153,38 @@ templ CompactReviewerForm(props database.ReviewerReportFormProps, formData *data
             </div>
         }
     }
-    @ReviewerModalScripts(props.AccessToken)
+    @ReviewerModalScripts(props.AccessToken, props.IsReadOnly)
 }
 
 templ formContent(props database.ReviewerReportFormProps, formData *database.ReviewerReportFormData) {
     <!-- Add hidden field to track if this is a draft -->
     <input type="hidden" name="is_draft" id="is_draft" value="false"/>
+
+    <!-- Add style for read-only textareas -->
+   if props.IsReadOnly {
+       <style>
+           textarea[disabled] {
+               resize: none;
+               overflow: hidden;
+               background-color: transparent;
+               border-color: transparent;
+               padding: 0.5rem;
+               min-height: unset !important;
+               height: auto !important;
+               white-space: pre-wrap;
+               word-wrap: break-word;
+           }
+           textarea[disabled]:focus {
+               outline: none;
+               box-shadow: none;
+           }
+           /* Ensure the modal body is scrollable */
+           .modal-body-readonly {
+               max-height: calc(90vh - 120px);
+               overflow-y: auto;
+           }
+       </style>
+   }
 
     <!-- Compact Header Info -->
     <div class="bg-gray-50 dark:bg-gray-800 rounded p-3 space-y-2 text-sm">
@@ -203,16 +229,18 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
             Name:        "reviewer_personal_details",
             Value:       formData.ReviewerPersonalDetails,
             Required:    !props.IsReadOnly,
-            Class:       "text-sm w-full auto-save-field",
-            Rows:        2,
+            Class:       getTextareaClass(props.IsReadOnly),
+            Rows:        getTextareaRowsSmall(props.IsReadOnly),
             Placeholder: getReviewerPlaceholder(props.FormVariant),
             Disabled:    props.IsReadOnly,
         })
-        @form.Description() {
-            if props.FormVariant == "en" {
-                Include name, workplace, position, and academic titles
-            } else {
-                Įtraukite vardą, darbovietę, pareigas ir akademinius titulus
+        if !props.IsReadOnly {
+            @form.Description() {
+                if props.FormVariant == "en" {
+                    Include name, workplace, position, and academic titles
+                } else {
+                    Įtraukite vardą, darbovietę, pareigas ir akademinius titulus
+                }
             }
         }
     }
@@ -242,8 +270,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Name:        "review_goals",
                     Value:       formData.ReviewGoals,
                     Required:    !props.IsReadOnly,
-                    Class:       "text-sm w-full auto-save-field",
-                    Rows:        3,
+                    Class:       getTextareaClass(props.IsReadOnly),
+                    Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getGoalsPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
                 })
@@ -270,8 +298,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Name:        "review_theory",
                     Value:       formData.ReviewTheory,
                     Required:    !props.IsReadOnly,
-                    Class:       "text-sm w-full auto-save-field",
-                    Rows:        3,
+                    Class:       getTextareaClass(props.IsReadOnly),
+                    Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getTheoryPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
                 })
@@ -298,8 +326,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Name:        "review_practical",
                     Value:       formData.ReviewPractical,
                     Required:    !props.IsReadOnly,
-                    Class:       "text-sm w-full auto-save-field",
-                    Rows:        3,
+                    Class:       getTextareaClass(props.IsReadOnly),
+                    Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getPracticalPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
                 })
@@ -329,8 +357,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Name:        "review_theory_practical_link",
                     Value:       formData.ReviewTheoryPracticalLink,
                     Required:    !props.IsReadOnly,
-                    Class:       "text-sm w-full auto-save-field",
-                    Rows:        2,
+                    Class:       getTextareaClass(props.IsReadOnly),
+                    Rows:        getTextareaRowsSmall(props.IsReadOnly),
                     Placeholder: getTheoryPracticalLinkPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
                 })
@@ -357,8 +385,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Name:        "review_results",
                     Value:       formData.ReviewResults,
                     Required:    !props.IsReadOnly,
-                    Class:       "text-sm w-full auto-save-field",
-                    Rows:        3,
+                    Class:       getTextareaClass(props.IsReadOnly),
+                    Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getResultsPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
                 })
@@ -382,8 +410,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     ID:          "review_practical_significance",
                     Name:        "review_practical_significance",
                     Value:       formData.ReviewPracticalSignificance,
-                    Class:       "text-sm w-full auto-save-field",
-                    Rows:        2,
+                    Class:       getTextareaClass(props.IsReadOnly),
+                    Rows:        getTextareaRowsSmall(props.IsReadOnly),
                     Placeholder: getPracticalSignificancePlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
                 })
@@ -412,8 +440,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                         Name:        "review_language",
                         Value:       formData.ReviewLanguage,
                         Required:    !props.IsReadOnly,
-                        Class:       "text-sm w-full auto-save-field",
-                        Rows:        2,
+                        Class:       getTextareaClass(props.IsReadOnly),
+                        Rows:        getTextareaRowsSmall(props.IsReadOnly),
                         Placeholder: getLanguagePlaceholder(props.FormVariant),
                         Disabled:    props.IsReadOnly,
                     })
@@ -438,8 +466,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                         Name:        "review_pros",
                         Value:       formData.ReviewPros,
                         Required:    !props.IsReadOnly,
-                        Class:       "text-sm w-full auto-save-field",
-                        Rows:        2,
+                        Class:       getTextareaClass(props.IsReadOnly),
+                        Rows:        getTextareaRowsSmall(props.IsReadOnly),
                         Placeholder: getProsPlaceholder(props.FormVariant),
                         Disabled:    props.IsReadOnly,
                     })
@@ -464,8 +492,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                         Name:        "review_cons",
                         Value:       formData.ReviewCons,
                         Required:    !props.IsReadOnly,
-                        Class:       "text-sm w-full auto-save-field",
-                        Rows:        2,
+                        Class:       getTextareaClass(props.IsReadOnly),
+                        Rows:        getTextareaRowsSmall(props.IsReadOnly),
                         Placeholder: getConsPlaceholder(props.FormVariant),
                         Disabled:    props.IsReadOnly,
                     })
@@ -491,8 +519,8 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Name:        "review_questions",
                     Value:       formData.ReviewQuestions,
                     Required:    !props.IsReadOnly,
-                    Class:       "text-sm w-full auto-save-field",
-                    Rows:        3,
+                    Class:       getTextareaClass(props.IsReadOnly),
+                    Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getQuestionsPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
                 })
@@ -520,7 +548,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                             Name:        "grade",
                             Value:       fmt.Sprintf("%.1f", formData.Grade),
                             Required:    !props.IsReadOnly,
-                            Class:       "w-20 text-center auto-save-field",
+                            Class:       getInputClass(props.IsReadOnly),
                             Disabled:    props.IsReadOnly,
                             Attributes: templ.Attributes{
                                 "min":  "1",
@@ -536,304 +564,326 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
     </div>
 }
 
-templ ReviewerModalScripts(accessToken string) {
+templ ReviewerModalScripts(accessToken string, isReadOnly bool) {
     <script>
-        // Store access token
-        const accessToken = {{ accessToken }};
-
-        // Auto-save functionality
-        let autoSaveTimer;
-        let hasUnsavedChanges = false;
-        const AUTOSAVE_DELAY = 3000; // 3 seconds
-
-        // Modal opening logic
         (function() {
-            requestAnimationFrame(function() {
+            // Store access token
+            const reviewerAccessToken = {{ accessToken }};
+            const isReadOnly = {{ isReadOnly }};
+
+            // Auto-resize textareas for read-only mode
+            if (isReadOnly) {
+                const autoResizeTextarea = function(textarea) {
+                    // Reset styles to get accurate measurement
+                    textarea.style.height = 'auto';
+                    textarea.style.overflow = 'hidden';
+                    textarea.style.minHeight = 'unset';
+
+                    // Get the scroll height
+                    const scrollHeight = textarea.scrollHeight;
+
+                    // Set the height with a small buffer
+                    textarea.style.height = (scrollHeight + 4) + 'px';
+                };
+
+                // Initial resize after modal opens
+                setTimeout(function() {
+                    const textareas = document.querySelectorAll('textarea.read-only-textarea');
+                    textareas.forEach(textarea => {
+                        autoResizeTextarea(textarea);
+                    });
+
+                    // Also resize on window resize
+                    window.addEventListener('resize', function() {
+                        textareas.forEach(textarea => {
+                            autoResizeTextarea(textarea);
+                        });
+                    });
+                }, 100);
+            }
+
+            // Auto-save functionality - encapsulated in function scope
+            let autoSaveTimer;
+            let hasUnsavedChanges = false;
+            const AUTOSAVE_DELAY = 3000; // 3 seconds
+
+            // Modal opening logic
+            (function() {
                 requestAnimationFrame(function() {
-                    const modal = document.getElementById('reviewer-modal');
-                    if (modal) {
-                        if (window.modalState && window.modalState.openModalId) {
-                            const existingModal = document.getElementById(window.modalState.openModalId);
-                            if (existingModal && existingModal !== modal) {
-                                existingModal.style.display = 'none';
-                                existingModal.classList.add('opacity-0');
+                    requestAnimationFrame(function() {
+                        const modal = document.getElementById('reviewer-modal');
+                        if (modal) {
+                            if (window.modalState && window.modalState.openModalId) {
+                                const existingModal = document.getElementById(window.modalState.openModalId);
+                                if (existingModal && existingModal !== modal) {
+                                    existingModal.style.display = 'none';
+                                    existingModal.classList.add('opacity-0');
+                                }
+                            }
+
+                            if (!window.modalState) {
+                                window.modalState = { openModalId: null };
+                            }
+
+                            window.modalState.openModalId = 'reviewer-modal';
+                            document.body.style.overflow = 'hidden';
+                            modal.style.display = 'flex';
+                            modal.offsetHeight;
+                            modal.classList.remove('opacity-0', 'hidden');
+                            modal.classList.add('opacity-100');
+
+                            const content = modal.querySelector('[data-modal-content]');
+                            if (content) {
+                                content.classList.remove('scale-95', 'opacity-0');
+                                content.classList.add('scale-100', 'opacity-100');
+                            }
+
+                            // Initialize auto-save listeners
+                            if (!isReadOnly) {
+                                initializeAutoSave();
                             }
                         }
-
-                        if (!window.modalState) {
-                            window.modalState = { openModalId: null };
-                        }
-
-                        window.modalState.openModalId = 'reviewer-modal';
-                        document.body.style.overflow = 'hidden';
-                        modal.style.display = 'flex';
-                        modal.offsetHeight;
-                        modal.classList.remove('opacity-0', 'hidden');
-                        modal.classList.add('opacity-100');
-
-                        const content = modal.querySelector('[data-modal-content]');
-                        if (content) {
-                            content.classList.remove('scale-95', 'opacity-0');
-                            content.classList.add('scale-100', 'opacity-100');
-                        }
-
-                        // Initialize auto-save listeners
-                        initializeAutoSave();
-                    }
+                    });
                 });
-            });
-        })();
+            })();
 
-        function initializeAutoSave() {
-            const form = document.getElementById('compact-reviewer-form');
-            if (!form || form.querySelector('[disabled]')) return; // Don't auto-save in read-only mode
+            function initializeAutoSave() {
+                const form = document.getElementById('compact-reviewer-form');
+                if (!form || form.querySelector('[disabled]')) return;
 
-            // Add listeners to all input fields
-            const fields = form.querySelectorAll('.auto-save-field');
-            fields.forEach(field => {
-                field.addEventListener('input', handleFieldChange);
-                field.addEventListener('change', handleFieldChange);
-            });
-        }
-
-        function handleFieldChange() {
-            hasUnsavedChanges = true;
-            clearTimeout(autoSaveTimer);
-
-            // Update status to show saving will occur
-            updateSaveStatus('pending');
-
-            // Set timer for auto-save
-            autoSaveTimer = setTimeout(() => {
-                autoSave();
-            }, AUTOSAVE_DELAY);
-        }
-
-        function updateSaveStatus(status) {
-            const saveIcon = document.getElementById('save-icon');
-            const saveText = document.getElementById('save-text');
-            const lastSaved = document.getElementById('last-saved');
-
-            switch(status) {
-                case 'pending':
-                    saveIcon?.classList.remove('hidden');
-                    saveText.textContent = 'Changes detected...';
-                    saveText.classList.add('text-yellow-600');
-                    break;
-                case 'saving':
-                    saveIcon?.classList.remove('hidden');
-                    saveText.textContent = 'Saving...';
-                    saveText.classList.add('text-blue-600');
-                    saveText.classList.remove('text-yellow-600', 'text-green-600');
-                    break;
-                case 'saved':
-                    saveIcon?.classList.remove('hidden');
-                    saveText.textContent = 'All changes saved';
-                    saveText.classList.remove('text-blue-600', 'text-yellow-600');
-                    saveText.classList.add('text-green-600');
-                    const now = new Date();
-                    lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;
-                    hasUnsavedChanges = false;
-                    break;
-                case 'error':
-                    saveIcon?.classList.add('hidden');
-                    saveText.textContent = 'Error saving';
-                    saveText.classList.add('text-red-600');
-                    break;
-            }
-        }
-
-        function autoSave() {
-            const form = document.getElementById('compact-reviewer-form');
-            const studentId = form.dataset.studentId;
-
-            // Set draft flag
-            document.getElementById('is_draft').value = 'true';
-
-            updateSaveStatus('saving');
-
-            // Use token-based URL if available
-            let submitUrl;
-            if (accessToken) {
-                submitUrl = `/reviewer/${accessToken}/student/${studentId}/review/submit`;
-            } else {
-                submitUrl = `/reviewer-report/${studentId}/save-draft`;
+                const fields = form.querySelectorAll('.auto-save-field');
+                fields.forEach(field => {
+                    field.addEventListener('input', handleFieldChange);
+                    field.addEventListener('change', handleFieldChange);
+                });
             }
 
-            // Gather form data
-            const formData = new FormData(form);
-
-            // Send via HTMX
-            htmx.ajax('POST', submitUrl, {
-                values: Object.fromEntries(formData),
-                target: '#modal-result',
-                swap: 'innerHTML'
-            }).then(() => {
-                updateSaveStatus('saved');
-            }).catch(() => {
-                updateSaveStatus('error');
-            });
-        }
-
-        function saveDraft() {
-            const form = document.getElementById('compact-reviewer-form');
-            const studentId = form.dataset.studentId;
-
-            // Set draft flag
-            document.getElementById('is_draft').value = 'true';
-
-            // Gather form data
-            const formData = new FormData(form);
-
-            // Show saving indicator
-            updateSaveStatus('saving');
-
-            // Use token-based URL if available
-            let submitUrl;
-            if (accessToken) {
-                submitUrl = `/reviewer/${accessToken}/student/${studentId}/review/submit`;
-            } else {
-                submitUrl = `/reviewer-report/${studentId}/save-draft`;
+            function handleFieldChange() {
+                hasUnsavedChanges = true;
+                clearTimeout(autoSaveTimer);
+                updateSaveStatus('pending');
+                autoSaveTimer = setTimeout(() => {
+                    autoSave();
+                }, AUTOSAVE_DELAY);
             }
 
-            // Send via HTMX
-            htmx.ajax('POST', submitUrl, {
-                values: Object.fromEntries(formData),
-                target: '#modal-result',
-                swap: 'innerHTML'
-            }).then(() => {
-                updateSaveStatus('saved');
-                setTimeout(() => {
-                    showSuccessMessage('Draft saved successfully!');
-                }, 500);
-            });
-        }
+            function updateSaveStatus(status) {
+                const saveIcon = document.getElementById('save-icon');
+                const saveText = document.getElementById('save-text');
+                const lastSaved = document.getElementById('last-saved');
 
-        function validateAndSubmit() {
-            // Set draft flag to false for final submission
-            document.getElementById('is_draft').value = 'false';
-
-            // Validate form
-            return validateReviewerForm();
-        }
-
-        function validateReviewerForm() {
-            const form = document.getElementById('compact-reviewer-form');
-            let isValid = true;
-
-            // Clear previous errors
-            document.querySelectorAll('[id$="-error"]').forEach(el => el.classList.add('hidden'));
-
-            const requiredFields = [
-                'reviewer_personal_details',
-                'review_goals',
-                'review_theory',
-                'review_practical',
-                'review_theory_practical_link',
-                'review_results',
-                'review_language',
-                'review_pros',
-                'review_cons',
-                'review_questions'
-            ];
-
-            for (const fieldName of requiredFields) {
-                const field = form.querySelector(`[name="${fieldName}"]`);
-                if (!field || !field.value.trim()) {
-                    isValid = false;
-                    field?.classList.add('border-red-500');
-                    if (!field?.closest('.border')?.querySelector('.text-red-500')) {
-                        field?.focus();
+                switch(status) {
+                    case 'pending':
+                        saveIcon?.classList.remove('hidden');
+                        saveText.textContent = 'Changes detected...';
+                        saveText.classList.add('text-yellow-600');
                         break;
-                    }
+                    case 'saving':
+                        saveIcon?.classList.remove('hidden');
+                        saveText.textContent = 'Saving...';
+                        saveText.classList.add('text-blue-600');
+                        saveText.classList.remove('text-yellow-600', 'text-green-600');
+                        break;
+                    case 'saved':
+                        saveIcon?.classList.remove('hidden');
+                        saveText.textContent = 'All changes saved';
+                        saveText.classList.remove('text-blue-600', 'text-yellow-600');
+                        saveText.classList.add('text-green-600');
+                        const now = new Date();
+                        lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;
+                        hasUnsavedChanges = false;
+                        break;
+                    case 'error':
+                        saveIcon?.classList.add('hidden');
+                        saveText.textContent = 'Error saving';
+                        saveText.classList.add('text-red-600');
+                        break;
+                }
+            }
+
+            function autoSave() {
+                const form = document.getElementById('compact-reviewer-form');
+                const studentId = form.dataset.studentId;
+
+                document.getElementById('is_draft').value = 'true';
+                updateSaveStatus('saving');
+
+                let submitUrl;
+                if (reviewerAccessToken) {
+                    submitUrl = `/reviewer/${reviewerAccessToken}/student/${studentId}/review/submit`;
                 } else {
-                    field?.classList.remove('border-red-500');
+                    submitUrl = `/reviewer-report/${studentId}/save-draft`;
                 }
+
+                const formData = new FormData(form);
+
+                htmx.ajax('POST', submitUrl, {
+                    values: Object.fromEntries(formData),
+                    target: '#modal-result',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    updateSaveStatus('saved');
+                }).catch(() => {
+                    updateSaveStatus('error');
+                });
             }
 
-            // Validate grade
-            const gradeField = form.querySelector('[name="grade"]');
-            const grade = parseFloat(gradeField?.value || '0');
-            if (!grade || grade < 1 || grade > 10) {
-                isValid = false;
-                gradeField?.classList.add('border-red-500');
-                document.getElementById('grade-error')?.classList.remove('hidden');
-            } else {
-                gradeField?.classList.remove('border-red-500');
-            }
+            // Make functions available in window scope with unique names
+            window.reviewerSaveDraft = function() {
+                const form = document.getElementById('compact-reviewer-form');
+                const studentId = form.dataset.studentId;
 
-            return isValid;
-        }
+                document.getElementById('is_draft').value = 'true';
+                const formData = new FormData(form);
+                updateSaveStatus('saving');
 
-        function showSuccessMessage(message) {
-            const result = document.getElementById('modal-result');
-            result.innerHTML = `
-                <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
-                    <div class="flex items-center">
-                        <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span>${message}</span>
-                    </div>
-                </div>
-            `;
+                let submitUrl;
+                if (reviewerAccessToken) {
+                    submitUrl = `/reviewer/${reviewerAccessToken}/student/${studentId}/review/submit`;
+                } else {
+                    submitUrl = `/reviewer-report/${studentId}/save-draft`;
+                }
 
-            setTimeout(() => {
-                result.innerHTML = '';
-            }, 3000);
-        }
+                htmx.ajax('POST', submitUrl, {
+                    values: Object.fromEntries(formData),
+                    target: '#modal-result',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    updateSaveStatus('saved');
+                    setTimeout(() => {
+                        showSuccessMessage('Draft saved successfully!');
+                    }, 500);
+                });
+            };
 
-        // Warn before closing if there are unsaved changes
-        window.addEventListener('beforeunload', function (e) {
-            if (hasUnsavedChanges) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
+            window.reviewerValidateAndSubmit = function() {
+                document.getElementById('is_draft').value = 'false';
+                return validateReviewerForm();
+            };
 
-        // Handle form submission
-        document.addEventListener('htmx:afterRequest', function(evt) {
-            if (evt.detail.successful && (
-                evt.target.closest('#modal-result') ||
-                evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved'
-            )) {
-                hasUnsavedChanges = false; // Clear unsaved changes flag
+            function validateReviewerForm() {
+                const form = document.getElementById('compact-reviewer-form');
+                let isValid = true;
 
-                const isDraft = document.getElementById('is_draft').value === 'true';
+                document.querySelectorAll('[id$="-error"]').forEach(el => el.classList.add('hidden'));
 
-                if (!isDraft) {
-                    // Final submission - close modal
-                    const modal = document.getElementById('reviewer-modal');
-                    if (modal && window.modalState) {
-                        setTimeout(() => {
-                            window.modalState.openModalId = null;
-                            document.body.style.overflow = '';
-                            // Refresh the page
-                            window.location.reload();
-                        }, 300);
+                const requiredFields = [
+                    'reviewer_personal_details',
+                    'review_goals',
+                    'review_theory',
+                    'review_practical',
+                    'review_theory_practical_link',
+                    'review_results',
+                    'review_language',
+                    'review_pros',
+                    'review_cons',
+                    'review_questions'
+                ];
+
+                for (const fieldName of requiredFields) {
+                    const field = form.querySelector(`[name="${fieldName}"]`);
+                    if (!field || !field.value.trim()) {
+                        isValid = false;
+                        field?.classList.add('border-red-500');
+                        if (!field?.closest('.border')?.querySelector('.text-red-500')) {
+                            field?.focus();
+                            break;
+                        }
+                    } else {
+                        field?.classList.remove('border-red-500');
                     }
                 }
-            }
-        });
 
-        // Handle escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'reviewer-modal') {
-                if (hasUnsavedChanges) {
-                    if (confirm('You have unsaved changes. Are you sure you want to close?')) {
+                const gradeField = form.querySelector('[name="grade"]');
+                const grade = parseFloat(gradeField?.value || '0');
+                if (!grade || grade < 1 || grade > 10) {
+                    isValid = false;
+                    gradeField?.classList.add('border-red-500');
+                    document.getElementById('grade-error')?.classList.remove('hidden');
+                } else {
+                    gradeField?.classList.remove('border-red-500');
+                }
+
+                return isValid;
+            }
+
+            function showSuccessMessage(message) {
+                const result = document.getElementById('modal-result');
+                result.innerHTML = `
+                    <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+                        <div class="flex items-center">
+                            <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>${message}</span>
+                        </div>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 3000);
+            }
+
+            // Event listeners
+            const beforeUnloadHandler = function(e) {
+                if (hasUnsavedChanges && !isReadOnly) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            };
+            window.addEventListener('beforeunload', beforeUnloadHandler);
+
+            const htmxAfterRequestHandler = function(evt) {
+                if (evt.detail.successful && (
+                    evt.target.closest('#modal-result') ||
+                    evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved'
+                )) {
+                    hasUnsavedChanges = false;
+
+                    const isDraft = document.getElementById('is_draft').value === 'true';
+
+                    if (!isDraft) {
+                        const modal = document.getElementById('reviewer-modal');
+                        if (modal && window.modalState) {
+                            setTimeout(() => {
+                                window.modalState.openModalId = null;
+                                document.body.style.overflow = '';
+                                window.location.reload();
+                            }, 300);
+                        }
+                    }
+                }
+            };
+            document.addEventListener('htmx:afterRequest', htmxAfterRequestHandler);
+
+            const keydownHandler = function(e) {
+                if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'reviewer-modal') {
+                    if (hasUnsavedChanges && !isReadOnly) {
+                        if (confirm('You have unsaved changes. Are you sure you want to close?')) {
+                            closeReviewerModal();
+                        }
+                    } else {
                         closeReviewerModal();
                     }
-                } else {
-                    closeReviewerModal();
                 }
-            }
-        });
+            };
+            document.addEventListener('keydown', keydownHandler);
 
-        function closeReviewerModal() {
-            if (hasUnsavedChanges) {
-                if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
-                    return;
-                }
+            // Store cleanup function
+            window.reviewerModalCleanup = function() {
+                window.removeEventListener('beforeunload', beforeUnloadHandler);
+                document.removeEventListener('htmx:afterRequest', htmxAfterRequestHandler);
+                document.removeEventListener('keydown', keydownHandler);
+                clearTimeout(autoSaveTimer);
+            };
+        })();
+
+        // Global functions that don't conflict
+        window.closeReviewerModal = function() {
+            // Call cleanup if it exists
+            if (window.reviewerModalCleanup) {
+                window.reviewerModalCleanup();
             }
 
             const modal = document.getElementById('reviewer-modal');
@@ -846,14 +896,20 @@ templ ReviewerModalScripts(accessToken string) {
                     if (window.modalState) {
                         window.modalState.openModalId = null;
                     }
-                    hasUnsavedChanges = false;
+
+                    // Clean up modal container
+                    const modalContainer = document.getElementById('modal-container');
+                    if (modalContainer) {
+                        modalContainer.innerHTML = '';
+                        modalContainer.style.display = 'none';
+                    }
                 }, 300);
             }
-        }
+        };
     </script>
 }
 
-// Helper functions remain the same
+// Helper functions
 func getReviewerPlaceholder(variant string) string {
     if variant == "en" {
         return "Name, workplace, position..."
@@ -929,4 +985,40 @@ func getQuestionsPlaceholder(variant string) string {
         return "Questions for the student during defense..."
     }
     return "Klausimai studentui gynimo metu..."
+}
+
+// New helper functions for conditional styling
+func getModalBodyStyle(isReadOnly bool) string {
+    if isReadOnly {
+        return "overflow-y: auto;"
+    }
+    return "max-height: calc(90vh - 120px); overflow-y: auto;"
+}
+
+func getTextareaClass(isReadOnly bool) string {
+    if isReadOnly {
+        return "text-sm w-full read-only-textarea"
+    }
+    return "text-sm w-full auto-save-field"
+}
+
+func getTextareaRowsSmall(isReadOnly bool) int {
+    if isReadOnly {
+        return 0  // Let auto-resize handle it
+    }
+    return 2
+}
+
+func getTextareaRowsLarge(isReadOnly bool) int {
+    if isReadOnly {
+        return 0  // Let auto-resize handle it
+    }
+    return 3
+}
+
+func getInputClass(isReadOnly bool) string {
+    if isReadOnly {
+        return "w-20 text-center border-transparent bg-transparent"
+    }
+    return "w-20 text-center auto-save-field"
 }
