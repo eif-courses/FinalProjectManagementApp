@@ -1068,22 +1068,23 @@ type ProjectTopicRegistration struct {
 
 // SupervisorReport represents a supervisor's report
 type SupervisorReport struct {
-	ID                  int       `json:"id" db:"id"`
-	StudentRecordID     int       `json:"student_record_id" db:"student_record_id"`
-	SupervisorComments  string    `json:"supervisor_comments" db:"supervisor_comments"`
-	SupervisorName      string    `json:"supervisor_name" db:"supervisor_name"`
-	SupervisorPosition  string    `json:"supervisor_position" db:"supervisor_position"`
-	SupervisorWorkplace string    `json:"supervisor_workplace" db:"supervisor_workplace"`
-	IsPassOrFailed      bool      `json:"is_pass_or_failed" db:"is_pass_or_failed"`
-	IsSigned            bool      `json:"is_signed" db:"is_signed"`
-	OtherMatch          float64   `json:"other_match" db:"other_match"`
-	OneMatch            float64   `json:"one_match" db:"one_match"`
-	OwnMatch            float64   `json:"own_match" db:"own_match"`
-	JoinMatch           float64   `json:"join_match" db:"join_match"`
-	CreatedDate         time.Time `json:"created_date" db:"created_date"`
-	UpdatedDate         time.Time `json:"updated_date" db:"updated_date"`
-	Grade               *int      `json:"grade" db:"grade"`
-	FinalComments       string    `json:"final_comments" db:"final_comments"`
+	ID                  int            `json:"id" db:"id"`
+	StudentRecordID     int            `json:"student_record_id" db:"student_record_id"`
+	SupervisorComments  string         `json:"supervisor_comments" db:"supervisor_comments"`
+	SupervisorName      sql.NullString `json:"supervisor_name" db:"supervisor_name"`         // Changed
+	SupervisorPosition  sql.NullString `json:"supervisor_position" db:"supervisor_position"` // Changed
+	FinalComments       sql.NullString `json:"final_comments" db:"final_comments"`           // Changed
+	SupervisorWorkplace string         `json:"supervisor_workplace" db:"supervisor_workplace"`
+	IsPassOrFailed      bool           `json:"is_pass_or_failed" db:"is_pass_or_failed"`
+	IsSigned            bool           `json:"is_signed" db:"is_signed"`
+	OtherMatch          float64        `json:"other_match" db:"other_match"`
+	OneMatch            float64        `json:"one_match" db:"one_match"`
+	OwnMatch            float64        `json:"own_match" db:"own_match"`
+	JoinMatch           float64        `json:"join_match" db:"join_match"`
+	CreatedDate         time.Time      `json:"created_date" db:"created_date"`
+	UpdatedDate         time.Time      `json:"updated_date" db:"updated_date"`
+	Grade               *int           `json:"grade" db:"grade"`
+	//FinalComments       sql.NullString `json:"final_comments" db:"final_comments"` // Changed
 }
 
 // [Keep all existing methods for SupervisorReport unchanged...]
@@ -1609,11 +1610,17 @@ func (f *SupervisorReportFormData) ToSupervisorReportData(studentRecordID int, s
 // ToSupervisorReport converts form data to SupervisorReport model
 func (f *SupervisorReportFormData) ToSupervisorReport(studentRecordID int, supervisorName string) *SupervisorReport {
 	return &SupervisorReport{
-		StudentRecordID:     studentRecordID,
-		SupervisorComments:  f.SupervisorComments,
-		SupervisorName:      supervisorName,
-		SupervisorPosition:  f.SupervisorPosition,
-		SupervisorWorkplace: f.SupervisorWorkplace,
+		StudentRecordID:    studentRecordID,
+		SupervisorComments: f.SupervisorComments,
+		SupervisorName: sql.NullString{
+			String: supervisorName,
+			Valid:  supervisorName != "",
+		},
+		SupervisorPosition: sql.NullString{
+			String: f.SupervisorPosition,
+			Valid:  f.SupervisorPosition != "",
+		},
+		SupervisorWorkplace: f.SupervisorWorkplace, // This remains a string
 		IsPassOrFailed:      f.IsPassOrFailed,
 		IsSigned:            false,
 		OtherMatch:          f.OtherMatch,
@@ -1621,9 +1628,12 @@ func (f *SupervisorReportFormData) ToSupervisorReport(studentRecordID int, super
 		OwnMatch:            f.OwnMatch,
 		JoinMatch:           f.JoinMatch,
 		Grade:               f.Grade,
-		FinalComments:       f.FinalComments,
-		CreatedDate:         time.Now(),
-		UpdatedDate:         time.Now(),
+		FinalComments: sql.NullString{
+			String: f.FinalComments,
+			Valid:  f.FinalComments != "",
+		},
+		CreatedDate: time.Now(),
+		UpdatedDate: time.Now(),
 	}
 }
 
@@ -1643,16 +1653,42 @@ func NewSupervisorReportFormData(report *SupervisorReport) *SupervisorReportForm
 	return &SupervisorReportFormData{
 		SupervisorComments:  report.SupervisorComments,
 		SupervisorWorkplace: report.SupervisorWorkplace,
-		SupervisorPosition:  report.SupervisorPosition,
+		SupervisorPosition:  report.GetSupervisorPosition(),
 		OtherMatch:          report.OtherMatch,
 		OneMatch:            report.OneMatch,
 		OwnMatch:            report.OwnMatch,
 		JoinMatch:           report.JoinMatch,
 		IsPassOrFailed:      report.IsPassOrFailed,
 		Grade:               report.Grade,
-		FinalComments:       report.FinalComments,
+		FinalComments:       report.GetFinalComments(),
 		SubmissionDate:      time.Now(),
 	}
+}
+
+// Add these methods to SupervisorReport struct
+func (sr *SupervisorReport) GetSupervisorName() string {
+	if sr.SupervisorName.Valid {
+		return sr.SupervisorName.String
+	}
+	return ""
+}
+
+func (sr *SupervisorReport) GetSupervisorPosition() string {
+	if sr.SupervisorPosition.Valid {
+		return sr.SupervisorPosition.String
+	}
+	return ""
+}
+
+func (sr *SupervisorReport) GetFinalComments() string {
+	if sr.FinalComments.Valid {
+		return sr.FinalComments.String
+	}
+	return ""
+}
+
+func (sr *SupervisorReport) HasFinalComments() bool {
+	return sr.FinalComments.Valid && sr.FinalComments.String != ""
 }
 
 // GetTotalSimilarity calculates total similarity percentage

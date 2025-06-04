@@ -262,8 +262,6 @@ func (h *SupervisorReportHandler) getSupervisorReport(studentID int) (*database.
 }
 
 func (h *SupervisorReportHandler) saveSupervisorReport(data *database.SupervisorReportData) error {
-	// Check if report exists
-	//existingReport, err := h.getSupervisorReport(data.StudentRecordID)
 	_, err := h.getSupervisorReport(data.StudentRecordID)
 	if err == sql.ErrNoRows {
 		// Create new report
@@ -279,14 +277,14 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
                 :other_match, :one_match, :own_match, :join_match, :grade, 
                 :final_comments, :is_signed
             )
-		`
+        `
 
 		// Convert to map for Named exec
 		params := map[string]interface{}{
 			"student_record_id":    data.StudentRecordID,
 			"supervisor_comments":  data.SupervisorComments,
-			"supervisor_name":      data.SupervisorName,
-			"supervisor_position":  data.SupervisorPosition,
+			"supervisor_name":      sql.NullString{String: data.SupervisorName, Valid: data.SupervisorName != ""},
+			"supervisor_position":  sql.NullString{String: data.SupervisorPosition, Valid: data.SupervisorPosition != ""},
 			"supervisor_workplace": data.SupervisorWorkplace,
 			"is_pass_or_failed":    data.IsPassOrFailed,
 			"other_match":          data.OtherMatch,
@@ -294,8 +292,8 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
 			"own_match":            data.OwnMatch,
 			"join_match":           data.JoinMatch,
 			"grade":                data.Grade,
-			"final_comments":       data.FinalComments,
-			"is_signed":            true, // Set to true for final submission
+			"final_comments":       sql.NullString{String: data.FinalComments, Valid: data.FinalComments != ""},
+			"is_signed":            true,
 		}
 
 		_, err = h.db.NamedExec(query, params)
@@ -304,7 +302,7 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
 	} else if err != nil {
 		return err
 	} else {
-		// Update existing report using sqlx Named query
+		// Update existing report
 		query := `
             UPDATE supervisor_reports SET
                 supervisor_comments = :supervisor_comments,
@@ -320,12 +318,12 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
                 updated_date = :updated_date,
                 is_signed = :is_signed
             WHERE student_record_id = :student_record_id
-		`
+        `
 
 		params := map[string]interface{}{
 			"student_record_id":    data.StudentRecordID,
 			"supervisor_comments":  data.SupervisorComments,
-			"supervisor_position":  data.SupervisorPosition,
+			"supervisor_position":  sql.NullString{String: data.SupervisorPosition, Valid: data.SupervisorPosition != ""},
 			"supervisor_workplace": data.SupervisorWorkplace,
 			"is_pass_or_failed":    data.IsPassOrFailed,
 			"other_match":          data.OtherMatch,
@@ -333,16 +331,15 @@ func (h *SupervisorReportHandler) saveSupervisorReport(data *database.Supervisor
 			"own_match":            data.OwnMatch,
 			"join_match":           data.JoinMatch,
 			"grade":                data.Grade,
-			"final_comments":       data.FinalComments,
+			"final_comments":       sql.NullString{String: data.FinalComments, Valid: data.FinalComments != ""},
 			"updated_date":         time.Now(),
-			"is_signed":            true, // Set to true for final submission
+			"is_signed":            true,
 		}
 
 		_, err = h.db.NamedExec(query, params)
 		return err
 	}
 }
-
 func (h *SupervisorReportHandler) createAuditLog(log database.AuditLog) error {
 	query := `
 		INSERT INTO audit_logs (
