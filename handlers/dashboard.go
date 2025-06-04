@@ -351,7 +351,7 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*database.Stu
 	}
 
 	// Handle defense info
-	if studentRecord.DefenseDate != nil {
+	if studentRecord.DefenseDate.Valid {
 		data.DefenseScheduled = true
 		data.DefenseDate = studentRecord.GetDefenseDateFormatted()
 		data.DefenseLocation = studentRecord.DefenseLocation
@@ -537,8 +537,8 @@ func (h *DashboardHandlers) getDepartmentDashboardData(email string) (*Departmen
 	// Get upcoming defenses (next 30 days)
 	err = h.db.Get(&data.UpcomingDefenses,
 		`SELECT COUNT(*) FROM student_records 
-         WHERE department LIKE ? AND defense_date IS NOT NULL 
-         AND defense_date BETWEEN UNIX_TIMESTAMP() AND UNIX_TIMESTAMP() + (30 * 24 * 60 * 60)`,
+     WHERE department LIKE ? AND defense_date IS NOT NULL 
+     AND defense_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 30 DAY)`,
 		"%"+department+"%")
 	if err != nil {
 		data.UpcomingDefenses = 0
@@ -590,7 +590,7 @@ type ReviewerDashboardData struct {
 	AssignedStudents []database.StudentRecord
 	PendingReviews   int
 	CompletedReviews int
-	Invitations      []database.ReviewerInvitation
+	AccessTokens     []database.ReviewerAccessToken
 }
 
 func (h *DashboardHandlers) getReviewerDashboardData(email string) (*ReviewerDashboardData, error) {
@@ -617,12 +617,12 @@ func (h *DashboardHandlers) getReviewerDashboardData(email string) (*ReviewerDas
 		}
 	}
 
-	// Get active reviewer invitations
-	err = h.db.Select(&data.Invitations,
-		"SELECT * FROM reviewer_invitations WHERE reviewer_email = ? AND is_active = true ORDER BY created_at DESC",
+	// Get active reviewer access tokens
+	err = h.db.Select(&data.AccessTokens,
+		"SELECT * FROM reviewer_access_tokens WHERE reviewer_email = ? AND is_active = true ORDER BY created_at DESC",
 		email)
 	if err != nil {
-		data.Invitations = []database.ReviewerInvitation{}
+		data.AccessTokens = []database.ReviewerAccessToken{}
 	}
 
 	return data, nil
