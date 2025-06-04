@@ -432,27 +432,27 @@ func (aal *AcademicAuditLog) GetMetadataMap() map[string]interface{} {
 
 // StudentRecord represents a student in the system (enhanced)
 type StudentRecord struct {
-	ID                  int       `json:"id" db:"id"`
-	StudentGroup        string    `json:"student_group" db:"student_group"`
-	FinalProjectTitle   string    `json:"final_project_title" db:"final_project_title"`
-	FinalProjectTitleEn string    `json:"final_project_title_en" db:"final_project_title_en"`
-	StudentEmail        string    `json:"student_email" db:"student_email"`
-	StudentName         string    `json:"student_name" db:"student_name"`
-	StudentLastname     string    `json:"student_lastname" db:"student_lastname"`
-	StudentNumber       string    `json:"student_number" db:"student_number"`
-	SupervisorEmail     string    `json:"supervisor_email" db:"supervisor_email"`
-	StudyProgram        string    `json:"study_program" db:"study_program"`
-	Department          string    `json:"department" db:"department"`
-	ProgramCode         string    `json:"program_code" db:"program_code"`
-	CurrentYear         int       `json:"current_year" db:"current_year"`
-	ReviewerEmail       string    `json:"reviewer_email" db:"reviewer_email"`
-	ReviewerName        string    `json:"reviewer_name" db:"reviewer_name"`
-	IsFavorite          bool      `json:"is_favorite" db:"is_favorite"`
-	IsPublicDefense     bool      `json:"is_public_defense" db:"is_public_defense"`
-	DefenseDate         *int64    `json:"defense_date" db:"defense_date"` // Unix timestamp
-	DefenseLocation     string    `json:"defense_location" db:"defense_location"`
-	CreatedAt           time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt           time.Time `json:"updated_at" db:"updated_at"`
+	ID                  int            `json:"id" db:"id"`
+	StudentGroup        string         `json:"student_group" db:"student_group"`
+	FinalProjectTitle   string         `json:"final_project_title" db:"final_project_title"`
+	FinalProjectTitleEn string         `json:"final_project_title_en" db:"final_project_title_en"`
+	StudentEmail        string         `json:"student_email" db:"student_email"`
+	StudentName         string         `json:"student_name" db:"student_name"`
+	StudentLastname     string         `json:"student_lastname" db:"student_lastname"`
+	StudentNumber       string         `json:"student_number" db:"student_number"`
+	SupervisorEmail     string         `json:"supervisor_email" db:"supervisor_email"`
+	StudyProgram        string         `json:"study_program" db:"study_program"`
+	Department          string         `json:"department" db:"department"`
+	ProgramCode         string         `json:"program_code" db:"program_code"`
+	CurrentYear         int            `json:"current_year" db:"current_year"`
+	ReviewerEmail       string         `json:"reviewer_email" db:"reviewer_email"`
+	ReviewerName        string         `json:"reviewer_name" db:"reviewer_name"`
+	IsFavorite          bool           `json:"is_favorite" db:"is_favorite"`
+	IsPublicDefense     bool           `json:"is_public_defense" db:"is_public_defense"`
+	DefenseDate         *int64         `json:"defense_date" db:"defense_date"` // Unix timestamp
+	DefenseLocation     sql.NullString `db:"defense_location" json:"defense_location"`
+	CreatedAt           time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at" db:"updated_at"`
 }
 
 // GetDefenseDateFormatted returns formatted defense date
@@ -2481,73 +2481,6 @@ func (d *Document) GetRepositoryDisplayInfo() map[string]string {
 
 	return info
 }
-
-// ================================
-// STUDENT DASHBOARD MODELS
-// ================================
-// StudentDashboardData represents comprehensive data for student dashboard
-
-//type StudentDashboardData struct {
-//	// Basic student information
-//	StudentRecord *StudentRecord `json:"student_record"`
-//
-//	// Topic registration information
-//	TopicRegistration *ProjectTopicRegistration  `json:"topic_registration,omitempty"`
-//	TopicStatus       string                     `json:"topic_status"`
-//	TopicComments     []TopicRegistrationComment `json:"topic_comments,omitempty"`
-//
-//	// Reports information
-//	SupervisorReport *SupervisorReport `json:"supervisor_report,omitempty"`
-//	ReviewerReport   *ReviewerReport   `json:"reviewer_report,omitempty"`
-//
-//	// Documents and uploads - using the specific field names your templates expect
-//	Documents             []Document `json:"documents,omitempty"`
-//	Videos                []Video    `json:"videos,omitempty"`
-//	HasThesisPDF          bool       `json:"has_thesis_pdf"`
-//	ThesisDocument        *Document  `json:"thesis_document,omitempty"` // Added this field
-//	CompanyRecommendation *Document  `json:"company_recommendation,omitempty"`
-//	VideoPresentation     *Video     `json:"video_presentation,omitempty"`
-//
-//	// Source code repository - this is what your templates are looking for
-//	SourceCodeRepository *Document `json:"source_code_repository,omitempty"`
-//
-//	// Status flags and progress
-//	HasTopicApproved    bool `json:"has_topic_approved"`
-//	HasSupervisorReport bool `json:"has_supervisor_report"`
-//	HasReviewerReport   bool `json:"has_reviewer_report"`
-//	HasAllDocuments     bool `json:"has_all_documents"`
-//	HasVideo            bool `json:"has_video"`
-//	IsReadyForDefense   bool `json:"is_ready_for_defense"`
-//	HasSourceCode       bool `json:"has_source_code"`
-//
-//	// Defense information
-//	DefenseScheduled bool   `json:"defense_scheduled"`
-//	DefenseDate      string `json:"defense_date,omitempty"` // Changed from *time.Time to string
-//	DefenseLocation  string `json:"defense_location,omitempty"`
-//
-//	// Progress tracking
-//	CompletionPercentage int      `json:"completion_percentage"`
-//	CurrentStage         string   `json:"current_stage"`
-//	NextActions          []string `json:"next_actions,omitempty"`
-//
-//	// Notifications and reminders
-//	Notifications []StudentNotification `json:"notifications,omitempty"`
-//	Reminders     []StudentReminder     `json:"reminders,omitempty"`
-//
-//	// Academic year and semester info
-//	AcademicYear int    `json:"academic_year"`
-//	Semester     string `json:"semester"`
-//
-//	// Supervisor and reviewer information
-//	SupervisorInfo *SupervisorInfo `json:"supervisor_info,omitempty"`
-//	ReviewerInfo   *ReviewerInfo   `json:"reviewer_info,omitempty"`
-//
-//	// Deadlines
-//	Deadlines []StudentDeadline `json:"deadlines,omitempty"`
-//
-//	// Source code upload information
-//	SourceCodeUploads []SourceCodeUpload `json:"source_code_uploads,omitempty"`
-//}
 
 type StudentDashboardData struct {
 	// Basic student information
