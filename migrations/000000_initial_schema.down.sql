@@ -1,9 +1,13 @@
 -- ================================================
--- Migration DOWN: Drop Complete Initial Schema
--- File: 000000_initial_schema.down.sql
+-- Migration DOWN: Drop all tables and views
+-- File: 000000_initial_schema_with_null_fixes.down.sql
 -- ================================================
 
--- Drop views first (they depend on tables)
+-- Drop triggers first
+DROP TRIGGER IF EXISTS before_student_records_insert;
+DROP TRIGGER IF EXISTS before_student_records_update;
+
+-- Drop views
 DROP VIEW IF EXISTS student_summary_view;
 DROP VIEW IF EXISTS user_roles_view;
 DROP VIEW IF EXISTS commission_access_view;

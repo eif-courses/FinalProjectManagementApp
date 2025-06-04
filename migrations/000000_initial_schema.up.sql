@@ -1,17 +1,17 @@
 -- ================================================
--- Migration UP: Complete Initial Schema with All Features
--- File: 000000_initial_schema.up.sql
+-- Migration UP: Complete Initial Schema with NULL Handling
+-- File: 000000_initial_schema_with_null_fixes.up.sql
 -- ================================================
 
 -- Create department heads table
 CREATE TABLE department_heads (
                                   id INT AUTO_INCREMENT PRIMARY KEY,
                                   email VARCHAR(255) NOT NULL UNIQUE,
-                                  name VARCHAR(255) NOT NULL DEFAULT '',
-                                  sure_name VARCHAR(255) NOT NULL DEFAULT '',
+                                  name VARCHAR(255) NULL DEFAULT '',
+                                  sure_name VARCHAR(255) NULL DEFAULT '',
                                   department TEXT NOT NULL,
                                   department_en TEXT NOT NULL,
-                                  job_title VARCHAR(255) NOT NULL DEFAULT '',
+                                  job_title VARCHAR(255) NULL DEFAULT '',
                                   role INT NOT NULL DEFAULT 0,
                                   is_active BOOLEAN NOT NULL DEFAULT TRUE,
                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -29,12 +29,12 @@ CREATE TABLE commission_members (
                                     department TEXT NOT NULL,
                                     study_program VARCHAR(255) NULL,
                                     year INT NULL,
-                                    description TEXT,
+                                    description TEXT NULL,
                                     is_active BOOLEAN DEFAULT TRUE,
                                     expires_at BIGINT NOT NULL,
                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                     last_accessed_at BIGINT NULL,
-                                    created_by VARCHAR(255) DEFAULT '',
+                                    created_by VARCHAR(255) NULL DEFAULT '',
                                     access_count INT DEFAULT 0,
                                     max_access INT DEFAULT 0,
                                     allowed_student_groups TEXT NULL COMMENT 'Comma-separated list of allowed groups',
@@ -53,12 +53,12 @@ CREATE TABLE commission_members (
                                     INDEX idx_access_level (access_level)
 );
 
--- Create student records table with all enhancements
+-- Create student records table with proper NULL handling
 CREATE TABLE student_records (
                                  id INT AUTO_INCREMENT PRIMARY KEY,
                                  student_group VARCHAR(50) NOT NULL,
                                  final_project_title TEXT NOT NULL,
-                                 final_project_title_en TEXT NOT NULL,
+                                 final_project_title_en TEXT NULL DEFAULT '',
                                  student_email VARCHAR(255) NOT NULL,
                                  student_name VARCHAR(255) NOT NULL,
                                  student_lastname VARCHAR(255) NOT NULL,
@@ -68,12 +68,12 @@ CREATE TABLE student_records (
                                  department TEXT NOT NULL,
                                  program_code VARCHAR(50) NOT NULL,
                                  current_year INT NOT NULL,
-                                 reviewer_email VARCHAR(255) NOT NULL DEFAULT '',
-                                 reviewer_name VARCHAR(255) NOT NULL DEFAULT '',
+                                 reviewer_email VARCHAR(255) NULL DEFAULT '',
+                                 reviewer_name VARCHAR(255) NULL DEFAULT '',
                                  is_favorite BOOLEAN NOT NULL DEFAULT FALSE,
                                  is_public_defense BOOLEAN DEFAULT FALSE,
                                  defense_date TIMESTAMP NULL,
-                                 defense_location VARCHAR(255) DEFAULT '',
+                                 defense_location VARCHAR(255) NULL DEFAULT '',
                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -95,12 +95,12 @@ CREATE TABLE reviewer_access_tokens (
                                         reviewer_email VARCHAR(255) NOT NULL,
                                         reviewer_name VARCHAR(255) NOT NULL,
                                         access_token VARCHAR(255) UNIQUE NOT NULL,
-                                        department VARCHAR(100),
+                                        department VARCHAR(100) NULL,
                                         created_at BIGINT NOT NULL,
                                         expires_at BIGINT NOT NULL,
-                                        max_access INT DEFAULT 0, -- 0 = unlimited
+                                        max_access INT DEFAULT 0,
                                         access_count INT DEFAULT 0,
-                                        last_accessed_at BIGINT,
+                                        last_accessed_at BIGINT NULL,
                                         is_active BOOLEAN DEFAULT true,
                                         created_by VARCHAR(255) NOT NULL,
 
@@ -110,7 +110,7 @@ CREATE TABLE reviewer_access_tokens (
                                         INDEX idx_is_active (is_active)
 );
 
--- Create documents table with all enhancements including source code support
+-- Create documents table with proper NULL handling
 CREATE TABLE documents (
                            id INT AUTO_INCREMENT PRIMARY KEY,
                            document_type VARCHAR(100) NOT NULL,
@@ -123,13 +123,12 @@ CREATE TABLE documents (
                            is_confidential BOOLEAN DEFAULT TRUE,
                            access_level ENUM('public', 'commission', 'reviewer', 'supervisor') DEFAULT 'supervisor',
                            watermark_applied BOOLEAN DEFAULT FALSE,
-    -- Source code upload columns
-                           repository_url TEXT NULL COMMENT 'Azure DevOps repository URL',
-                           repository_id VARCHAR(255) NULL COMMENT 'Azure DevOps repository ID',
-                           commit_id VARCHAR(255) NULL COMMENT 'Git commit ID',
-                           submission_id VARCHAR(36) NULL COMMENT 'Unique submission identifier',
+                           repository_url TEXT NULL,
+                           repository_id VARCHAR(255) NULL,
+                           commit_id VARCHAR(255) NULL,
+                           submission_id VARCHAR(36) NULL,
                            validation_status ENUM('pending', 'valid', 'invalid') DEFAULT 'pending',
-                           validation_errors TEXT NULL COMMENT 'Validation error messages',
+                           validation_errors TEXT NULL,
                            upload_status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
 
                            FOREIGN KEY (student_record_id) REFERENCES student_records(id) ON DELETE CASCADE,
@@ -143,13 +142,13 @@ CREATE TABLE documents (
                            INDEX idx_upload_status (upload_status)
 );
 
--- Create supervisor reports table
+-- Create supervisor reports table with proper NULL handling
 CREATE TABLE supervisor_reports (
                                     id INT AUTO_INCREMENT PRIMARY KEY,
                                     student_record_id INT NOT NULL,
                                     supervisor_comments TEXT NOT NULL,
-                                    supervisor_name VARCHAR(255) NOT NULL DEFAULT '',
-                                    supervisor_position VARCHAR(255) NOT NULL DEFAULT '',
+                                    supervisor_name VARCHAR(255) NULL DEFAULT '',
+                                    supervisor_position VARCHAR(255) NULL DEFAULT '',
                                     supervisor_workplace TEXT NOT NULL,
                                     is_pass_or_failed BOOLEAN DEFAULT FALSE,
                                     is_signed BOOLEAN NOT NULL DEFAULT FALSE,
@@ -160,7 +159,7 @@ CREATE TABLE supervisor_reports (
                                     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                     updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                     grade INT NULL,
-                                    final_comments TEXT,
+                                    final_comments TEXT NULL,
 
                                     FOREIGN KEY (student_record_id) REFERENCES student_records(id) ON DELETE CASCADE,
                                     INDEX idx_student_record (student_record_id),
@@ -168,7 +167,7 @@ CREATE TABLE supervisor_reports (
                                     INDEX idx_created_date (created_date)
 );
 
--- Create reviewer reports table with all enhancements
+-- Create reviewer reports table with proper NULL handling
 CREATE TABLE reviewer_reports (
                                   id INT AUTO_INCREMENT PRIMARY KEY,
                                   student_record_id INT NOT NULL,
@@ -187,6 +186,7 @@ CREATE TABLE reviewer_reports (
                                   is_signed BOOLEAN NOT NULL DEFAULT FALSE,
                                   created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                   updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
                                   FOREIGN KEY (student_record_id) REFERENCES student_records(id) ON DELETE CASCADE,
                                   INDEX idx_student_record (student_record_id),
                                   INDEX idx_is_signed (is_signed),
@@ -194,7 +194,7 @@ CREATE TABLE reviewer_reports (
                                   INDEX idx_created_date (created_date)
 );
 
--- Create commission access logs table
+-- Create commission access logs table with proper NULL handling
 CREATE TABLE commission_access_logs (
                                         id INT AUTO_INCREMENT PRIMARY KEY,
                                         commission_member_id INT NOT NULL,
@@ -204,7 +204,7 @@ CREATE TABLE commission_access_logs (
                                         ip_address VARCHAR(45) NULL,
                                         user_agent TEXT NULL,
                                         access_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                        session_duration INT NULL COMMENT 'Duration in seconds',
+                                        session_duration INT NULL,
 
                                         FOREIGN KEY (commission_member_id) REFERENCES commission_members(id) ON DELETE CASCADE,
                                         FOREIGN KEY (student_record_id) REFERENCES student_records(id) ON DELETE SET NULL,
@@ -215,7 +215,7 @@ CREATE TABLE commission_access_logs (
                                         INDEX idx_commission_logs_compound (commission_member_id, access_timestamp)
 );
 
--- Create commission evaluations table
+-- Create commission evaluations table with proper NULL handling
 CREATE TABLE commission_evaluations (
                                         id INT AUTO_INCREMENT PRIMARY KEY,
                                         commission_member_id INT NOT NULL,
@@ -224,8 +224,8 @@ CREATE TABLE commission_evaluations (
                                         defense_score DECIMAL(3,1) DEFAULT 0.0,
                                         answers_score DECIMAL(3,1) DEFAULT 0.0,
                                         overall_score DECIMAL(3,1) DEFAULT 0.0,
-                                        comments TEXT,
-                                        questions_asked TEXT,
+                                        comments TEXT NULL,
+                                        questions_asked TEXT NULL,
                                         evaluation_status ENUM('pending', 'completed', 'approved') DEFAULT 'pending',
                                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -245,11 +245,11 @@ CREATE TABLE commission_evaluations (
                                         CONSTRAINT chk_overall_score CHECK (overall_score >= 0 AND overall_score <= 10)
 );
 
--- Create academic audit logs table
+-- Create academic audit logs table with proper NULL handling
 CREATE TABLE academic_audit_logs (
                                      id INT AUTO_INCREMENT PRIMARY KEY,
                                      access_type ENUM('commission', 'reviewer', 'supervisor', 'admin', 'student') NOT NULL,
-                                     access_identifier VARCHAR(191) NOT NULL COMMENT 'access_code, email, or user identifier',
+                                     access_identifier VARCHAR(191) NOT NULL,
                                      student_record_id INT NULL,
                                      action VARCHAR(100) NOT NULL,
                                      resource_type VARCHAR(50) NOT NULL,
@@ -259,7 +259,7 @@ CREATE TABLE academic_audit_logs (
                                      session_id VARCHAR(128) NULL,
                                      success BOOLEAN DEFAULT TRUE,
                                      error_message TEXT NULL,
-                                     metadata TEXT NULL COMMENT 'Additional context data as text',
+                                     metadata TEXT NULL,
                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
                                      FOREIGN KEY (student_record_id) REFERENCES student_records(id) ON DELETE SET NULL,
@@ -272,7 +272,7 @@ CREATE TABLE academic_audit_logs (
                                      INDEX idx_academic_audit_compound (access_type, created_at)
 );
 
--- Create videos table
+-- Create videos table with proper NULL handling
 CREATE TABLE videos (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         student_record_id INT NOT NULL,
@@ -282,8 +282,8 @@ CREATE TABLE videos (
                         size BIGINT NULL,
                         url TEXT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        duration INT NULL COMMENT 'Video duration in seconds',
-                        status VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, processing, ready, error',
+                        duration INT NULL,
+                        status VARCHAR(20) DEFAULT 'pending',
 
                         FOREIGN KEY (student_record_id) REFERENCES student_records(id) ON DELETE CASCADE,
                         INDEX idx_student_record (student_record_id),
@@ -291,7 +291,7 @@ CREATE TABLE videos (
                         INDEX idx_created_at (created_at)
 );
 
--- Create project topic registrations table with supervisor approval workflow
+-- Create project topic registrations table with proper NULL handling
 CREATE TABLE project_topic_registrations (
                                              id INT AUTO_INCREMENT PRIMARY KEY,
                                              student_record_id INT NOT NULL,
@@ -300,7 +300,7 @@ CREATE TABLE project_topic_registrations (
                                              problem TEXT NOT NULL,
                                              objective TEXT NOT NULL,
                                              tasks TEXT NOT NULL,
-                                             completion_date VARCHAR(100) NULL,
+                                             completion_date VARCHAR(100) NULL DEFAULT '',
                                              supervisor VARCHAR(255) NOT NULL,
                                              status ENUM('draft', 'submitted', 'supervisor_approved', 'approved', 'rejected', 'revision_requested') DEFAULT 'draft',
                                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -310,7 +310,6 @@ CREATE TABLE project_topic_registrations (
                                              approved_by VARCHAR(255) NULL,
                                              approved_at BIGINT NULL,
                                              rejection_reason TEXT NULL,
-    -- Supervisor approval workflow columns
                                              supervisor_approved_at BIGINT NULL,
                                              supervisor_approved_by VARCHAR(255) NULL,
                                              supervisor_rejection_reason TEXT NULL,
@@ -324,7 +323,7 @@ CREATE TABLE project_topic_registrations (
                                              INDEX idx_supervisor_approved_by (supervisor_approved_by)
 );
 
--- Create topic registration comments table
+-- Create topic registration comments table with proper NULL handling
 CREATE TABLE topic_registration_comments (
                                              id INT AUTO_INCREMENT PRIMARY KEY,
                                              topic_registration_id INT NOT NULL,
@@ -332,11 +331,11 @@ CREATE TABLE topic_registration_comments (
                                              comment_text TEXT NOT NULL,
                                              author_role VARCHAR(50) NOT NULL,
                                              author_name VARCHAR(255) NOT NULL,
-                                             author_email VARCHAR(255) NOT NULL DEFAULT '',
+                                             author_email VARCHAR(255) NULL DEFAULT '',
                                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                              parent_comment_id INT NULL,
                                              is_read BOOLEAN DEFAULT TRUE,
-                                             comment_type VARCHAR(20) DEFAULT 'comment' COMMENT 'comment, suggestion, approval, rejection',
+                                             comment_type VARCHAR(20) DEFAULT 'comment',
 
                                              FOREIGN KEY (topic_registration_id) REFERENCES project_topic_registrations(id) ON DELETE CASCADE,
                                              FOREIGN KEY (parent_comment_id) REFERENCES topic_registration_comments(id) ON DELETE SET NULL,
@@ -346,7 +345,7 @@ CREATE TABLE topic_registration_comments (
                                              INDEX idx_parent_comment (parent_comment_id)
 );
 
--- Create project topic registration versions table
+-- Create project topic registration versions table with proper NULL handling
 CREATE TABLE project_topic_registration_versions (
                                                      id INT AUTO_INCREMENT PRIMARY KEY,
                                                      topic_registration_id INT NOT NULL,
@@ -354,7 +353,7 @@ CREATE TABLE project_topic_registration_versions (
                                                      created_by VARCHAR(255) NOT NULL,
                                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                                      version_number INT NOT NULL,
-                                                     change_summary TEXT,
+                                                     change_summary TEXT NULL,
 
                                                      FOREIGN KEY (topic_registration_id) REFERENCES project_topic_registrations(id) ON DELETE CASCADE,
                                                      INDEX idx_topic_registration (topic_registration_id),
@@ -363,12 +362,12 @@ CREATE TABLE project_topic_registration_versions (
                                                      INDEX idx_version_number (version_number)
 );
 
--- Create user sessions table
+-- Create user sessions table with proper NULL handling
 CREATE TABLE user_sessions (
                                id INT AUTO_INCREMENT PRIMARY KEY,
                                session_id VARCHAR(128) NOT NULL UNIQUE,
                                user_email VARCHAR(255) NOT NULL,
-                               user_data LONGTEXT NOT NULL COMMENT 'JSON blob of user data',
+                               user_data LONGTEXT NOT NULL,
                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                expires_at BIGINT NOT NULL,
@@ -382,7 +381,7 @@ CREATE TABLE user_sessions (
                                INDEX idx_is_active (is_active)
 );
 
--- Create audit logs table
+-- Create audit logs table with proper NULL handling
 CREATE TABLE audit_logs (
                             id INT AUTO_INCREMENT PRIMARY KEY,
                             user_email VARCHAR(255) NOT NULL,
@@ -390,7 +389,7 @@ CREATE TABLE audit_logs (
                             action VARCHAR(100) NOT NULL,
                             resource_type VARCHAR(50) NOT NULL,
                             resource_id VARCHAR(100) NULL,
-                            details TEXT NULL COMMENT 'Additional details as text',
+                            details TEXT NULL,
                             ip_address VARCHAR(45) NULL,
                             user_agent TEXT NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -416,7 +415,7 @@ CREATE TABLE role_permissions (
                                   INDEX idx_permission (permission)
 );
 
--- Create user preferences table
+-- Create user preferences table with proper NULL handling
 CREATE TABLE user_preferences (
                                   id INT AUTO_INCREMENT PRIMARY KEY,
                                   user_email VARCHAR(255) NOT NULL UNIQUE,
@@ -425,14 +424,14 @@ CREATE TABLE user_preferences (
                                   notifications_enabled BOOLEAN DEFAULT TRUE,
                                   email_notifications BOOLEAN DEFAULT TRUE,
                                   timezone VARCHAR(50) DEFAULT 'Europe/Vilnius',
-                                  preferences_json TEXT NULL COMMENT 'Additional preferences as text',
+                                  preferences_json TEXT NULL,
                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
                                   INDEX idx_user_email (user_email)
 );
 
--- Create oauth states table
+-- Create oauth states table with proper NULL handling
 CREATE TABLE oauth_states (
                               id INT AUTO_INCREMENT PRIMARY KEY,
                               state_value VARCHAR(128) NOT NULL UNIQUE,
@@ -446,7 +445,7 @@ CREATE TABLE oauth_states (
                               INDEX idx_used (used)
 );
 
--- Create views
+-- Create views with COALESCE for NULL handling
 CREATE VIEW commission_access_view AS
 SELECT
     cm.*,
@@ -469,11 +468,11 @@ FROM commission_members cm;
 CREATE VIEW user_roles_view AS
 SELECT
     dh.email,
-    dh.name,
-    dh.sure_name,
+    COALESCE(dh.name, '') as name,
+    COALESCE(dh.sure_name, '') as sure_name,
     dh.department,
     dh.department_en,
-    dh.job_title,
+    COALESCE(dh.job_title, '') as job_title,
     'department_head' as role_type,
     dh.role as role_id,
     dh.is_active,
@@ -491,12 +490,32 @@ WHERE dh.is_active = 1;
 
 CREATE VIEW student_summary_view AS
 SELECT
-    sr.*,
+    sr.id,
+    sr.student_group,
+    sr.student_name,
+    sr.student_lastname,
+    sr.student_email,
+    sr.final_project_title,
+    COALESCE(sr.final_project_title_en, '') as final_project_title_en,
+    sr.supervisor_email,
+    COALESCE(sr.reviewer_name, '') as reviewer_name,
+    COALESCE(sr.reviewer_email, '') as reviewer_email,
+    sr.study_program,
+    sr.department,
+    sr.current_year,
+    sr.program_code,
+    sr.student_number,
+    sr.is_favorite,
+    sr.is_public_defense,
+    sr.defense_date,
+    COALESCE(sr.defense_location, '') as defense_location,
+    sr.created_at,
+    sr.updated_at,
     CASE
         WHEN ptr.status = 'approved' THEN 1
         ELSE 0
         END as topic_approved,
-    ptr.status as topic_status,
+    COALESCE(ptr.status, '') as topic_status,
     ptr.approved_by,
     ptr.approved_at,
     CASE
@@ -526,97 +545,138 @@ FROM student_records sr
          LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
          LEFT JOIN supervisor_reports sup_rep ON sr.id = sup_rep.student_record_id
          LEFT JOIN reviewer_reports rev_rep ON sr.id = rev_rep.student_record_id
-         LEFT JOIN videos v ON sr.id = v.student_record_id
+         LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
          LEFT JOIN documents source_doc ON sr.id = source_doc.student_record_id
     AND source_doc.document_type = 'thesis_source_code';
 
+-- Create triggers to handle NULLs automatically
+DELIMITER //
+
+CREATE TRIGGER before_student_records_insert
+    BEFORE INSERT ON student_records
+    FOR EACH ROW
+BEGIN
+    IF NEW.defense_location IS NULL THEN
+        SET NEW.defense_location = '';
+    END IF;
+    IF NEW.final_project_title_en IS NULL THEN
+        SET NEW.final_project_title_en = '';
+    END IF;
+    IF NEW.reviewer_email IS NULL THEN
+        SET NEW.reviewer_email = '';
+    END IF;
+    IF NEW.reviewer_name IS NULL THEN
+        SET NEW.reviewer_name = '';
+    END IF;
+END//
+
+CREATE TRIGGER before_student_records_update
+    BEFORE UPDATE ON student_records
+    FOR EACH ROW
+BEGIN
+    IF NEW.defense_location IS NULL THEN
+        SET NEW.defense_location = '';
+    END IF;
+    IF NEW.final_project_title_en IS NULL THEN
+        SET NEW.final_project_title_en = '';
+    END IF;
+    IF NEW.reviewer_email IS NULL THEN
+        SET NEW.reviewer_email = '';
+    END IF;
+    IF NEW.reviewer_name IS NULL THEN
+        SET NEW.reviewer_name = '';
+    END IF;
+END//
+
+DELIMITER ;
+
 -- Insert comprehensive role permissions
 INSERT INTO role_permissions (role_name, permission, resource_type) VALUES
-                                                                        -- Admin permissions
-                                                                        ('admin', 'full_access', NULL),
-                                                                        ('admin', 'manage_users', NULL),
-                                                                        ('admin', 'system_config', NULL),
-                                                                        ('admin', 'view_all_students', NULL),
-                                                                        ('admin', 'approve_topics', NULL),
-                                                                        ('admin', 'manage_department', NULL),
-                                                                        ('admin', 'generate_reports', NULL),
-                                                                        ('admin', 'manage_commission_access', 'commission_members'),
-                                                                        ('admin', 'view_academic_audit_logs', 'academic_audit_logs'),
-                                                                        ('admin', 'generate_commission_reports', 'commission_evaluations'),
-                                                                        ('admin', 'manage_source_uploads', 'documents'),
-                                                                        ('admin', 'view_all_repositories', 'documents'),
-                                                                        ('admin', 'manage_reviewer_access_tokens', 'reviewer_access_tokens'),
+-- Admin permissions
+('admin', 'full_access', NULL),
+('admin', 'manage_users', NULL),
+('admin', 'system_config', NULL),
+('admin', 'view_all_students', NULL),
+('admin', 'approve_topics', NULL),
+('admin', 'manage_department', NULL),
+('admin', 'generate_reports', NULL),
+('admin', 'manage_commission_access', 'commission_members'),
+('admin', 'view_academic_audit_logs', 'academic_audit_logs'),
+('admin', 'generate_commission_reports', 'commission_evaluations'),
+('admin', 'manage_source_uploads', 'documents'),
+('admin', 'view_all_repositories', 'documents'),
+('admin', 'manage_reviewer_access_tokens', 'reviewer_access_tokens'),
 
-                                                                        -- Department Head Level 1 permissions
-                                                                        ('department_head_1', 'view_all_students', NULL),
-                                                                        ('department_head_1', 'approve_topics', NULL),
-                                                                        ('department_head_1', 'manage_department', NULL),
-                                                                        ('department_head_1', 'generate_reports', NULL),
-                                                                        ('department_head_1', 'view_department_reports', NULL),
-                                                                        ('department_head_1', 'manage_commission', NULL),
-                                                                        ('department_head_1', 'create_commission_access', 'commission_members'),
-                                                                        ('department_head_1', 'view_commission_evaluations', 'commission_evaluations'),
-                                                                        ('department_head_1', 'view_source_uploads', 'documents'),
-                                                                        ('department_head_1', 'download_source_code', 'documents'),
-                                                                        ('department_head_1', 'create_reviewer_access_tokens', 'reviewer_access_tokens'),
+-- Department Head Level 1 permissions
+('department_head_1', 'view_all_students', NULL),
+('department_head_1', 'approve_topics', NULL),
+('department_head_1', 'manage_department', NULL),
+('department_head_1', 'generate_reports', NULL),
+('department_head_1', 'view_department_reports', NULL),
+('department_head_1', 'manage_commission', NULL),
+('department_head_1', 'create_commission_access', 'commission_members'),
+('department_head_1', 'view_commission_evaluations', 'commission_evaluations'),
+('department_head_1', 'view_source_uploads', 'documents'),
+('department_head_1', 'download_source_code', 'documents'),
+('department_head_1', 'create_reviewer_access_tokens', 'reviewer_access_tokens'),
 
-                                                                        -- Department Head Level 2 permissions
-                                                                        ('department_head_2', 'view_all_students', NULL),
-                                                                        ('department_head_2', 'approve_topics', NULL),
-                                                                        ('department_head_2', 'generate_reports', NULL),
-                                                                        ('department_head_2', 'view_department_reports', NULL),
-                                                                        ('department_head_2', 'manage_commission', NULL),
-                                                                        ('department_head_2', 'create_commission_access', 'commission_members'),
-                                                                        ('department_head_2', 'view_commission_evaluations', 'commission_evaluations'),
-                                                                        ('department_head_2', 'view_source_uploads', 'documents'),
-                                                                        ('department_head_2', 'download_source_code', 'documents'),
-                                                                        ('department_head_2', 'create_reviewer_access_tokens', 'reviewer_access_tokens'),
+-- Department Head Level 2 permissions
+('department_head_2', 'view_all_students', NULL),
+('department_head_2', 'approve_topics', NULL),
+('department_head_2', 'generate_reports', NULL),
+('department_head_2', 'view_department_reports', NULL),
+('department_head_2', 'manage_commission', NULL),
+('department_head_2', 'create_commission_access', 'commission_members'),
+('department_head_2', 'view_commission_evaluations', 'commission_evaluations'),
+('department_head_2', 'view_source_uploads', 'documents'),
+('department_head_2', 'download_source_code', 'documents'),
+('department_head_2', 'create_reviewer_access_tokens', 'reviewer_access_tokens'),
 
-                                                                        -- Department Head Level 3 permissions
-                                                                        ('department_head_3', 'view_all_students', NULL),
-                                                                        ('department_head_3', 'generate_reports', NULL),
-                                                                        ('department_head_3', 'view_department_reports', NULL),
+-- Department Head Level 3 permissions
+('department_head_3', 'view_all_students', NULL),
+('department_head_3', 'generate_reports', NULL),
+('department_head_3', 'view_department_reports', NULL),
 
-                                                                        -- Department Head Level 4 permissions
-                                                                        ('department_head_4', 'view_all_students', NULL),
-                                                                        ('department_head_4', 'approve_topics', NULL),
-                                                                        ('department_head_4', 'generate_reports', NULL),
+-- Department Head Level 4 permissions
+('department_head_4', 'view_all_students', NULL),
+('department_head_4', 'approve_topics', NULL),
+('department_head_4', 'generate_reports', NULL),
 
-                                                                        -- Supervisor permissions
-                                                                        ('supervisor', 'view_assigned_students', NULL),
-                                                                        ('supervisor', 'create_reports', NULL),
-                                                                        ('supervisor', 'review_submissions', NULL),
-                                                                        ('supervisor', 'approve_student_topics', NULL),
-                                                                        ('supervisor', 'view_student_source', 'documents'),
-                                                                        ('supervisor', 'download_student_source', 'documents'),
+-- Supervisor permissions
+('supervisor', 'view_assigned_students', NULL),
+('supervisor', 'create_reports', NULL),
+('supervisor', 'review_submissions', NULL),
+('supervisor', 'approve_student_topics', NULL),
+('supervisor', 'view_student_source', 'documents'),
+('supervisor', 'download_student_source', 'documents'),
 
-                                                                        -- Commission member permissions
-                                                                        ('commission_member', 'view_thesis', NULL),
-                                                                        ('commission_member', 'evaluate_defense', NULL),
-                                                                        ('commission_member', 'view_defense_materials', 'documents'),
-                                                                        ('commission_member', 'submit_evaluation', 'commission_evaluations'),
-                                                                        ('commission_member', 'view_student_summary', 'student_records'),
-                                                                        ('commission_member', 'view_thesis_source', 'documents'),
+-- Commission member permissions
+('commission_member', 'view_thesis', NULL),
+('commission_member', 'evaluate_defense', NULL),
+('commission_member', 'view_defense_materials', 'documents'),
+('commission_member', 'submit_evaluation', 'commission_evaluations'),
+('commission_member', 'view_student_summary', 'student_records'),
+('commission_member', 'view_thesis_source', 'documents'),
 
-                                                                        -- Reviewer permissions
-                                                                        ('reviewer', 'view_thesis_materials', 'documents'),
-                                                                        ('reviewer', 'submit_review', 'reviewer_reports'),
-                                                                        ('reviewer', 'download_thesis', 'documents'),
-                                                                        ('reviewer', 'view_thesis_source_code', 'documents'),
+-- Reviewer permissions
+('reviewer', 'view_thesis_materials', 'documents'),
+('reviewer', 'submit_review', 'reviewer_reports'),
+('reviewer', 'download_thesis', 'documents'),
+('reviewer', 'view_thesis_source_code', 'documents'),
 
-                                                                        -- Student permissions
-                                                                        ('student', 'view_own_data', NULL),
-                                                                        ('student', 'submit_topic', NULL),
-                                                                        ('student', 'upload_documents', NULL),
-                                                                        ('student', 'upload_source_code', 'documents'),
-                                                                        ('student', 'view_own_source_uploads', 'documents');
+-- Student permissions
+('student', 'view_own_data', NULL),
+('student', 'submit_topic', NULL),
+('student', 'upload_documents', NULL),
+('student', 'upload_source_code', 'documents'),
+('student', 'view_own_source_uploads', 'documents');
 
 -- Insert initial department heads
-INSERT INTO department_heads (email, name, sure_name, department, department_en, job_title, role, is_active) VALUES
-                                                                                                                 ('j.petraitis@viko.lt', 'Jonas', 'Petraitis', 'Informacijos technologijų katedra', 'Information Technology Department', 'Katedros vedėjas', 1, 1),
-                                                                                                                 ('r.kazlauskiene@viko.lt', 'Rasa', 'Kazlauskienė', 'Verslo vadybos katedra', 'Business Management Department', 'Katedros vedėja', 1, 1),
-                                                                                                                 ('m.gzegozevskis@eif.viko.lt', 'Maksim', 'Gžegožewski', 'Elektronikos ir informatikos fakultetas', 'Faculty of Electronics and Informatics', 'Sistemos administratorius', 0, 1);
+INSERT INTO department_heads (id, email, name, sure_name, department, department_en, job_title, role, is_active, created_at) VALUES (1, 't.liogiene@eif.viko.lt', 'Tatjana', 'Liogienė', 'Informacinių sistemų', 'Information Systems', 'Katedros vedėja', 1, 1, '2025-06-04 01:40:59');
+INSERT INTO department_heads (id, email, name, sure_name, department, department_en, job_title, role, is_active, created_at) VALUES (2, 'a.kirdeikiene@eif.viko.lt', 'Aliona', 'Kirdeikienė', 'Elektronikos ir kompiuterių inžinerijos', 'Electronics and Computer Engineering', 'Katedros vedėja', 1, 1, '2025-06-04 01:40:59');
+INSERT INTO department_heads (id, email, name, sure_name, department, department_en, job_title, role, is_active, created_at) VALUES (3, 'm.gzegozevskis@eif.viko.lt', 'Marius', 'Gžegoževskis', 'Programinės įrangos', 'Software Engineering', 'Sistemos administratorius', 1, 1, '2025-06-04 04:40:59');
+INSERT INTO department_heads (id, email, name, sure_name, department, department_en, job_title, role, is_active, created_at) VALUES (4, 'j.zailskas@eif.viko.lt', 'Justinas', 'Zailskas', 'Programinės įrangos', 'Software Engineering', 'Katedros vedėjas', 1, 1, '2025-06-04 14:10:46');
 
 -- Create audit log entry for schema creation
 INSERT INTO audit_logs (user_email, user_role, action, resource_type, details, created_at)
-VALUES ('system', 'admin', 'schema_created', 'database', 'Complete initial schema with all features created', NOW());
+VALUES ('system', 'admin', 'schema_created', 'database', 'Complete initial schema with NULL handling created', NOW());
