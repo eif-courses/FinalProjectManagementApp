@@ -431,30 +431,30 @@ func (h *CommissionHandler) ShowStudentList(w http.ResponseWriter, r *http.Reque
         sr.defense_location,
         sr.created_at,
         sr.updated_at,
-        CASE 
+        COALESCE(CASE 
             WHEN ptr.status = 'approved' THEN 1 
             ELSE 0 
-        END as topic_approved,
-        ptr.status as topic_status,
+        END, 0) as topic_approved,
+        COALESCE(ptr.status, '') as topic_status,
         ptr.approved_by,
         ptr.approved_at,
-        CASE 
+        COALESCE(CASE 
             WHEN sup_rep.id IS NOT NULL THEN 1 
             ELSE 0 
-        END as has_supervisor_report,
+        END, 0) as has_supervisor_report,
         sup_rep.is_signed as supervisor_report_signed,
-        CASE 
+        COALESCE(CASE 
             WHEN rev_rep.id IS NOT NULL THEN 1 
             ELSE 0 
-        END as has_reviewer_report,
+        END, 0) as has_reviewer_report,
         rev_rep.is_signed as reviewer_report_signed,
         rev_rep.grade as reviewer_grade,
         rev_rep.review_questions as reviewer_questions,
-        CASE 
+        COALESCE(CASE 
             WHEN v.id IS NOT NULL THEN 1 
             ELSE 0 
-        END as has_video,
-        CASE 
+        END, 0) as has_video,
+        COALESCE(CASE 
             WHEN EXISTS (
                 SELECT 1 FROM documents d 
                 WHERE d.student_record_id = sr.id 
@@ -462,26 +462,24 @@ func (h *CommissionHandler) ShowStudentList(w http.ResponseWriter, r *http.Reque
                 LIMIT 1
             ) THEN 1 
             ELSE 0 
-        END as has_source_code,
-        (
+        END, 0) as has_source_code,
+        COALESCE((
             SELECT d2.repository_url 
             FROM documents d2 
             WHERE d2.student_record_id = sr.id 
             AND d2.document_type IN ('thesis_source_code', 'SOURCE_CODE')
             ORDER BY d2.uploaded_date DESC
             LIMIT 1
-        ) as repository_url
+        ), '') as repository_url
     FROM student_records sr
     LEFT JOIN project_topic_registrations ptr ON sr.id = ptr.student_record_id
     LEFT JOIN supervisor_reports sup_rep ON sr.id = sup_rep.student_record_id
     LEFT JOIN reviewer_reports rev_rep ON sr.id = rev_rep.student_record_id
     LEFT JOIN videos v ON sr.id = v.student_record_id AND v.status = 'ready'
     ` + whereClause + `
-    GROUP BY sr.id
     ORDER BY sr.student_lastname ASC, sr.student_name ASC
     LIMIT ? OFFSET ?
-	`
-
+`
 	// Execute the query
 	var students []database.StudentSummaryView
 	err = h.db.Select(&students, studentQuery, paginatedArgs...)
