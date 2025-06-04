@@ -175,7 +175,7 @@ func getTopicRegistrationStatus(student database.StudentSummaryView) string {
 }
 
 func getReviewerReportStatus(student database.StudentSummaryView) string {
-	if student.ReviewerName == "" {
+	if !student.ReviewerName.Valid || student.ReviewerName.String == "" {
 		return "Nepaskirtas"
 	}
 
@@ -750,21 +750,30 @@ func (h *StudentListHandler) mapRecordToStudent(record map[string]string, valida
 
 	student := &database.StudentRecord{
 		// Try multiple possible header names with variations
-		StudentName:         getValue("StudentName", "student_name", "Name", "Vardas", "Student Name"),
-		StudentLastname:     getValue("StudentLastname", "student_lastname", "Lastname", "Pavardė", "Student Lastname", "StudentSurname"),
-		StudentNumber:       getValue("StudentNumber", "student_number", "Number", "Numeris", "Student Number"),
-		StudentEmail:        getValue("StudentEmail", "student_email", "Email", "El. paštas", "Student Email"),
-		StudentGroup:        getValue("StudentGroup", "student_group", "Group", "Grupė", "Student Group"),
-		FinalProjectTitle:   getValue("FinalProjectTitle", "final_project_title", "Title", "Tema", "Final Project Title"),
-		FinalProjectTitleEn: getValue("FinalProjectTitleEn", "final_project_title_en", "TitleEn", "Title En", "FinalProjectTitle En"),
-		SupervisorEmail:     getValue("SupervisorEmail", "supervisor_email", "Supervisor", "Vadovas", "Supervisor Email"),
-		StudyProgram:        getValue("StudyProgram", "study_program", "Program", "Programa", "Study Program"),
-		Department:          getValue("Department", "department", "Katedra", "Dept"),
-		ProgramCode:         getValue("ProgramCode", "program_code", "Code", "Kodas", "Program Code"),
-		ReviewerEmail:       getValue("ReviewerEmail", "reviewer_email", "Reviewer Email"),
-		ReviewerName:        getValue("ReviewerName", "reviewer_name", "Reviewer", "Recenzentas", "Reviewer Name"),
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
+		StudentName:       getValue("StudentName", "student_name", "Name", "Vardas", "Student Name"),
+		StudentLastname:   getValue("StudentLastname", "student_lastname", "Lastname", "Pavardė", "Student Lastname", "StudentSurname"),
+		StudentNumber:     getValue("StudentNumber", "student_number", "Number", "Numeris", "Student Number"),
+		StudentEmail:      getValue("StudentEmail", "student_email", "Email", "El. paštas", "Student Email"),
+		StudentGroup:      getValue("StudentGroup", "student_group", "Group", "Grupė", "Student Group"),
+		FinalProjectTitle: getValue("FinalProjectTitle", "final_project_title", "Title", "Tema", "Final Project Title"),
+		FinalProjectTitleEn: sql.NullString{
+			String: getValue("FinalProjectTitleEn", "final_project_title_en", "TitleEn", "Title En", "FinalProjectTitle En"),
+			Valid:  getValue("FinalProjectTitleEn", "final_project_title_en", "TitleEn", "Title En", "FinalProjectTitle En") != "",
+		},
+		SupervisorEmail: getValue("SupervisorEmail", "supervisor_email", "Supervisor", "Vadovas", "Supervisor Email"),
+		StudyProgram:    getValue("StudyProgram", "study_program", "Program", "Programa", "Study Program"),
+		Department:      getValue("Department", "department", "Katedra", "Dept"),
+		ProgramCode:     getValue("ProgramCode", "program_code", "Code", "Kodas", "Program Code"),
+		ReviewerEmail: sql.NullString{
+			String: getValue("ReviewerEmail", "reviewer_email", "Reviewer Email"),
+			Valid:  getValue("ReviewerEmail", "reviewer_email", "Reviewer Email") != "",
+		},
+		ReviewerName: sql.NullString{
+			String: getValue("ReviewerName", "reviewer_name", "Reviewer", "Recenzentas", "Reviewer Name"),
+			Valid:  getValue("ReviewerName", "reviewer_name", "Reviewer", "Recenzentas", "Reviewer Name") != "",
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	// Parse current year with multiple possible keys
@@ -1664,7 +1673,7 @@ func (h *StudentListHandler) ReviewerReportSubmitHandler(w http.ResponseWriter, 
 	}
 
 	// Check if user can submit review
-	if user.Role != auth.RoleReviewer || student.ReviewerEmail != user.Email {
+	if user.Role != auth.RoleReviewer || !student.ReviewerEmail.Valid || student.ReviewerEmail.String != user.Email {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
@@ -1844,9 +1853,8 @@ func (h *StudentListHandler) ReviewerReportSaveDraftHandler(w http.ResponseWrite
 		http.Error(w, "Student not found", http.StatusNotFound)
 		return
 	}
-
 	// Check if user can save draft
-	if user.Role != auth.RoleReviewer || student.ReviewerEmail != user.Email {
+	if user.Role != auth.RoleReviewer || !student.ReviewerEmail.Valid || student.ReviewerEmail.String != user.Email {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
@@ -2079,7 +2087,7 @@ func (h *StudentListHandler) ReviewerReportModalHandlerWithToken(w http.Response
 		StudentRecord: &student,
 		IsReadOnly:    isReadOnly,
 		FormVariant:   formVariant,
-		ReviewerName:  student.ReviewerName,
+		ReviewerName:  student.ReviewerName.String,
 		AccessToken:   accessToken, // Add this line
 	}
 
@@ -2382,7 +2390,7 @@ func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r
 	isReadOnly := mode == "view"
 
 	// For reviewers, check if they are assigned to this student
-	if user.Role == auth.RoleReviewer && student.ReviewerEmail != user.Email {
+	if user.Role == auth.RoleReviewer && !student.ReviewerEmail.Valid || student.ReviewerEmail.String != user.Email {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
@@ -2416,7 +2424,7 @@ func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r
 		}
 	} else if err == sql.ErrNoRows {
 		// No report exists - check if user can create one
-		if user.Role != auth.RoleReviewer || student.ReviewerEmail != user.Email {
+		if user.Role != auth.RoleReviewer || !student.ReviewerEmail.Valid || student.ReviewerEmail.String != user.Email {
 			isReadOnly = true
 		}
 	} else {
@@ -2434,7 +2442,7 @@ func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r
 		StudentRecord: &student,
 		IsReadOnly:    isReadOnly,
 		FormVariant:   formVariant,
-		ReviewerName:  student.ReviewerName,
+		ReviewerName:  student.ReviewerName.String,
 		AccessToken:   "", // Empty for authenticated users
 	}
 

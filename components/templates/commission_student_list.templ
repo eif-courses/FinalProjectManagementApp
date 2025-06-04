@@ -443,7 +443,7 @@ templ CommissionStudentTable(students []database.StudentSummaryView, pagination 
 						}
 						@table.Cell() {
 							@CommissionReviewerCell(
-								student.ReviewerName,
+								getStringFromNullString(student.ReviewerName),
 								student.HasReviewerReport,
 								student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool,
 								student.ReviewerGrade,

@@ -354,7 +354,7 @@ func (h *DashboardHandlers) getStudentDashboardData(email string) (*database.Stu
 	if studentRecord.DefenseDate.Valid {
 		data.DefenseScheduled = true
 		data.DefenseDate = studentRecord.GetDefenseDateFormatted()
-		data.DefenseLocation = studentRecord.DefenseLocation
+		data.DefenseLocation = studentRecord.DefenseLocation.String
 	}
 
 	// Calculate completion status

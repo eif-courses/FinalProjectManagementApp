@@ -925,7 +925,7 @@ templ StudentListTable(user *auth.AuthenticatedUser, students []database.Student
                     }
 					if canViewReviewer(user.Role) {
 						@table.Cell() {
-							@ReviewerStatus(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool, student.ID)
+@ReviewerStatus(user, getStringFromNullString(student.ReviewerName), student.HasReviewerReport, student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool, student.ID)
 						}
 					}
 					if canViewSupervisor(user.Role) {

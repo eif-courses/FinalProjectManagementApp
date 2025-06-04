@@ -2029,7 +2029,7 @@ func StudentListTable(user *auth.AuthenticatedUser, students []database.StudentS
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Err = ReviewerStatus(user, student.ReviewerName, student.HasReviewerReport, student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool, student.ID).Render(ctx, templ_7745c5c3_Buffer)
+								templ_7745c5c3_Err = ReviewerStatus(user, getStringFromNullString(student.ReviewerName), student.HasReviewerReport, student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool, student.ID).Render(ctx, templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}

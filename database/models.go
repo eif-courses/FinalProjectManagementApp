@@ -431,28 +431,29 @@ func (aal *AcademicAuditLog) GetMetadataMap() map[string]interface{} {
 // ================================
 
 // StudentRecord represents a student in the system (enhanced)
+// StudentRecord represents a student in the system (enhanced)
 type StudentRecord struct {
-	ID                  int          `json:"id" db:"id"`
-	StudentGroup        string       `json:"student_group" db:"student_group"`
-	FinalProjectTitle   string       `json:"final_project_title" db:"final_project_title"`
-	FinalProjectTitleEn string       `json:"final_project_title_en" db:"final_project_title_en"`
-	StudentEmail        string       `json:"student_email" db:"student_email"`
-	StudentName         string       `json:"student_name" db:"student_name"`
-	StudentLastname     string       `json:"student_lastname" db:"student_lastname"`
-	StudentNumber       string       `json:"student_number" db:"student_number"`
-	SupervisorEmail     string       `json:"supervisor_email" db:"supervisor_email"`
-	StudyProgram        string       `json:"study_program" db:"study_program"`
-	Department          string       `json:"department" db:"department"`
-	ProgramCode         string       `json:"program_code" db:"program_code"`
-	CurrentYear         int          `json:"current_year" db:"current_year"`
-	ReviewerEmail       string       `json:"reviewer_email" db:"reviewer_email"`
-	ReviewerName        string       `json:"reviewer_name" db:"reviewer_name"`
-	IsFavorite          bool         `json:"is_favorite" db:"is_favorite"`
-	IsPublicDefense     bool         `json:"is_public_defense" db:"is_public_defense"`
-	DefenseDate         sql.NullTime `json:"defense_date" db:"defense_date"` // Changed from *int64 to sql.NullTime
-	DefenseLocation     string       `json:"defense_location" db:"defense_location"`
-	CreatedAt           time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt           time.Time    `json:"updated_at" db:"updated_at"`
+	ID                  int            `json:"id" db:"id"`
+	StudentGroup        string         `json:"student_group" db:"student_group"`
+	FinalProjectTitle   string         `json:"final_project_title" db:"final_project_title"`
+	FinalProjectTitleEn sql.NullString `json:"final_project_title_en" db:"final_project_title_en"` // Changed
+	StudentEmail        string         `json:"student_email" db:"student_email"`
+	StudentName         string         `json:"student_name" db:"student_name"`
+	StudentLastname     string         `json:"student_lastname" db:"student_lastname"`
+	StudentNumber       string         `json:"student_number" db:"student_number"`
+	SupervisorEmail     string         `json:"supervisor_email" db:"supervisor_email"`
+	StudyProgram        string         `json:"study_program" db:"study_program"`
+	Department          string         `json:"department" db:"department"`
+	ProgramCode         string         `json:"program_code" db:"program_code"`
+	CurrentYear         int            `json:"current_year" db:"current_year"`
+	ReviewerEmail       sql.NullString `json:"reviewer_email" db:"reviewer_email"` // Changed
+	ReviewerName        sql.NullString `json:"reviewer_name" db:"reviewer_name"`   // Changed
+	IsFavorite          bool           `json:"is_favorite" db:"is_favorite"`
+	IsPublicDefense     bool           `json:"is_public_defense" db:"is_public_defense"`
+	DefenseDate         sql.NullTime   `json:"defense_date" db:"defense_date"`
+	DefenseLocation     sql.NullString `json:"defense_location" db:"defense_location"` // Changed
+	CreatedAt           time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at" db:"updated_at"`
 }
 
 // GetDefenseDateFormatted returns formatted defense date
@@ -490,8 +491,8 @@ func (s *StudentRecord) GetDisplayGroup() string {
 
 // GetLocalizedTitle returns project title in specified language
 func (s *StudentRecord) GetLocalizedTitle(lang string) string {
-	if lang == "en" && s.FinalProjectTitleEn != "" {
-		return s.FinalProjectTitleEn
+	if lang == "en" && s.FinalProjectTitleEn.Valid && s.FinalProjectTitleEn.String != "" {
+		return s.FinalProjectTitleEn.String
 	}
 	return s.FinalProjectTitle
 }

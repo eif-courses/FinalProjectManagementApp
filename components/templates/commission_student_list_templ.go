@@ -1322,7 +1322,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 							}
 							ctx = templ.InitializeContext(ctx)
 							templ_7745c5c3_Err = CommissionReviewerCell(
-								student.ReviewerName,
+								getStringFromNullString(student.ReviewerName),
 								student.HasReviewerReport,
 								student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool,
 								student.ReviewerGrade,
