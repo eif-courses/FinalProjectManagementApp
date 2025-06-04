@@ -2363,6 +2363,7 @@ func (h *StudentListHandler) getReviewerStudents(reviewerEmail string) ([]databa
 }
 
 // Update the existing ReviewerReportModalHandler to pass empty access token
+// Update the existing ReviewerReportModalHandler to allow students to view their own reports
 func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
 	if !ok {
@@ -2389,8 +2390,34 @@ func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r
 	mode := r.URL.Query().Get("mode")
 	isReadOnly := mode == "view"
 
-	// For reviewers, check if they are assigned to this student
-	if user.Role == auth.RoleReviewer && !student.ReviewerEmail.Valid || student.ReviewerEmail.String != user.Email {
+	// Allow access based on role
+	canAccess := false
+	switch user.Role {
+	case auth.RoleStudent:
+		// Students can view their own reports in read-only mode
+		if student.StudentEmail == user.Email {
+			canAccess = true
+			isReadOnly = true // Students can only view, not edit
+		}
+	case auth.RoleReviewer:
+		// Reviewers can view/edit if they are assigned to this student
+		if student.ReviewerEmail.Valid && student.ReviewerEmail.String == user.Email {
+			canAccess = true
+			// isReadOnly is determined by mode parameter or if report is signed
+		}
+	case auth.RoleSupervisor:
+		// Supervisors can view reports of their students in read-only mode
+		if student.SupervisorEmail == user.Email {
+			canAccess = true
+			isReadOnly = true
+		}
+	case auth.RoleAdmin, auth.RoleDepartmentHead:
+		// Admins and department heads can view all reports in read-only mode
+		canAccess = true
+		isReadOnly = true
+	}
+
+	if !canAccess {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
@@ -2423,10 +2450,14 @@ func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r
 			isReadOnly = true
 		}
 	} else if err == sql.ErrNoRows {
-		// No report exists - check if user can create one
+		// No report exists
 		if user.Role != auth.RoleReviewer || !student.ReviewerEmail.Valid || student.ReviewerEmail.String != user.Email {
-			isReadOnly = true
+			// If user is not the assigned reviewer, they can't create a report
+			http.Error(w, "Report not found", http.StatusNotFound)
+			return
 		}
+		// Reviewer can create a new report
+		isReadOnly = false
 	} else {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -2438,11 +2469,17 @@ func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r
 		formVariant = "en"
 	}
 
+	// Get reviewer name for display
+	reviewerName := ""
+	if student.ReviewerName.Valid {
+		reviewerName = student.ReviewerName.String
+	}
+
 	props := database.ReviewerReportFormProps{
 		StudentRecord: &student,
 		IsReadOnly:    isReadOnly,
 		FormVariant:   formVariant,
-		ReviewerName:  student.ReviewerName.String,
+		ReviewerName:  reviewerName,
 		AccessToken:   "", // Empty for authenticated users
 	}
 

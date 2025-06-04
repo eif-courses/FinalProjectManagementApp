@@ -13,7 +13,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 // Helper functions - these should be at package level
@@ -302,37 +301,6 @@ templ CommissionStudentList(accessCode string, students []database.StudentSummar
 				});
 			});
 
-			// Show reviewer questions in a popup
-			function showReviewerQuestions(reviewerName, questions) {
-				// Create modal for questions
-				const modal = document.createElement('div');
-				modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
-				modal.onclick = function(e) {
-					if (e.target === modal) {
-						modal.remove();
-					}
-				};
-
-				modal.innerHTML = `
-					<div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-						<div class="p-6 border-b">
-							<h3 class="text-lg font-semibold">Recenzento klausimai</h3>
-							<p class="text-sm text-gray-600 mt-1">${reviewerName}</p>
-						</div>
-						<div class="p-6 overflow-y-auto max-h-[60vh]">
-							<div class="whitespace-pre-wrap text-sm">${questions}</div>
-						</div>
-						<div class="p-4 border-t bg-gray-50">
-							<button onclick="this.closest('.fixed').remove()"
-									class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
-								Uždaryti
-							</button>
-						</div>
-					</div>
-				`;
-
-				document.body.appendChild(modal);
-			}
 
 			function viewTopicRegistration(studentId, accessCode) {
 				// Create modal container if it doesn't exist
@@ -409,7 +377,7 @@ templ CommissionStudentTable(students []database.StudentSummaryView, pagination 
 					@table.Head() { Vardas pavardė }
 					@table.Head() { Temos registravimo lapas }
 					@table.Head() { Dokumentai }
-					@table.Head() { Recenzentas }
+					@table.Head() { Recenzento įvertinimas }  // Changed from "Recenzentas"
 				}
 			}
 			@table.Body() {
@@ -583,50 +551,31 @@ templ CommissionTopicCell(studentID int, topicStatus string, topicApproved bool,
 	</div>
 }
 
-// Enhanced reviewer cell with questions preview
+// Enhanced reviewer cell with questions displayed inline
+// Enhanced reviewer cell with inline grade display
 templ CommissionReviewerCell(reviewerName string, hasReport bool, isSigned bool, reviewerGrade sql.NullFloat64, reviewerQuestions sql.NullString) {
 	if reviewerName != "" {
 		<div class="space-y-1">
-			<div class="flex items-center gap-2">
-				<span class="text-xs font-medium">{ reviewerName }</span>
+			<div class="text-xs">
 				if hasReport && reviewerGrade.Valid && reviewerGrade.Float64 > 0 {
-					@badge.Badge(badge.Props{
-						Variant: badge.VariantDefault,
-						Class: "text-xs px-1.5 py-0 font-bold",
-					}) {
-						{ fmt.Sprintf("%.1f", reviewerGrade.Float64) }
+					<span class="font-medium">Įvertinimas: { fmt.Sprintf("%.0f", reviewerGrade.Float64) }</span>
+					if isSigned {
+						<span class="text-green-600 ml-2">✓ Pasirašyta</span>
 					}
+				} else if hasReport {
+					<span class="text-blue-600">Užpildyta</span>
+				} else {
+					<span class="text-yellow-600">Laukiama</span>
 				}
 			</div>
-			if hasReport {
-				<div class="text-xs">
-					if isSigned {
-						<span class="text-green-600">✓ Pasirašyta</span>
-					} else {
-						<span class="text-blue-600">Užpildyta</span>
-					}
-				</div>
-				if reviewerQuestions.Valid && reviewerQuestions.String != "" {
-					<div class="mt-1">
-						@button.Button(button.Props{
-							Variant: button.VariantGhost,
-							Size:    button.SizeIcon,
-							Class:   "h-5 w-5 p-0 text-blue-600 hover:text-blue-800",
-							Attributes: templ.Attributes{
-								"onclick": fmt.Sprintf("showReviewerQuestions('%s', '%s')",
-									strings.ReplaceAll(reviewerName, "'", "\\'"),
-									strings.ReplaceAll(reviewerQuestions.String, "'", "\\'")),
-								"title": "Peržiūrėti klausimus",
-							},
-						}) {
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							</svg>
-						}
+			if hasReport && reviewerQuestions.Valid && reviewerQuestions.String != "" {
+				<div class="mt-1">
+					<div class="text-xs text-gray-700 bg-gray-50 p-1.5 rounded border border-gray-200">
+						<div class="whitespace-pre-wrap break-words max-h-20 overflow-y-auto">
+							<span class="font-medium">Klausimai</span>: { reviewerQuestions.String }
+						</div>
 					</div>
-				}
-			} else {
-				<span class="text-xs text-yellow-600">Neužpildyta</span>
+				</div>
 			}
 		</div>
 	} else {

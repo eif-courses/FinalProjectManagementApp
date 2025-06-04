@@ -2,9 +2,11 @@ package repository
 
 import (
     "FinalProjectManagementApp/types"
+        "FinalProjectManagementApp/database"
+
 )
 
-templ FileViewer(studentID int, filePath string, content *types.FileContent, accessCode string) {
+templ FileViewer(studentID int, filePath string, content *types.FileContent, access database.AccessInfo) {
     <div id="file-content" class="container mx-auto px-4 py-6">
         <div class="code-viewer">
             <div class="code-header">

@@ -3018,3 +3018,20 @@ func (rat *ReviewerAccessToken) CanAccess() bool {
 	return rat.IsActive && !rat.IsExpired() &&
 		(rat.MaxAccess == 0 || rat.AccessCount < rat.MaxAccess)
 }
+
+// ACCESS INFO FOR REPOS
+type AccessInfo struct {
+	Code string
+	Type string // "reviewer" or "commission"
+}
+
+func (a AccessInfo) IsValid() bool {
+	return a.Code != "" && (a.Type == "reviewer" || a.Type == "commission")
+}
+
+func (a AccessInfo) BuildPath(pattern string, args ...interface{}) string {
+	if !a.IsValid() {
+		return fmt.Sprintf(pattern, args...)
+	}
+	return fmt.Sprintf("/%s/%s%s", a.Type, a.Code, fmt.Sprintf(pattern, args...))
+}

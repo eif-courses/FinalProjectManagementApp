@@ -6,7 +6,7 @@ import (
     "fmt"
 )
 
-templ RepositoryHeader(student *database.StudentRecord, repoInfo *database.Document, stats types.RepositoryStats, accessCode string) {
+templ RepositoryHeader(student *database.StudentRecord, repoInfo *database.Document, stats types.RepositoryStats, access database.AccessInfo) {
     <div class="bg-white border-b">
         <div class="container mx-auto px-4 py-6">
             <div class="flex items-start justify-between">
@@ -45,43 +45,37 @@ templ RepositoryHeader(student *database.StudentRecord, repoInfo *database.Docum
                             </svg>
                             View on GitHub
                         </a>
-                        if accessCode != "" {
-                            <a href={ templ.SafeURL(fmt.Sprintf("/commission/%s/repository/student/%d/download", accessCode, student.ID)) }
-                               class="inline-flex items-center px-4 py-2 rounded-md transition-colors text-sm font-medium"
-                               style="background-color: #16a34a; color: white;">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-                                </svg>
-                                Download ZIP
-                            </a>
-                        } else {
-                            <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d/download", student.ID)) }
-                               class="inline-flex items-center px-4 py-2 rounded-md transition-colors text-sm font-medium"
-                               style="background-color: #16a34a; color: white;">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-                                </svg>
-                                Download ZIP
-                            </a>
-                        }
+                       if access.IsValid() {
+                              <a href={ templ.SafeURL(access.BuildPath("/repository/student/%d/download", student.ID)) }
+                                 class="inline-flex items-center px-4 py-2 rounded-md transition-colors text-sm font-medium"
+                                 style="background-color: #16a34a; color: white;">
+                                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                                  </svg>
+                                  Download ZIP
+                              </a>
+                          } else {
+                              <a href={ templ.SafeURL(fmt.Sprintf("/repository/student/%d/download", student.ID)) }
+                                 class="inline-flex items-center px-4 py-2 rounded-md transition-colors text-sm font-medium"
+                                 style="background-color: #16a34a; color: white;">
+                                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                                  </svg>
+                                  Download ZIP
+                              </a>
+                          }
                     }
-                   if accessCode != "" {
-                             <a href={ templ.SafeURL(fmt.Sprintf("/commission/%s", accessCode)) }
-                                class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-medium">
-                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                                 </svg>
-                                 Back
-                             </a>
-                         } else {
-                             <a href="/students-list"
-                                class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-medium">
-                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                                 </svg>
-                                 Back
-                             </a>
-                         }
+               if access.IsValid() {
+                       <a href={ templ.SafeURL(access.BuildPath("")) }
+                          class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-medium">
+                           Back
+                       </a>
+                   } else {
+                       <a href="/students-list"
+                          class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-medium">
+                           Back
+                       </a>
+                   }
                 </div>
             </div>
         </div>

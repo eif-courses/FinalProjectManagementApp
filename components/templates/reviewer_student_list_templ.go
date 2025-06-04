@@ -496,25 +496,26 @@ func ReviewerStudentList(accessToken string, students []database.StudentSummaryV
 										}()
 									}
 									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = icon.Github(icon.Props{Size: 12}).Render(ctx, templ_7745c5c3_Buffer)
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " <span class=\"ml-1\">Kodas</span>")
+									templ_7745c5c3_Err = icon.Github(icon.Props{Size: 16}).Render(ctx, templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
 									return nil
 								})
-								templ_7745c5c3_Err = badge.Badge(badge.Props{
-									Variant: badge.VariantOutline,
-									Class:   "text-xs",
+								templ_7745c5c3_Err = button.Button(button.Props{
+									Variant: button.VariantOutline,
+									Size:    button.SizeIcon,
+									Class:   "h-8 w-8",
+									Attributes: templ.Attributes{
+										"onclick": fmt.Sprintf("viewSourceCode(%d, '%s')", student.ID, accessToken),
+										"title":   "Peržiūrėti kodą",
+									},
 								}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</div>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -524,7 +525,7 @@ func ReviewerStudentList(accessToken string, students []database.StudentSummaryV
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -569,7 +570,7 @@ func ReviewerStudentList(accessToken string, students []database.StudentSummaryV
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div></main></div><!-- Modal Container --><div id=\"modal-container\"></div><!-- Modal System Scripts --><script>\r\n            // Initialize modal state\r\n            if (typeof window.modalState === 'undefined') {\r\n                window.modalState = {\r\n                    openModalId: null\r\n                };\r\n            }\r\n\r\n            // Simplified modal functions for reviewer access\r\n            function closeModal(modal, immediate = false) {\r\n                if (!modal) return;\r\n\r\n                const modalContainer = document.getElementById('modal-container');\r\n                const content = modal.querySelector('[data-modal-content]');\r\n\r\n                // Apply leaving transitions\r\n                modal.classList.remove('opacity-100');\r\n                modal.classList.add('opacity-0');\r\n\r\n                if (content) {\r\n                    content.classList.remove('scale-100', 'opacity-100');\r\n                    content.classList.add('scale-95', 'opacity-0');\r\n                }\r\n\r\n                function hideModal() {\r\n                    modal.style.display = 'none';\r\n                    modalContainer.innerHTML = '';\r\n                    modalContainer.style.display = 'none';\r\n                    document.body.style.overflow = '';\r\n                    window.modalState.openModalId = null;\r\n                }\r\n\r\n                if (immediate) {\r\n                    hideModal();\r\n                } else {\r\n                    setTimeout(hideModal, 300);\r\n                }\r\n            }\r\n\r\n            // Filter table function\r\n            function filterTable(searchValue) {\r\n                const rows = document.querySelectorAll('.student-row');\r\n                const search = searchValue.toLowerCase();\r\n\r\n                rows.forEach(row => {\r\n                    const searchableElements = row.querySelectorAll('.searchable');\r\n                    let found = false;\r\n\r\n                    searchableElements.forEach(el => {\r\n                        if (el.textContent.toLowerCase().includes(search)) {\r\n                            found = true;\r\n                        }\r\n                    });\r\n\r\n                    row.style.display = found ? '' : 'none';\r\n                });\r\n            }\r\n\r\n            // Open review modal\r\n            function openReviewModal(studentId, token) {\r\n                const modalContainer = document.getElementById('modal-container');\r\n                modalContainer.style.display = 'block';\r\n\r\n                htmx.ajax('GET', '/reviewer/' + token + '/student/' + studentId + '/review', {\r\n                    target: '#modal-container',\r\n                    swap: 'innerHTML'\r\n                });\r\n            }\r\n\r\n            // Global close modal function\r\n            window.closeReviewerModal = function() {\r\n                const modal = document.getElementById('reviewer-modal');\r\n                if (modal) {\r\n                    closeModal(modal);\r\n                }\r\n            }\r\n\r\n            // Handle escape key\r\n            document.addEventListener('keydown', function(e) {\r\n                if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'reviewer-modal') {\r\n                    closeReviewerModal();\r\n                }\r\n            });\r\n\r\n            // Listen for successful submission\r\n            document.addEventListener('htmx:afterRequest', function(evt) {\r\n                if (evt.detail.xhr && evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved') {\r\n                    setTimeout(() => {\r\n                        window.location.reload();\r\n                    }, 1500);\r\n                }\r\n            });\r\n        </script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div></main></div><!-- Modal Container --><div id=\"modal-container\"></div><!-- Modal System Scripts --><script>\r\n            // Initialize modal state\r\n            if (typeof window.modalState === 'undefined') {\r\n                window.modalState = {\r\n                    openModalId: null\r\n                };\r\n            }\r\n\r\n            // Simplified modal functions for reviewer access\r\n            function closeModal(modal, immediate = false) {\r\n                if (!modal) return;\r\n\r\n                const modalContainer = document.getElementById('modal-container');\r\n                const content = modal.querySelector('[data-modal-content]');\r\n\r\n                // Apply leaving transitions\r\n                modal.classList.remove('opacity-100');\r\n                modal.classList.add('opacity-0');\r\n\r\n                if (content) {\r\n                    content.classList.remove('scale-100', 'opacity-100');\r\n                    content.classList.add('scale-95', 'opacity-0');\r\n                }\r\n\r\n                function hideModal() {\r\n                    modal.style.display = 'none';\r\n                    modalContainer.innerHTML = '';\r\n                    modalContainer.style.display = 'none';\r\n                    document.body.style.overflow = '';\r\n                    window.modalState.openModalId = null;\r\n                }\r\n\r\n                if (immediate) {\r\n                    hideModal();\r\n                } else {\r\n                    setTimeout(hideModal, 300);\r\n                }\r\n            }\r\n\r\n            // Filter table function\r\n            function filterTable(searchValue) {\r\n                const rows = document.querySelectorAll('.student-row');\r\n                const search = searchValue.toLowerCase();\r\n\r\n                rows.forEach(row => {\r\n                    const searchableElements = row.querySelectorAll('.searchable');\r\n                    let found = false;\r\n\r\n                    searchableElements.forEach(el => {\r\n                        if (el.textContent.toLowerCase().includes(search)) {\r\n                            found = true;\r\n                        }\r\n                    });\r\n\r\n                    row.style.display = found ? '' : 'none';\r\n                });\r\n            }\r\n\r\n\r\n\r\nfunction viewSourceCode(studentId, token) {\r\n    // Option 1: Navigate to repository view\r\n    const repoUrl = '/reviewer/' + token + '/repository/student/' + studentId;\r\n    window.open(repoUrl, '_blank');\r\n}\r\n\r\n            // Open review modal\r\n            function openReviewModal(studentId, token) {\r\n                const modalContainer = document.getElementById('modal-container');\r\n                modalContainer.style.display = 'block';\r\n\r\n                htmx.ajax('GET', '/reviewer/' + token + '/student/' + studentId + '/review', {\r\n                    target: '#modal-container',\r\n                    swap: 'innerHTML'\r\n                });\r\n            }\r\n\r\n            // Global close modal function\r\n            window.closeReviewerModal = function() {\r\n                const modal = document.getElementById('reviewer-modal');\r\n                if (modal) {\r\n                    closeModal(modal);\r\n                }\r\n            }\r\n\r\n            // Handle escape key\r\n            document.addEventListener('keydown', function(e) {\r\n                if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'reviewer-modal') {\r\n                    closeReviewerModal();\r\n                }\r\n            });\r\n\r\n            // Listen for successful submission\r\n            document.addEventListener('htmx:afterRequest', function(evt) {\r\n                if (evt.detail.xhr && evt.detail.xhr.getResponseHeader('HX-Trigger') === 'reviewerReportSaved') {\r\n                    setTimeout(() => {\r\n                        window.location.reload();\r\n                    }, 1500);\r\n                }\r\n            });\r\n        </script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -598,13 +599,13 @@ func ReviewerActionCell(accessToken string, student database.StudentSummaryView)
 			templ_7745c5c3_Var27 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"space-y-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div class=\"space-y-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if student.HasReviewerReport {
 			if student.ReviewerReportSigned.Valid && student.ReviewerReportSigned.Bool {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<!-- Report is signed --> <div class=\"flex items-center gap-2\"><div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-green-500 rounded-full\"></div><span class=\"text-xs text-green-700 font-medium\">Pasirašyta</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<!-- Report is signed --> <div class=\"flex items-center gap-2\"><div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-green-500 rounded-full\"></div><span class=\"text-xs text-green-700 font-medium\">Pasirašyta</span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -638,31 +639,31 @@ func ReviewerActionCell(accessToken string, student database.StudentSummaryView)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if student.ReviewerGrade.Valid {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"text-xs text-muted-foreground\">Įvertinimas: <span class=\"font-medium\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<div class=\"text-xs text-muted-foreground\">Įvertinimas: <span class=\"font-medium\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var29 string
 					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f", student.ReviewerGrade.Float64))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_student_list.templ`, Line: 252, Col: 116}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/reviewer_student_list.templ`, Line: 264, Col: 116}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</span></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<!-- Draft exists --> <div class=\"flex items-center gap-2\"><div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-yellow-500 rounded-full\"></div><span class=\"text-xs text-yellow-700 font-medium\">Juodraštis</span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<!-- Draft exists --> <div class=\"flex items-center gap-2\"><div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-yellow-500 rounded-full\"></div><span class=\"text-xs text-yellow-700 font-medium\">Juodraštis</span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -696,13 +697,13 @@ func ReviewerActionCell(accessToken string, student database.StudentSummaryView)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<!-- No report yet --> <div class=\"space-y-2\"><div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-gray-400 rounded-full\"></div><span class=\"text-xs text-muted-foreground\">Neužpildyta</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<!-- No report yet --> <div class=\"space-y-2\"><div class=\"flex items-center gap-1\"><div class=\"w-2 h-2 bg-gray-400 rounded-full\"></div><span class=\"text-xs text-muted-foreground\">Neužpildyta</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -722,7 +723,7 @@ func ReviewerActionCell(accessToken string, student database.StudentSummaryView)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, " <span class=\"ml-1\">Pildyti recenziją</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " <span class=\"ml-1\">Pildyti recenziją</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -738,12 +739,12 @@ func ReviewerActionCell(accessToken string, student database.StudentSummaryView)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

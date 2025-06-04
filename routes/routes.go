@@ -116,6 +116,259 @@ func SetupRoutes(db *sqlx.DB,
 		r.Get("/", studentListHandler.ShowReviewerStudentsWithToken)
 		r.Get("/student/{studentId}/review", studentListHandler.ReviewerReportModalHandlerWithToken)
 		r.Post("/student/{studentId}/review/submit", studentListHandler.ReviewerReportSubmitHandlerWithToken)
+
+		// Add repository viewing route for reviewers
+		r.Get("/repository/student/{studentId}", func(w http.ResponseWriter, r *http.Request) {
+			accessToken := chi.URLParam(r, "accessToken")
+			studentIDStr := chi.URLParam(r, "studentId")
+
+			// Parse student ID
+			studentID, err := strconv.Atoi(studentIDStr)
+			if err != nil {
+				http.Error(w, "Invalid student ID", http.StatusBadRequest)
+				return
+			}
+
+			// Validate token
+			var reviewerAccess database.ReviewerAccessToken
+			query := `SELECT * FROM reviewer_access_tokens WHERE access_token = ? AND is_active = true`
+			err = db.Get(&reviewerAccess, query, accessToken)
+			if err != nil {
+				http.Error(w, "Invalid access token", http.StatusUnauthorized)
+				return
+			}
+
+			// Check if expired
+			if reviewerAccess.IsExpired() {
+				http.Error(w, "Access token has expired", http.StatusUnauthorized)
+				return
+			}
+
+			// Get the student's reviewer email to verify access
+			var studentReviewerEmail string
+			reviewerQuery := `SELECT reviewer_email FROM student_records WHERE id = ?`
+			err = db.Get(&studentReviewerEmail, reviewerQuery, studentID)
+			if err != nil || studentReviewerEmail == "" {
+				http.Error(w, "No reviewer assigned to this student", http.StatusForbidden)
+				return
+			}
+
+			// Verify this token belongs to the assigned reviewer
+			if reviewerAccess.ReviewerEmail != studentReviewerEmail {
+				http.Error(w, "Access denied - not the assigned reviewer", http.StatusForbidden)
+				return
+			}
+
+			// Update access count
+			updateQuery := `UPDATE reviewer_access_tokens SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+			db.Exec(updateQuery, time.Now().Unix(), reviewerAccess.ID)
+
+			// Create fake authenticated user with the reviewer email from student record
+			fakeUser := &auth.AuthenticatedUser{
+				Email: studentReviewerEmail, // This will match the check in isReviewerForStudent
+				Role:  auth.RoleReviewer,
+				Name:  reviewerAccess.ReviewerName,
+			}
+
+			// Add to context
+			ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+			// Update the request with the student ID in the URL params
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("studentId", strconv.Itoa(studentID))
+			ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+
+			// Use the existing repository handler
+			if repositoryHandler != nil {
+				repositoryHandler.ViewStudentRepository(w, r.WithContext(ctx))
+			} else {
+				http.Error(w, "Repository viewing not available", http.StatusServiceUnavailable)
+			}
+		})
+
+		// Add repository download route
+		r.Get("/repository/student/{studentId}/download", func(w http.ResponseWriter, r *http.Request) {
+			accessToken := chi.URLParam(r, "accessToken")
+			studentIDStr := chi.URLParam(r, "studentId")
+
+			// Parse student ID
+			studentID, err := strconv.Atoi(studentIDStr)
+			if err != nil {
+				http.Error(w, "Invalid student ID", http.StatusBadRequest)
+				return
+			}
+
+			// Validate token
+			var reviewerAccess database.ReviewerAccessToken
+			query := `SELECT * FROM reviewer_access_tokens WHERE access_token = ? AND is_active = true`
+			err = db.Get(&reviewerAccess, query, accessToken)
+			if err != nil {
+				http.Error(w, "Invalid access token", http.StatusUnauthorized)
+				return
+			}
+
+			// Check if expired
+			if reviewerAccess.IsExpired() {
+				http.Error(w, "Access token has expired", http.StatusUnauthorized)
+				return
+			}
+
+			// Get the student's reviewer email to verify access
+			var studentReviewerEmail string
+			reviewerQuery := `SELECT reviewer_email FROM student_records WHERE id = ?`
+			err = db.Get(&studentReviewerEmail, reviewerQuery, studentID)
+			if err != nil || studentReviewerEmail == "" {
+				http.Error(w, "No reviewer assigned to this student", http.StatusForbidden)
+				return
+			}
+
+			// Verify this token belongs to the assigned reviewer
+			if reviewerAccess.ReviewerEmail != studentReviewerEmail {
+				http.Error(w, "Access denied - not the assigned reviewer", http.StatusForbidden)
+				return
+			}
+
+			// Log the download action
+			updateQuery := `UPDATE reviewer_access_tokens SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+			db.Exec(updateQuery, time.Now().Unix(), reviewerAccess.ID)
+
+			// Create fake authenticated user with the reviewer email from student record
+			fakeUser := &auth.AuthenticatedUser{
+				Email: studentReviewerEmail,
+				Role:  auth.RoleReviewer,
+				Name:  reviewerAccess.ReviewerName,
+			}
+
+			// Add to context
+			ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+			// Update the request with the student ID in the URL params
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("studentId", strconv.Itoa(studentID))
+			ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+
+			// Use the existing repository handler's download method
+			if repositoryHandler != nil {
+				repositoryHandler.DownloadRepository(w, r.WithContext(ctx))
+			} else {
+				http.Error(w, "Repository download not available", http.StatusServiceUnavailable)
+			}
+		})
+
+		// Add browse route for navigating directories
+		r.Get("/repository/student/{studentId}/browse/*", func(w http.ResponseWriter, r *http.Request) {
+			// Similar code as above, but call ViewStudentRepositoryPath
+			accessToken := chi.URLParam(r, "accessToken")
+			studentIDStr := chi.URLParam(r, "studentId")
+
+			studentID, err := strconv.Atoi(studentIDStr)
+			if err != nil {
+				http.Error(w, "Invalid student ID", http.StatusBadRequest)
+				return
+			}
+
+			var reviewerAccess database.ReviewerAccessToken
+			query := `SELECT * FROM reviewer_access_tokens WHERE access_token = ? AND is_active = true`
+			err = db.Get(&reviewerAccess, query, accessToken)
+			if err != nil {
+				http.Error(w, "Invalid access token", http.StatusUnauthorized)
+				return
+			}
+
+			if reviewerAccess.IsExpired() {
+				http.Error(w, "Access token has expired", http.StatusUnauthorized)
+				return
+			}
+
+			var studentReviewerEmail string
+			reviewerQuery := `SELECT reviewer_email FROM student_records WHERE id = ?`
+			err = db.Get(&studentReviewerEmail, reviewerQuery, studentID)
+			if err != nil || studentReviewerEmail == "" {
+				http.Error(w, "No reviewer assigned to this student", http.StatusForbidden)
+				return
+			}
+
+			if reviewerAccess.ReviewerEmail != studentReviewerEmail {
+				http.Error(w, "Access denied - not the assigned reviewer", http.StatusForbidden)
+				return
+			}
+
+			fakeUser := &auth.AuthenticatedUser{
+				Email: studentReviewerEmail,
+				Role:  auth.RoleReviewer,
+				Name:  reviewerAccess.ReviewerName,
+			}
+
+			ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("studentId", strconv.Itoa(studentID))
+			ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+
+			if repositoryHandler != nil {
+				repositoryHandler.ViewStudentRepositoryPath(w, r.WithContext(ctx))
+			} else {
+				http.Error(w, "Repository browsing not available", http.StatusServiceUnavailable)
+			}
+		})
+
+		// Add file viewing route
+		r.Get("/repository/student/{studentId}/file/*", func(w http.ResponseWriter, r *http.Request) {
+			// Similar code as above, but call ViewFileContent
+			accessToken := chi.URLParam(r, "accessToken")
+			studentIDStr := chi.URLParam(r, "studentId")
+
+			studentID, err := strconv.Atoi(studentIDStr)
+			if err != nil {
+				http.Error(w, "Invalid student ID", http.StatusBadRequest)
+				return
+			}
+
+			var reviewerAccess database.ReviewerAccessToken
+			query := `SELECT * FROM reviewer_access_tokens WHERE access_token = ? AND is_active = true`
+			err = db.Get(&reviewerAccess, query, accessToken)
+			if err != nil {
+				http.Error(w, "Invalid access token", http.StatusUnauthorized)
+				return
+			}
+
+			if reviewerAccess.IsExpired() {
+				http.Error(w, "Access token has expired", http.StatusUnauthorized)
+				return
+			}
+
+			var studentReviewerEmail string
+			reviewerQuery := `SELECT reviewer_email FROM student_records WHERE id = ?`
+			err = db.Get(&studentReviewerEmail, reviewerQuery, studentID)
+			if err != nil || studentReviewerEmail == "" {
+				http.Error(w, "No reviewer assigned to this student", http.StatusForbidden)
+				return
+			}
+
+			if reviewerAccess.ReviewerEmail != studentReviewerEmail {
+				http.Error(w, "Access denied - not the assigned reviewer", http.StatusForbidden)
+				return
+			}
+
+			fakeUser := &auth.AuthenticatedUser{
+				Email: studentReviewerEmail,
+				Role:  auth.RoleReviewer,
+				Name:  reviewerAccess.ReviewerName,
+			}
+
+			ctx := context.WithValue(r.Context(), auth.UserContextKey, fakeUser)
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("studentId", strconv.Itoa(studentID))
+			ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+
+			if repositoryHandler != nil {
+				repositoryHandler.ViewFileContent(w, r.WithContext(ctx))
+			} else {
+				http.Error(w, "File viewing not available", http.StatusServiceUnavailable)
+			}
+		})
+
 	})
 
 	// PUBLIC DOCUMENTS ROUTES

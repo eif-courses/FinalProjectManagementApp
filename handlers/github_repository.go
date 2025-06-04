@@ -55,10 +55,18 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 	}
 
 	// Extract access code
-	accessCode := h.extractAccessCode(r)
+	accessInfo := h.extractAccessInfo(r)
+	//accessCode := h.extractAccessCode(r)
 
 	// Skip permission check for commission members
-	if user.Role != auth.RoleCommissionMember {
+	// UPDATE PERMISSION CHECK
+	if user.Role == auth.RoleCommissionMember {
+		if !accessInfo.IsValid() {
+			http.Error(w, "Access code required", http.StatusForbidden)
+			return
+		}
+		// Add validation for the access code here if needed
+	} else {
 		if !h.canViewRepository(user, studentID) {
 			http.Error(w, "Access denied", http.StatusForbidden)
 			return
@@ -80,7 +88,7 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 	currentLocale := h.getCurrentLocale(r)
 
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
-		component := repository.NoRepositoryPage(user, student, currentLocale, accessCode)
+		component := repository.NoRepositoryPage(user, student, currentLocale, accessInfo)
 		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
@@ -96,7 +104,7 @@ func (h *RepositoryHandler) ViewStudentRepository(w http.ResponseWriter, r *http
 	}
 
 	// Pass accessCode to the component
-	component := repository.RepositoryPage(user, student, repoInfo, repoContents, currentLocale, accessCode)
+	component := repository.RepositoryPage(user, student, repoInfo, repoContents, currentLocale, accessInfo)
 	templ.Handler(component).ServeHTTP(w, r)
 }
 
@@ -161,11 +169,27 @@ func (h *RepositoryHandler) DownloadRepository(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if !h.canDownloadRepository(user, studentID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
+	// Special handling for commission members
+	if user.Role == auth.RoleCommissionMember {
+		accessInfo := h.extractAccessInfo(r)
+		if !accessInfo.IsValid() {
+			http.Error(w, "Valid access code required for commission members", http.StatusForbidden)
+			return
+		}
+		// Commission members can download during commission period
+		if !h.isCommissionPeriod() {
+			http.Error(w, "Downloads not available outside commission period", http.StatusForbidden)
+			return
+		}
+	} else {
+		// Regular permission check for other roles
+		if !h.canDownloadRepository(user, studentID) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
 	}
 
+	// Rest of your download logic...
 	student, err := h.getStudentRecord(studentID)
 	if err != nil {
 		http.Error(w, "Student not found", http.StatusNotFound)
@@ -206,9 +230,8 @@ func (h *RepositoryHandler) canViewRepository(user *auth.AuthenticatedUser, stud
 	case auth.RoleReviewer:
 		return h.isReviewerForStudent(user.Email, studentID)
 	case auth.RoleCommissionMember:
-		// Commission members can view during defense period
 		return h.isCommissionPeriod()
-	case auth.RoleStudent: // ADD THIS CASE
+	case auth.RoleStudent:
 		return h.isStudentOwnRepository(user.Email, studentID)
 	default:
 		return false
@@ -231,6 +254,9 @@ func (h *RepositoryHandler) canDownloadRepository(user *auth.AuthenticatedUser, 
 		return h.isSupervisorForStudent(user.Email, studentID)
 	case auth.RoleReviewer:
 		return h.isReviewerForStudent(user.Email, studentID)
+	case auth.RoleCommissionMember:
+		// Commission members can download if they're in the commission period
+		return h.isCommissionPeriod()
 	default:
 		return false
 	}
@@ -547,9 +573,9 @@ func (h *RepositoryHandler) proxyRepositoryDownload(w http.ResponseWriter, r *ht
 // HTML RENDERING
 // ================================
 
-func (h *RepositoryHandler) renderRepositoryPage(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents) {
+func (h *RepositoryHandler) renderRepositoryPage(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, accessInfo database.AccessInfo) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := h.generateRepositoryHTML(user, student, repoInfo, contents)
+	html := h.generateRepositoryHTML(user, student, repoInfo, contents, accessInfo)
 	w.Write([]byte(html))
 }
 
@@ -559,7 +585,7 @@ func (h *RepositoryHandler) renderNoRepositoryPage(w http.ResponseWriter, r *htt
 	w.Write([]byte(html))
 }
 
-func (h *RepositoryHandler) generateRepositoryHTML(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents) string {
+func (h *RepositoryHandler) generateRepositoryHTML(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, accessInfo database.AccessInfo) string {
 	// Safe repository URL handling
 	repoURL := ""
 	if repoInfo.RepositoryURL != nil {
@@ -755,7 +781,7 @@ func (h *RepositoryHandler) generateRepositoryHTML(user *auth.AuthenticatedUser,
 		student.StudentName, student.StudentLastname,
 		student.StudyProgram, student.Department,
 		h.generateGitHubButton(repoURL),
-		h.generateDownloadButton(student.ID, repoURL),
+		h.generateDownloadButton(student.ID, repoURL, accessInfo),
 		h.getStatusClass(uploadStatus), uploadStatus,
 		h.getStatusClass(validationStatus), validationStatus,
 		repoInfo.UploadedDate.Format("Jan 2, 2006 15:04"),
@@ -765,7 +791,7 @@ func (h *RepositoryHandler) generateRepositoryHTML(user *auth.AuthenticatedUser,
 		student.Department,
 		student.FinalProjectTitle,
 		student.StudyProgram,
-		h.generateRepositorySection(contents),
+		h.generateRepositorySection(contents, student.ID, accessInfo),
 		contents.Stats.TotalFiles,
 		h.formatFileSize(contents.Stats.TotalSize),
 		contents.Stats.CommitCount,
@@ -827,19 +853,27 @@ func (h *RepositoryHandler) generateNoRepositoryHTML(user *auth.AuthenticatedUse
 		student.FinalProjectTitle,
 		student.Department)
 }
-func (h *RepositoryHandler) generateDownloadButton(studentID int, repoURL string) string {
+func (h *RepositoryHandler) generateDownloadButton(studentID int, repoURL string, accessInfo database.AccessInfo) string {
 	if repoURL == "" {
 		return ""
 	}
 
+	downloadURL := fmt.Sprintf("/repository/student/%d/download", studentID)
+	if accessInfo.IsValid() {
+		// Use the access type from AccessInfo
+		downloadURL = fmt.Sprintf("/%s/%s/repository/student/%d/download", accessInfo.Type, accessInfo.Code, studentID)
+		log.Printf("DEBUG: Generated download URL with access info - Type: %s, Code: %s, URL: %s",
+			accessInfo.Type, accessInfo.Code, downloadURL)
+	}
+
 	return fmt.Sprintf(`
-		<a href="/repository/student/%d/download" 
-		   class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-			</svg>
-			Download ZIP
-		</a>`, studentID)
+        <a href="%s" 
+           class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Download ZIP
+        </a>`, downloadURL)
 }
 
 // Helper methods for HTML generation
@@ -899,7 +933,7 @@ func (h *RepositoryHandler) generateLineNumbers(lineCount int) string {
 }
 
 // Enhanced generateBreadcrumb method
-func (h *RepositoryHandler) generateBreadcrumb(filePath string, studentID int) string {
+func (h *RepositoryHandler) generateBreadcrumb(filePath string, studentID int, accessInfo database.AccessInfo) string {
 	if filePath == "" {
 		return ""
 	}
@@ -1086,7 +1120,7 @@ func (h *RepositoryHandler) getStatusClass(status string) string {
 	}
 }
 
-func (h *RepositoryHandler) generateRepositorySection(contents *types.RepositoryContents) string {
+func (h *RepositoryHandler) generateRepositorySection(contents *types.RepositoryContents, studentID int, accessInfo database.AccessInfo) string {
 	if contents.Error != "" {
 		return fmt.Sprintf(`
             <div class="stat-card">
@@ -1104,7 +1138,7 @@ func (h *RepositoryHandler) generateRepositorySection(contents *types.Repository
             </div>`, contents.Error)
 	}
 
-	fileListHTML := h.generateFileListHTML(contents.Files)
+	fileListHTML := h.generateFileListHTML(contents.Files, studentID, accessInfo)
 
 	return fmt.Sprintf(`
         <div class="stat-card">
@@ -1157,7 +1191,7 @@ func (h *RepositoryHandler) generateCommitsSection(commits []types.CommitInfo) s
 	return html
 }
 
-func (h *RepositoryHandler) generateFileListHTML(files []types.RepositoryFile) string {
+func (h *RepositoryHandler) generateFileListHTML(files []types.RepositoryFile, studentID int, accessInfo database.AccessInfo) string {
 	if len(files) == 0 {
 		return `<div class="p-6 text-center text-gray-500">
             <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1223,50 +1257,56 @@ func (h *RepositoryHandler) generateFileListHTML(files []types.RepositoryFile) s
 	html += `</div>`
 
 	// Add improved JavaScript
-	html += `
-    <script>
-        function handleFileClick(filePath, fileType) {
-            console.log('File clicked:', {filePath, fileType});
-            
-            // Get student ID from current URL
-            const currentPath = window.location.pathname;
-            const pathParts = currentPath.split('/');
-            const studentId = pathParts[3]; // /repository/student/[ID]
-            
-            console.log('Current path:', currentPath);
-            console.log('Student ID:', studentId);
-            
-            if (!studentId) {
-                console.error('Could not extract student ID from path');
-                return;
-            }
-            
-            if (fileType === 'dir') {
-                // Navigate to directory
-                const newUrl = '/repository/student/' + studentId + '/browse/' + encodeURIComponent(filePath);
-                console.log('Navigating to directory:', newUrl);
-                window.location.href = newUrl;
-            } else {
-                // View file content in new tab
-                const fileUrl = '/repository/student/' + studentId + '/file/' + encodeURIComponent(filePath);
-                console.log('Opening file in new tab:', fileUrl);
-                window.open(fileUrl, '_blank');
-            }
+	html += fmt.Sprintf(`
+<script>
+    function handleFileClick(filePath, fileType) {
+        console.log('File clicked:', {filePath, fileType});
+        
+        const studentId = %d;
+        const accessCode = '%s';  // This is still accessInfo.Code
+        const accessType = '%s';  // This is accessInfo.Type
+        
+        // Build the base URL based on whether we have an access code
+        let baseUrl;
+        if (accessCode && accessType) {
+            // Use the correct access type (reviewer or commission)
+            baseUrl = '/' + accessType + '/' + accessCode + '/repository/student/' + studentId;
+        } else {
+            // Regular authenticated access
+            baseUrl = '/repository/student/' + studentId;
         }
         
-        // Initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Repository file list initialized');
-            console.log('Found file items:', document.querySelectorAll('.file-item').length);
-            
-            // Add keyboard navigation support
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && e.target.classList.contains('file-item')) {
-                    e.target.click();
-                }
-            });
+        console.log('Base URL:', baseUrl);
+        
+        if (fileType === 'dir') {
+            // Navigate to directory
+            const newUrl = baseUrl + '/browse/' + encodeURIComponent(filePath);
+            console.log('Navigating to directory:', newUrl);
+            window.location.href = newUrl;
+        } else {
+            // View file content in new tab
+            const fileUrl = baseUrl + '/file/' + encodeURIComponent(filePath);
+            console.log('Opening file in new tab:', fileUrl);
+            window.open(fileUrl, '_blank');
+        }
+    }
+    
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Repository file list initialized');
+        console.log('Found file items:', document.querySelectorAll('.file-item').length);
+        console.log('Access code:', '%s');  // accessInfo.Code
+        console.log('Access type:', '%s');  // accessInfo.Type
+        console.log('Student ID:', %d);
+        
+        // Add keyboard navigation support
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.classList.contains('file-item')) {
+                e.target.click();
+            }
         });
-    </script>`
+    });
+</script>`, studentID, accessInfo.Code, accessInfo.Type, accessInfo.Code, accessInfo.Type, studentID)
 
 	return html
 }
@@ -1325,7 +1365,7 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 	filePath := chi.URLParam(r, "*")
 
 	// Extract access code
-	accessCode := h.extractAccessCode(r)
+	accessInfo := h.extractAccessInfo(r)
 
 	// Skip permission check for commission members
 	if user.Role != auth.RoleCommissionMember {
@@ -1349,7 +1389,7 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 
 	// For HTMX requests, only return the file viewer component
 	if r.Header.Get("HX-Request") == "true" {
-		component := repository.FileViewer(studentID, filePath, fileContent, accessCode)
+		component := repository.FileViewer(studentID, filePath, fileContent, accessInfo)
 		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
@@ -1357,7 +1397,7 @@ func (h *RepositoryHandler) ViewFileContent(w http.ResponseWriter, r *http.Reque
 	// For full page loads, return the complete page
 	student, _ := h.getStudentRecord(studentID)
 	currentLocale := h.getCurrentLocale(r)
-	component := repository.FileViewerPage(user, student, repoInfo, filePath, fileContent, currentLocale, accessCode)
+	component := repository.FileViewerPage(user, student, repoInfo, filePath, fileContent, currentLocale, accessInfo)
 	templ.Handler(component).ServeHTTP(w, r)
 }
 
@@ -1618,9 +1658,9 @@ func (h *RepositoryHandler) isTextFile(filename, content string) bool {
 // HTML RENDERING FOR FILE CONTENT
 // ================================
 
-func (h *RepositoryHandler) renderFileContentPage(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, filePath string, fileContent *FileContent) {
+func (h *RepositoryHandler) renderFileContentPage(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, filePath string, fileContent *FileContent, accessInfo database.AccessInfo) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := h.generateFileContentHTML(user, student, repoInfo, filePath, fileContent)
+	html := h.generateFileContentHTML(user, student, repoInfo, filePath, fileContent, accessInfo)
 	w.Write([]byte(html))
 }
 
@@ -1630,7 +1670,7 @@ func (h *RepositoryHandler) renderFileError(w http.ResponseWriter, r *http.Reque
 	w.Write([]byte(html))
 }
 
-func (h *RepositoryHandler) generateFileContentHTML(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, filePath string, fileContent *FileContent) string {
+func (h *RepositoryHandler) generateFileContentHTML(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, filePath string, fileContent *FileContent, accessInfo database.AccessInfo) string {
 	// Determine syntax highlighting class
 	syntaxClass := h.getSyntaxHighlightingClass(fileContent.Language)
 
@@ -1764,7 +1804,7 @@ func (h *RepositoryHandler) generateFileContentHTML(user *auth.AuthenticatedUser
 		student.ID,
 		h.generateFileDownloadButton(fileContent),
 		student.ID,
-		h.generateBreadcrumb(filePath, student.ID),
+		h.generateBreadcrumb(filePath, student.ID, accessInfo),
 		h.getFileIcon(fileContent.Name, fileContent.Type),
 		fileContent.Name,
 		h.formatFileSize(fileContent.Size),
@@ -1915,7 +1955,8 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 	dirPath := chi.URLParam(r, "*")
 
 	// Extract access code
-	accessCode := h.extractAccessCode(r)
+	accessInfo := h.extractAccessInfo(r)
+	log.Printf("DEBUG: Extracted access code from URL %s: %s", r.URL.Path, accessInfo)
 
 	// Skip permission check for commission members
 	if user.Role != auth.RoleCommissionMember {
@@ -1940,7 +1981,7 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 	currentLocale := h.getCurrentLocale(r)
 
 	if repoInfo.RepositoryURL == nil || *repoInfo.RepositoryURL == "" {
-		component := repository.NoRepositoryPage(user, student, currentLocale, accessCode)
+		component := repository.NoRepositoryPage(user, student, currentLocale, accessInfo)
 		templ.Handler(component).ServeHTTP(w, r)
 		return
 	}
@@ -1956,7 +1997,7 @@ func (h *RepositoryHandler) ViewStudentRepositoryPath(w http.ResponseWriter, r *
 	}
 
 	// Pass accessCode to the component
-	component := repository.DirectoryPage(user, student, repoInfo, repoContents, dirPath, currentLocale, accessCode)
+	component := repository.DirectoryPage(user, student, repoInfo, repoContents, dirPath, currentLocale, accessInfo)
 	templ.Handler(component).ServeHTTP(w, r)
 }
 
@@ -2173,12 +2214,12 @@ func (h *RepositoryHandler) getRepositoryFilesForPath(repoName, dirPath string) 
 
 	return files, nil
 }
-func (h *RepositoryHandler) renderRepositoryPageWithPath(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string) {
+func (h *RepositoryHandler) renderRepositoryPageWithPath(w http.ResponseWriter, r *http.Request, user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string, accessInfo database.AccessInfo) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := h.generateRepositoryHTMLWithPath(user, student, repoInfo, contents, dirPath)
+	html := h.generateRepositoryHTMLWithPath(user, student, repoInfo, contents, dirPath, accessInfo)
 	w.Write([]byte(html))
 }
-func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string) string {
+func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, contents *types.RepositoryContents, dirPath string, accessInfo database.AccessInfo) string {
 	// Safe repository URL handling
 	repoURL := ""
 	if repoInfo.RepositoryURL != nil {
@@ -2197,7 +2238,7 @@ func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.Authentica
 	}
 
 	// Generate breadcrumb for current path
-	breadcrumbHTML := h.generatePathBreadcrumb(dirPath, student.ID)
+	breadcrumbHTML := h.generatePathBreadcrumb(dirPath, student.ID, accessInfo)
 
 	// Generate back button if not in root
 	backButtonHTML := ""
@@ -2429,7 +2470,7 @@ func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.Authentica
 		currentDirDisplay,
 		backButtonHTML,
 		h.generateGitHubButton(repoURL),
-		h.generateDownloadButton(student.ID, repoURL),
+		h.generateDownloadButton(student.ID, repoURL, accessInfo),
 		breadcrumbHTML,
 		h.getStatusClass(uploadStatus), uploadStatus,
 		h.getStatusClass(validationStatus), validationStatus,
@@ -2440,7 +2481,7 @@ func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.Authentica
 		student.Department,
 		student.FinalProjectTitle,
 		student.StudyProgram,
-		h.generateRepositorySection(contents),
+		h.generateRepositorySection(contents, student.ID, accessInfo),
 		contents.Stats.TotalFiles,
 		h.formatFileSize(contents.Stats.TotalSize),
 		contents.Stats.CommitCount,
@@ -2448,14 +2489,21 @@ func (h *RepositoryHandler) generateRepositoryHTMLWithPath(user *auth.Authentica
 		h.generateLanguagesSection(contents.Stats.Languages),
 		h.generateCommitsSection(contents.Commits))
 }
-func (h *RepositoryHandler) generatePathBreadcrumb(dirPath string, studentID int) string {
+func (h *RepositoryHandler) generatePathBreadcrumb(dirPath string, studentID int, accessInfo database.AccessInfo) string {
 	if dirPath == "" {
 		return `<span class="text-gray-900 font-medium">📁 Repository Root</span>`
 	}
 
+	// Determine base URL based on access code
+	baseURL := fmt.Sprintf("/repository/student/%d", studentID)
+	if accessInfo.IsValid() {
+		// Use accessInfo.Type instead of hardcoded "reviewer"
+		baseURL = fmt.Sprintf("/%s/%s/repository/student/%d", accessInfo.Type, accessInfo.Code, studentID)
+	}
+
 	// Split path into parts
 	parts := strings.Split(dirPath, "/")
-	breadcrumb := fmt.Sprintf(`<a href="/repository/student/%d" class="text-blue-600 hover:underline">📁 Repository</a>`, studentID)
+	breadcrumb := fmt.Sprintf(`<a href="%s" class="text-blue-600 hover:underline">📁 Repository</a>`, baseURL)
 
 	currentPath := ""
 	for i, part := range parts {
@@ -2473,7 +2521,7 @@ func (h *RepositoryHandler) generatePathBreadcrumb(dirPath string, studentID int
 			breadcrumb += fmt.Sprintf(` <span class="text-gray-400 mx-2">/</span> <span class="text-gray-900 font-medium">📁 %s</span>`, part)
 		} else {
 			// Directory - make it a link
-			breadcrumb += fmt.Sprintf(` <span class="text-gray-400 mx-2">/</span> <a href="/repository/student/%d/browse/%s" class="text-blue-600 hover:underline">📁 %s</a>`, studentID, currentPath, part)
+			breadcrumb += fmt.Sprintf(` <span class="text-gray-400 mx-2">/</span> <a href="%s/browse/%s" class="text-blue-600 hover:underline">📁 %s</a>`, baseURL, currentPath, part)
 		}
 	}
 
@@ -2497,13 +2545,15 @@ func (h *RepositoryHandler) getCurrentLocale(r *http.Request) string {
 }
 
 // Add this helper method to your RepositoryHandler
-func (h *RepositoryHandler) extractAccessCode(r *http.Request) string {
-	// Extract access code from URL if it's a commission access
+func (h *RepositoryHandler) extractAccessInfo(r *http.Request) database.AccessInfo {
 	pathParts := strings.Split(r.URL.Path, "/")
 	for i, part := range pathParts {
-		if part == "commission" && i+1 < len(pathParts) {
-			return pathParts[i+1]
+		if (part == "commission" || part == "reviewer") && i+1 < len(pathParts) {
+			return database.AccessInfo{
+				Code: pathParts[i+1],
+				Type: part,
+			}
 		}
 	}
-	return ""
+	return database.AccessInfo{}
 }

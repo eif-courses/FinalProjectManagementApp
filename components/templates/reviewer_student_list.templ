@@ -102,15 +102,19 @@ templ ReviewerStudentList(accessToken string, students []database.StudentSummary
                                     }
                                     @table.Cell() {
                                         <div class="flex items-center gap-2">
-                                            if student.HasSourceCode {
-                                                @badge.Badge(badge.Props{
-                                                    Variant: badge.VariantOutline,
-                                                    Class: "text-xs",
-                                                }) {
-                                                    @icon.Github(icon.Props{Size: 12})
-                                                    <span class="ml-1">Kodas</span>
-                                                }
-                                            }
+                                         if student.HasSourceCode {
+                                             @button.Button(button.Props{
+                                                 Variant: button.VariantOutline,
+                                                 Size:    button.SizeIcon,
+                                                 Class:   "h-8 w-8",
+                                                 Attributes: templ.Attributes{
+                                                     "onclick": fmt.Sprintf("viewSourceCode(%d, '%s')", student.ID, accessToken),
+                                                     "title":   "Peržiūrėti kodą",
+                                                 },
+                                             }) {
+                                                 @icon.Github(icon.Props{Size: 16})
+                                             }
+                                         }
                                         </div>
                                     }
                                     @table.Cell() {
@@ -185,6 +189,14 @@ templ ReviewerStudentList(accessToken string, students []database.StudentSummary
                     row.style.display = found ? '' : 'none';
                 });
             }
+
+
+
+function viewSourceCode(studentId, token) {
+    // Option 1: Navigate to repository view
+    const repoUrl = '/reviewer/' + token + '/repository/student/' + studentId;
+    window.open(repoUrl, '_blank');
+}
 
             // Open review modal
             function openReviewModal(studentId, token) {

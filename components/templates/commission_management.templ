@@ -127,7 +127,7 @@ templ SimpleAccessCodeRow(member *database.CommissionMember, locale string) {
 		<td class="px-4 py-3">
 			<div class="flex items-center space-x-2">
 				<code class="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
-					{ fmt.Sprintf("%s/commission/%s", "http://localhost:8080", member.AccessCode) }
+					{ fmt.Sprintf("%s/commission/%s", "https://finalprojectmanagementapp-production.up.railway.app", member.AccessCode) }
 				</code>
 				<button
 					type="button"

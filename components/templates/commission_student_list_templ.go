@@ -22,7 +22,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 // Helper functions - these should be at package level
@@ -108,7 +107,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(program)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 79, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 78, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -121,7 +120,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(program)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 92, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 91, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -134,7 +133,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(len(students)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 94, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 93, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -177,7 +176,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/commission/%s", accessCode))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 131, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 130, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -249,7 +248,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 						var templ_7745c5c3_Var10 string
 						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(filters.Limit))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 146, Col: 41}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 145, Col: 41}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 						if templ_7745c5c3_Err != nil {
@@ -259,7 +258,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 						var templ_7745c5c3_Var11 string
 						templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(pagination.Limit))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 148, Col: 44}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 147, Col: 44}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 						if templ_7745c5c3_Err != nil {
@@ -454,7 +453,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 						var templ_7745c5c3_Var20 string
 						templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(filters.Group)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 174, Col: 27}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 173, Col: 27}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 						if templ_7745c5c3_Err != nil {
@@ -534,7 +533,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 						var templ_7745c5c3_Var24 string
 						templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(group)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 186, Col: 19}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 185, Col: 19}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 						if templ_7745c5c3_Err != nil {
@@ -628,7 +627,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 						var templ_7745c5c3_Var29 string
 						templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(getTopicStatusDisplay(filters.TopicStatus))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 205, Col: 56}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 204, Col: 56}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 						if templ_7745c5c3_Err != nil {
@@ -901,7 +900,7 @@ func CommissionStudentList(accessCode string, students []database.StudentSummary
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div></main></div><!-- Modal Container for document viewing --><div id=\"modal-container\" style=\"display: none;\"></div><script>\r\n\t\t\t// Clear filters\r\n\t\t\tfunction clearFilters(accessCode) {\r\n\t\t\t\tconst searchInput = document.getElementById('search');\r\n\t\t\t\tif (searchInput) {\r\n\t\t\t\t\tsearchInput.value = '';\r\n\t\t\t\t}\r\n\r\n\t\t\t\t// Reset all select boxes\r\n\t\t\t\tdocument.querySelectorAll('.select-container').forEach(container => {\r\n\t\t\t\t\tconst trigger = container.querySelector('.select-trigger');\r\n\t\t\t\t\tconst hiddenInput = trigger?.querySelector('input[type=\"hidden\"]');\r\n\t\t\t\t\tconst valueEl = trigger?.querySelector('.select-value');\r\n\r\n\t\t\t\t\tif (hiddenInput) {\r\n\t\t\t\t\t\thiddenInput.value = hiddenInput.name === 'limit' ? '10' : '';\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tif (valueEl) {\r\n\t\t\t\t\t\tconst placeholder = hiddenInput?.name === 'limit' ? '10' : 'Visos';\r\n\t\t\t\t\t\tvalueEl.textContent = placeholder;\r\n\t\t\t\t\t\tvalueEl.classList.add('text-muted-foreground');\r\n\t\t\t\t\t}\r\n\t\t\t\t});\r\n\r\n\t\t\t\t// Reload with cleared filters\r\n\t\t\t\thtmx.ajax('GET', '/commission/' + accessCode, {\r\n\t\t\t\t\ttarget: '#student-table-container',\r\n\t\t\t\t\tvalues: { limit: '10', group: '', topic_status: '', search: '', page: '1' }\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\t// View repository\r\n\t\t\tfunction viewStudentRepository(studentId, accessCode) {\r\n\t\t\t\twindow.open('/commission/' + accessCode + '/repository/student/' + studentId, '_blank');\r\n\t\t\t}\r\n\r\n\t\t\t// View document\r\n\t\t\tfunction viewDocument(documentId) {\r\n\t\t\t\twindow.open('/api/public/documents/' + documentId + '/preview', '_blank');\r\n\t\t\t}\r\n\r\n\t\t\t// Download document\r\n\t\t\tfunction downloadDocument(documentId) {\r\n\t\t\t\twindow.location.href = '/api/public/documents/' + documentId + '/download';\r\n\t\t\t}\r\n\r\n\t\t\t// Load documents dynamically\r\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\r\n\t\t\t\tconst docElements = document.querySelectorAll('[data-load-documents=\"true\"]');\r\n\t\t\t\tdocElements.forEach(function(element) {\r\n\t\t\t\t\tconst studentId = element.getAttribute('data-student-id');\r\n\t\t\t\t\tloadDocuments(studentId);\r\n\t\t\t\t});\r\n\t\t\t});\r\n\r\n\t\t\t// Show reviewer questions in a popup\r\n\t\t\tfunction showReviewerQuestions(reviewerName, questions) {\r\n\t\t\t\t// Create modal for questions\r\n\t\t\t\tconst modal = document.createElement('div');\r\n\t\t\t\tmodal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';\r\n\t\t\t\tmodal.onclick = function(e) {\r\n\t\t\t\t\tif (e.target === modal) {\r\n\t\t\t\t\t\tmodal.remove();\r\n\t\t\t\t\t}\r\n\t\t\t\t};\r\n\r\n\t\t\t\tmodal.innerHTML = `\r\n\t\t\t\t\t<div class=\"bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden\">\r\n\t\t\t\t\t\t<div class=\"p-6 border-b\">\r\n\t\t\t\t\t\t\t<h3 class=\"text-lg font-semibold\">Recenzento klausimai</h3>\r\n\t\t\t\t\t\t\t<p class=\"text-sm text-gray-600 mt-1\">${reviewerName}</p>\r\n\t\t\t\t\t\t</div>\r\n\t\t\t\t\t\t<div class=\"p-6 overflow-y-auto max-h-[60vh]\">\r\n\t\t\t\t\t\t\t<div class=\"whitespace-pre-wrap text-sm\">${questions}</div>\r\n\t\t\t\t\t\t</div>\r\n\t\t\t\t\t\t<div class=\"p-4 border-t bg-gray-50\">\r\n\t\t\t\t\t\t\t<button onclick=\"this.closest('.fixed').remove()\"\r\n\t\t\t\t\t\t\t\t\tclass=\"px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700\">\r\n\t\t\t\t\t\t\t\tUždaryti\r\n\t\t\t\t\t\t\t</button>\r\n\t\t\t\t\t\t</div>\r\n\t\t\t\t\t</div>\r\n\t\t\t\t`;\r\n\r\n\t\t\t\tdocument.body.appendChild(modal);\r\n\t\t\t}\r\n\r\n\t\t\tfunction viewTopicRegistration(studentId, accessCode) {\r\n\t\t\t\t// Create modal container if it doesn't exist\r\n\t\t\t\tlet modalContainer = document.getElementById('topic-modal-container');\r\n\t\t\t\tif (!modalContainer) {\r\n\t\t\t\t\tmodalContainer = document.createElement('div');\r\n\t\t\t\t\tmodalContainer.id = 'topic-modal-container';\r\n\t\t\t\t\tdocument.body.appendChild(modalContainer);\r\n\t\t\t\t}\r\n\r\n\t\t\t\t// Load topic registration modal\r\n\t\t\t\thtmx.ajax('GET', '/commission/' + accessCode + '/topic-registration/' + studentId + '?mode=view', {\r\n\t\t\t\t\ttarget: '#topic-modal-container',\r\n\t\t\t\t\tswap: 'innerHTML'\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tfunction loadDocuments(studentId) {\r\n\t\t\t\tfetch('/api/public/students/' + studentId + '/documents')\r\n\t\t\t\t\t.then(response => response.json())\r\n\t\t\t\t\t.then(data => {\r\n\t\t\t\t\t\tconst container = document.getElementById('docs-' + studentId);\r\n\t\t\t\t\t\tif (data.documents && data.documents.length > 0) {\r\n\t\t\t\t\t\t\tlet html = '<div class=\"flex flex-wrap gap-1\">';\r\n\t\t\t\t\t\t\tdata.documents.forEach(doc => {\r\n\t\t\t\t\t\t\t\tlet icon = '📄';\r\n\t\t\t\t\t\t\t\tlet title = doc.type;\r\n\r\n\t\t\t\t\t\t\t\tif (doc.type === 'thesis_pdf' || doc.type === 'thesis') {\r\n\t\t\t\t\t\t\t\t\ticon = '📕';\r\n\t\t\t\t\t\t\t\t\ttitle = 'Thesis PDF';\r\n\t\t\t\t\t\t\t\t} else if (doc.type === 'presentation') {\r\n\t\t\t\t\t\t\t\t\ticon = '📊';\r\n\t\t\t\t\t\t\t\t\ttitle = 'Presentation';\r\n\t\t\t\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\t\t\thtml += `\r\n\t\t\t\t\t\t\t\t\t<div class=\"group relative\">\r\n\t\t\t\t\t\t\t\t\t\t<button onclick=\"${doc.hasPreview ? `viewDocument(${doc.id})` : `downloadDocument(${doc.id})`}\"\r\n\t\t\t\t\t\t\t\t\t\t\tclass=\"text-xs p-1 hover:bg-gray-100 rounded\"\r\n\t\t\t\t\t\t\t\t\t\t\ttitle=\"${title}\">\r\n\t\t\t\t\t\t\t\t\t\t\t${icon}\r\n\t\t\t\t\t\t\t\t\t\t</button>\r\n\t\t\t\t\t\t\t\t\t\t<div class=\"absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none\">\r\n\t\t\t\t\t\t\t\t\t\t\t${title}\r\n\t\t\t\t\t\t\t\t\t\t\t<div class=\"text-xs\">${doc.hasPreview ? 'Click to view' : 'Click to download'}</div>\r\n\t\t\t\t\t\t\t\t\t\t</div>\r\n\t\t\t\t\t\t\t\t\t</div>\r\n\t\t\t\t\t\t\t\t`;\r\n\t\t\t\t\t\t\t});\r\n\t\t\t\t\t\t\thtml += '</div>';\r\n\t\t\t\t\t\t\tcontainer.innerHTML = html;\r\n\t\t\t\t\t\t} else {\r\n\t\t\t\t\t\t\tcontainer.innerHTML = '<span class=\"text-xs text-gray-400\">-</span>';\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t})\r\n\t\t\t\t\t.catch(error => {\r\n\t\t\t\t\t\tconsole.error('Error loading documents:', error);\r\n\t\t\t\t\t\tdocument.getElementById('docs-' + studentId).innerHTML = '<span class=\"text-xs text-red-500\">Error</span>';\r\n\t\t\t\t\t});\r\n\t\t\t}\r\n\t\t</script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div></main></div><!-- Modal Container for document viewing --><div id=\"modal-container\" style=\"display: none;\"></div><script>\r\n\t\t\t// Clear filters\r\n\t\t\tfunction clearFilters(accessCode) {\r\n\t\t\t\tconst searchInput = document.getElementById('search');\r\n\t\t\t\tif (searchInput) {\r\n\t\t\t\t\tsearchInput.value = '';\r\n\t\t\t\t}\r\n\r\n\t\t\t\t// Reset all select boxes\r\n\t\t\t\tdocument.querySelectorAll('.select-container').forEach(container => {\r\n\t\t\t\t\tconst trigger = container.querySelector('.select-trigger');\r\n\t\t\t\t\tconst hiddenInput = trigger?.querySelector('input[type=\"hidden\"]');\r\n\t\t\t\t\tconst valueEl = trigger?.querySelector('.select-value');\r\n\r\n\t\t\t\t\tif (hiddenInput) {\r\n\t\t\t\t\t\thiddenInput.value = hiddenInput.name === 'limit' ? '10' : '';\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tif (valueEl) {\r\n\t\t\t\t\t\tconst placeholder = hiddenInput?.name === 'limit' ? '10' : 'Visos';\r\n\t\t\t\t\t\tvalueEl.textContent = placeholder;\r\n\t\t\t\t\t\tvalueEl.classList.add('text-muted-foreground');\r\n\t\t\t\t\t}\r\n\t\t\t\t});\r\n\r\n\t\t\t\t// Reload with cleared filters\r\n\t\t\t\thtmx.ajax('GET', '/commission/' + accessCode, {\r\n\t\t\t\t\ttarget: '#student-table-container',\r\n\t\t\t\t\tvalues: { limit: '10', group: '', topic_status: '', search: '', page: '1' }\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\t// View repository\r\n\t\t\tfunction viewStudentRepository(studentId, accessCode) {\r\n\t\t\t\twindow.open('/commission/' + accessCode + '/repository/student/' + studentId, '_blank');\r\n\t\t\t}\r\n\r\n\t\t\t// View document\r\n\t\t\tfunction viewDocument(documentId) {\r\n\t\t\t\twindow.open('/api/public/documents/' + documentId + '/preview', '_blank');\r\n\t\t\t}\r\n\r\n\t\t\t// Download document\r\n\t\t\tfunction downloadDocument(documentId) {\r\n\t\t\t\twindow.location.href = '/api/public/documents/' + documentId + '/download';\r\n\t\t\t}\r\n\r\n\t\t\t// Load documents dynamically\r\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\r\n\t\t\t\tconst docElements = document.querySelectorAll('[data-load-documents=\"true\"]');\r\n\t\t\t\tdocElements.forEach(function(element) {\r\n\t\t\t\t\tconst studentId = element.getAttribute('data-student-id');\r\n\t\t\t\t\tloadDocuments(studentId);\r\n\t\t\t\t});\r\n\t\t\t});\r\n\r\n\r\n\t\t\tfunction viewTopicRegistration(studentId, accessCode) {\r\n\t\t\t\t// Create modal container if it doesn't exist\r\n\t\t\t\tlet modalContainer = document.getElementById('topic-modal-container');\r\n\t\t\t\tif (!modalContainer) {\r\n\t\t\t\t\tmodalContainer = document.createElement('div');\r\n\t\t\t\t\tmodalContainer.id = 'topic-modal-container';\r\n\t\t\t\t\tdocument.body.appendChild(modalContainer);\r\n\t\t\t\t}\r\n\r\n\t\t\t\t// Load topic registration modal\r\n\t\t\t\thtmx.ajax('GET', '/commission/' + accessCode + '/topic-registration/' + studentId + '?mode=view', {\r\n\t\t\t\t\ttarget: '#topic-modal-container',\r\n\t\t\t\t\tswap: 'innerHTML'\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tfunction loadDocuments(studentId) {\r\n\t\t\t\tfetch('/api/public/students/' + studentId + '/documents')\r\n\t\t\t\t\t.then(response => response.json())\r\n\t\t\t\t\t.then(data => {\r\n\t\t\t\t\t\tconst container = document.getElementById('docs-' + studentId);\r\n\t\t\t\t\t\tif (data.documents && data.documents.length > 0) {\r\n\t\t\t\t\t\t\tlet html = '<div class=\"flex flex-wrap gap-1\">';\r\n\t\t\t\t\t\t\tdata.documents.forEach(doc => {\r\n\t\t\t\t\t\t\t\tlet icon = '📄';\r\n\t\t\t\t\t\t\t\tlet title = doc.type;\r\n\r\n\t\t\t\t\t\t\t\tif (doc.type === 'thesis_pdf' || doc.type === 'thesis') {\r\n\t\t\t\t\t\t\t\t\ticon = '📕';\r\n\t\t\t\t\t\t\t\t\ttitle = 'Thesis PDF';\r\n\t\t\t\t\t\t\t\t} else if (doc.type === 'presentation') {\r\n\t\t\t\t\t\t\t\t\ticon = '📊';\r\n\t\t\t\t\t\t\t\t\ttitle = 'Presentation';\r\n\t\t\t\t\t\t\t\t}\r\n\r\n\t\t\t\t\t\t\t\thtml += `\r\n\t\t\t\t\t\t\t\t\t<div class=\"group relative\">\r\n\t\t\t\t\t\t\t\t\t\t<button onclick=\"${doc.hasPreview ? `viewDocument(${doc.id})` : `downloadDocument(${doc.id})`}\"\r\n\t\t\t\t\t\t\t\t\t\t\tclass=\"text-xs p-1 hover:bg-gray-100 rounded\"\r\n\t\t\t\t\t\t\t\t\t\t\ttitle=\"${title}\">\r\n\t\t\t\t\t\t\t\t\t\t\t${icon}\r\n\t\t\t\t\t\t\t\t\t\t</button>\r\n\t\t\t\t\t\t\t\t\t\t<div class=\"absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none\">\r\n\t\t\t\t\t\t\t\t\t\t\t${title}\r\n\t\t\t\t\t\t\t\t\t\t\t<div class=\"text-xs\">${doc.hasPreview ? 'Click to view' : 'Click to download'}</div>\r\n\t\t\t\t\t\t\t\t\t\t</div>\r\n\t\t\t\t\t\t\t\t\t</div>\r\n\t\t\t\t\t\t\t\t`;\r\n\t\t\t\t\t\t\t});\r\n\t\t\t\t\t\t\thtml += '</div>';\r\n\t\t\t\t\t\t\tcontainer.innerHTML = html;\r\n\t\t\t\t\t\t} else {\r\n\t\t\t\t\t\t\tcontainer.innerHTML = '<span class=\"text-xs text-gray-400\">-</span>';\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t})\r\n\t\t\t\t\t.catch(error => {\r\n\t\t\t\t\t\tconsole.error('Error loading documents:', error);\r\n\t\t\t\t\t\tdocument.getElementById('docs-' + studentId).innerHTML = '<span class=\"text-xs text-red-500\">Error</span>';\r\n\t\t\t\t\t});\r\n\t\t\t}\r\n\t\t</script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1087,13 +1086,17 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "Recenzentas ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "Recenzento įvertinimas ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						return nil
 					})
 					templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var47), templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1109,7 +1112,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1165,7 +1168,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 								var templ_7745c5c3_Var52 string
 								templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentGroup)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 420, Col: 30}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 388, Col: 30}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 								if templ_7745c5c3_Err != nil {
@@ -1183,7 +1186,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1199,46 +1202,46 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<div class=\"space-y-1\"><div class=\"font-medium text-sm\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<div class=\"space-y-1\"><div class=\"font-medium text-sm\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var54 string
 							templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentName)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 426, Col: 30}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 394, Col: 30}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, " ")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, " ")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var55 string
 							templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentLastname)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 426, Col: 58}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 394, Col: 58}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</div><div class=\"text-xs text-gray-500\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</div><div class=\"text-xs text-gray-500\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var56 string
 							templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(student.FinalProjectTitle)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 429, Col: 36}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 397, Col: 36}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</div></div>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</div></div>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -1248,7 +1251,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1279,7 +1282,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1305,7 +1308,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1362,7 +1365,7 @@ func CommissionStudentTable(students []database.StudentSummaryView, pagination *
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1392,7 +1395,7 @@ func CommissionDocumentsCell(studentID int, hasSourceCode bool, accessCode strin
 			templ_7745c5c3_Var60 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<div class=\"flex items-center gap-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<div class=\"flex items-center gap-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1428,38 +1431,38 @@ func CommissionDocumentsCell(studentID int, hasSourceCode bool, accessCode strin
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<div class=\"flex items-center justify-center h-6 w-6 p-0\"><span class=\"text-xs text-gray-400\" title=\"No source code\">-</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<div class=\"flex items-center justify-center h-6 w-6 p-0\"><span class=\"text-xs text-gray-400\" title=\"No source code\">-</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<div id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<div id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var62 string
 		templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs("docs-" + strconv.Itoa(studentID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 485, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 453, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\" class=\"text-xs\" data-student-id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" class=\"text-xs\" data-student-id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var63 string
 		templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(studentID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 487, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 455, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" data-load-documents=\"true\"><div class=\"text-gray-400 italic\">Kraunama...</div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\" data-load-documents=\"true\"><div class=\"text-gray-400 italic\">Kraunama...</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1489,46 +1492,46 @@ func CommissionPagination(pagination *database.PaginationInfo) templ.Component {
 			templ_7745c5c3_Var64 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<div class=\"flex items-center justify-between py-4 px-4\"><div class=\"text-sm text-gray-500\">Rodoma ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<div class=\"flex items-center justify-between py-4 px-4\"><div class=\"text-sm text-gray-500\">Rodoma ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var65 string
 		templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa((pagination.Page-1)*pagination.Limit + 1))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 499, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 467, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, " - ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, " - ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var66 string
 		templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(minInt(pagination.Page*pagination.Limit, pagination.Total)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 499, Col: 145}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 467, Col: 145}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, " iš ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, " iš ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var67 string
 		templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(pagination.Total))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 499, Col: 184}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 467, Col: 184}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</div><div class=\"flex items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</div><div class=\"flex items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1581,7 +1584,7 @@ func CommissionPagination(pagination *database.PaginationInfo) templ.Component {
 					var templ_7745c5c3_Var70 string
 					templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 522, Col: 23}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 490, Col: 23}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 					if templ_7745c5c3_Err != nil {
@@ -1612,7 +1615,7 @@ func CommissionPagination(pagination *database.PaginationInfo) templ.Component {
 					var templ_7745c5c3_Var72 string
 					templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 534, Col: 23}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 502, Col: 23}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 					if templ_7745c5c3_Err != nil {
@@ -1666,7 +1669,7 @@ func CommissionPagination(pagination *database.PaginationInfo) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1696,7 +1699,7 @@ func CommissionTopicCell(studentID int, topicStatus string, topicApproved bool, 
 			templ_7745c5c3_Var74 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<div class=\"flex items-center gap-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<div class=\"flex items-center gap-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1714,7 +1717,7 @@ func CommissionTopicCell(studentID int, topicStatus string, topicApproved bool, 
 				}
 				ctx = templ.InitializeContext(ctx)
 				if topicApproved {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<svg class=\"w-5 h-5 text-green-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<svg class=\"w-5 h-5 text-green-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1738,7 +1741,7 @@ func CommissionTopicCell(studentID int, topicStatus string, topicApproved bool, 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, " <span class=\"text-xs\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, " <span class=\"text-xs\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1746,17 +1749,17 @@ func CommissionTopicCell(studentID int, topicStatus string, topicApproved bool, 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "<span class=\"text-xs text-gray-400\">Nepateikta</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<span class=\"text-xs text-gray-400\">Nepateikta</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1764,7 +1767,8 @@ func CommissionTopicCell(studentID int, topicStatus string, topicApproved bool, 
 	})
 }
 
-// Enhanced reviewer cell with questions preview
+// Enhanced reviewer cell with questions displayed inline
+// Enhanced reviewer cell with inline grade display
 func CommissionReviewerCell(reviewerName string, hasReport bool, isSigned bool, reviewerGrade sql.NullFloat64, reviewerQuestions sql.NullString) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -1787,133 +1791,74 @@ func CommissionReviewerCell(reviewerName string, hasReport bool, isSigned bool, 
 		}
 		ctx = templ.ClearChildren(ctx)
 		if reviewerName != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<div class=\"space-y-1\"><div class=\"flex items-center gap-2\"><span class=\"text-xs font-medium\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var77 string
-			templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(reviewerName)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 591, Col: 52}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<div class=\"space-y-1\"><div class=\"text-xs\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if hasReport && reviewerGrade.Valid && reviewerGrade.Float64 > 0 {
-				templ_7745c5c3_Var78 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-					if !templ_7745c5c3_IsBuffer {
-						defer func() {
-							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err == nil {
-								templ_7745c5c3_Err = templ_7745c5c3_BufErr
-							}
-						}()
-					}
-					ctx = templ.InitializeContext(ctx)
-					var templ_7745c5c3_Var79 string
-					templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f", reviewerGrade.Float64))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 597, Col: 50}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					return nil
-				})
-				templ_7745c5c3_Err = badge.Badge(badge.Props{
-					Variant: badge.VariantDefault,
-					Class:   "text-xs px-1.5 py-0 font-bold",
-				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var78), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "<span class=\"font-medium\">Įvertinimas: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "</div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if hasReport {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div class=\"text-xs\">")
+				var templ_7745c5c3_Var77 string
+				templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.0f", reviewerGrade.Float64))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 561, Col: 89}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if isSigned {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<span class=\"text-green-600\">✓ Pasirašyta</span>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<span class=\"text-blue-600\">Užpildyta</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<span class=\"text-green-600 ml-2\">✓ Pasirašyta</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "</div>")
+			} else if hasReport {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<span class=\"text-blue-600\">Užpildyta</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if reviewerQuestions.Valid && reviewerQuestions.String != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<div class=\"mt-1\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Var80 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-						if !templ_7745c5c3_IsBuffer {
-							defer func() {
-								templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err == nil {
-									templ_7745c5c3_Err = templ_7745c5c3_BufErr
-								}
-							}()
-						}
-						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						return nil
-					})
-					templ_7745c5c3_Err = button.Button(button.Props{
-						Variant: button.VariantGhost,
-						Size:    button.SizeIcon,
-						Class:   "h-5 w-5 p-0 text-blue-600 hover:text-blue-800",
-						Attributes: templ.Attributes{
-							"onclick": fmt.Sprintf("showReviewerQuestions('%s', '%s')",
-								strings.ReplaceAll(reviewerName, "'", "\\'"),
-								strings.ReplaceAll(reviewerQuestions.String, "'", "\\'")),
-							"title": "Peržiūrėti klausimus",
-						},
-					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var80), templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</div>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<span class=\"text-xs text-yellow-600\">Neužpildyta</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<span class=\"text-yellow-600\">Laukiama</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if hasReport && reviewerQuestions.Valid && reviewerQuestions.String != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<div class=\"mt-1\"><div class=\"text-xs text-gray-700 bg-gray-50 p-1.5 rounded border border-gray-200\"><div class=\"whitespace-pre-wrap break-words max-h-20 overflow-y-auto\"><span class=\"font-medium\">Klausimai</span>: ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var78 string
+				templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(reviewerQuestions.String)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 575, Col: 77}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</div></div></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<span class=\"text-xs text-gray-400\">Nepaskirtas</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<span class=\"text-xs text-gray-400\">Nepaskirtas</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1939,13 +1884,13 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var81 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var81 == nil {
-			templ_7745c5c3_Var81 = templ.NopComponent
+		templ_7745c5c3_Var79 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var79 == nil {
+			templ_7745c5c3_Var79 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if approved {
-			templ_7745c5c3_Var82 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_Var80 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 				if !templ_7745c5c3_IsBuffer {
@@ -1957,7 +1902,7 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "Patvirtinta")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "Patvirtinta")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1966,13 +1911,65 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 			templ_7745c5c3_Err = badge.Badge(badge.Props{
 				Variant: badge.VariantDefault,
 				Class:   "text-xs bg-green-100 text-green-800",
-			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var82), templ_7745c5c3_Buffer)
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var80), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
 			switch status {
 			case "supervisor_approved":
+				templ_7745c5c3_Var81 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+					if !templ_7745c5c3_IsBuffer {
+						defer func() {
+							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err == nil {
+								templ_7745c5c3_Err = templ_7745c5c3_BufErr
+							}
+						}()
+					}
+					ctx = templ.InitializeContext(ctx)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "Vadovas patvirtino")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					return nil
+				})
+				templ_7745c5c3_Err = badge.Badge(badge.Props{
+					Variant: badge.VariantDefault,
+					Class:   "text-xs bg-blue-100 text-blue-800",
+				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var81), templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			case "submitted":
+				templ_7745c5c3_Var82 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+					if !templ_7745c5c3_IsBuffer {
+						defer func() {
+							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err == nil {
+								templ_7745c5c3_Err = templ_7745c5c3_BufErr
+							}
+						}()
+					}
+					ctx = templ.InitializeContext(ctx)
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "Pateikta")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					return nil
+				})
+				templ_7745c5c3_Err = badge.Badge(badge.Props{
+					Variant: badge.VariantDefault,
+					Class:   "text-xs bg-yellow-100 text-yellow-800",
+				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var82), templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			case "rejected":
 				templ_7745c5c3_Var83 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -1985,7 +1982,7 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "Vadovas patvirtino")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "Atmesta")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1993,12 +1990,12 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 				})
 				templ_7745c5c3_Err = badge.Badge(badge.Props{
 					Variant: badge.VariantDefault,
-					Class:   "text-xs bg-blue-100 text-blue-800",
+					Class:   "text-xs bg-red-100 text-red-800",
 				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var83), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			case "submitted":
+			case "revision_requested":
 				templ_7745c5c3_Var84 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -2011,7 +2008,7 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "Pateikta")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "Taisytina")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2019,12 +2016,12 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 				})
 				templ_7745c5c3_Err = badge.Badge(badge.Props{
 					Variant: badge.VariantDefault,
-					Class:   "text-xs bg-yellow-100 text-yellow-800",
+					Class:   "text-xs bg-orange-100 text-orange-800",
 				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var84), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			case "rejected":
+			default:
 				templ_7745c5c3_Var85 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -2037,64 +2034,12 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "Atmesta")
+					var templ_7745c5c3_Var86 string
+					templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 630, Col: 12}
 					}
-					return nil
-				})
-				templ_7745c5c3_Err = badge.Badge(badge.Props{
-					Variant: badge.VariantDefault,
-					Class:   "text-xs bg-red-100 text-red-800",
-				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var85), templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			case "revision_requested":
-				templ_7745c5c3_Var86 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-					if !templ_7745c5c3_IsBuffer {
-						defer func() {
-							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err == nil {
-								templ_7745c5c3_Err = templ_7745c5c3_BufErr
-							}
-						}()
-					}
-					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "Taisytina")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					return nil
-				})
-				templ_7745c5c3_Err = badge.Badge(badge.Props{
-					Variant: badge.VariantDefault,
-					Class:   "text-xs bg-orange-100 text-orange-800",
-				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var86), templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			default:
-				templ_7745c5c3_Var87 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-					if !templ_7745c5c3_IsBuffer {
-						defer func() {
-							templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err == nil {
-								templ_7745c5c3_Err = templ_7745c5c3_BufErr
-							}
-						}()
-					}
-					ctx = templ.InitializeContext(ctx)
-					var templ_7745c5c3_Var88 string
-					templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(status)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_student_list.templ`, Line: 681, Col: 12}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2103,7 +2048,7 @@ func getTopicStatusBadge(status string, approved bool) templ.Component {
 				templ_7745c5c3_Err = badge.Badge(badge.Props{
 					Variant: badge.VariantDefault,
 					Class:   "text-xs",
-				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var87), templ_7745c5c3_Buffer)
+				}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var85), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
