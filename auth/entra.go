@@ -359,13 +359,22 @@ func (a *AuthService) isSupervisorInDatabase(ctx context.Context, email string) 
 }
 
 // getDepartmentHeadPermissions returns permissions based on department head role
+// getDepartmentHeadPermissions returns permissions based on department head role
 func (a *AuthService) getDepartmentHeadPermissions(roleID int) (string, []string) {
 	switch roleID {
 	case RoleIDSystemAdmin:
-		return RoleAdmin, []string{
+		// Even if they have system admin role ID, if they're in department_heads table,
+		// they should be treated as department head, not admin
+		return RoleDepartmentHead, []string{
 			PermissionFullAccess,
 			PermissionManageUsers,
 			PermissionSystemConfig,
+			PermissionViewAllStudents,
+			PermissionApproveTopics,
+			PermissionManageDepartment,
+			PermissionGenerateReports,
+			PermissionViewDepartmentReports,
+			PermissionManageCommission,
 		}
 	case RoleIDDepartmentHead:
 		return RoleDepartmentHead, []string{

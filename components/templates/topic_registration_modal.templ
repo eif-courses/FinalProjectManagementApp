@@ -16,8 +16,9 @@ import (
 	"strconv"
 )
 
-templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, comments []database.TopicRegistrationComment, locale string) {
-	@modal.Modal(modal.Props{ID: "topic-registration-modal", Class: "w-[95vw] max-w-6xl mx-auto my-2"}) {	@modal.Header() {
+templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, comments []database.TopicRegistrationComment, versions []database.ProjectTopicRegistrationVersion, locale string) {
+	@modal.Modal(modal.Props{ID: "topic-registration-modal", Class: "w-[95vw] max-w-6xl mx-auto my-2"}) {
+		@modal.Header() {
 			<div class="relative px-6 py-2 border-b">
 				<button onclick="closeModal()" class="absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">
 					×
@@ -41,7 +42,6 @@ templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Proje
 						@TopicStatusAlert(topic, locale)
 					</div>
 				}
-
 				<!-- Student Information - Very compact inline -->
 				<div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
 					<span class="font-medium">
@@ -71,19 +71,16 @@ templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Proje
 					</span>
 					<span class="mx-1">{ getRoleDisplayName(user.Role, locale) }</span>
 				</div>
-
 				<!-- Main Content -->
 				<div class="space-y-3">
 					<!-- FORM SECTION -->
 					if shouldShowForm(user, topic) {
 						@CompactFormSection(user, topic, locale)
 					}
-
 					<!-- VIEW SECTION -->
 					if shouldShowViewOnly(user, topic) {
 						@CompactViewSection(user, topic, locale)
 					}
-
 					<!-- No Topic Message -->
 					if topic == nil && user.Role != auth.RoleStudent {
 						@card.Card() {
@@ -106,7 +103,6 @@ templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Proje
 							</div>
 						}
 					}
-
 					<!-- APPROVAL SECTIONS -->
 					if topic != nil {
 						<div class="space-y-3">
@@ -118,15 +114,17 @@ templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Proje
 							}
 						</div>
 					}
-
 					<!-- Comments Section -->
 					if topic != nil && (len(comments) > 0 || canAddComments(user, topic)) {
 						<div class="mt-3">
 							@CommentsSection(user, topic, comments, locale)
 						</div>
 					}
+					<!-- Version History Section -->
+					if topic != nil {
+						@TopicVersionHistory(topic, versions, locale)
+					}
 				</div>
-
 				<div id="modal-result" class="mt-3"></div>
 			</div>
 		}
@@ -138,13 +136,16 @@ templ TopicRegistrationModal(user *auth.AuthenticatedUser, topic *database.Proje
 			</div>
 		}
 	}
-	// Add revision modal if user can request revision
-    	if topic != nil && shouldShowSupervisorReview(user, topic) {
-    		@RevisionModal(topic.ID, locale)
-    	}
+	<!-- Add revision modal if user can request revision -->
+	if topic != nil && shouldShowSupervisorReview(user, topic) {
+		@RevisionModal(topic.ID, locale)
+	}
+	<!-- Add department revision modal if user can request department revision -->
+	if topic != nil && shouldShowDepartmentReview(user, topic) {
+		@DepartmentRevisionModal(topic.ID, locale)
+	}
 	@TopicModalScripts()
 }
-
 
 // More compact form with better width utilization
 templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, locale string) {
@@ -161,7 +162,6 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 				if topic != nil {
 					<input type="hidden" name="topic_id" value={ strconv.Itoa(topic.ID) }/>
 				}
-
 				<!-- Two column grid for supervisor and date -->
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 					<!-- Supervisor -->
@@ -181,7 +181,6 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 							Placeholder: getSupervisorPlaceholder(locale),
 						})
 					</div>
-
 					<!-- Completion Date -->
 					<div>
 						@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
@@ -199,7 +198,6 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 						})
 					</div>
 				</div>
-
 				<!-- Title Lithuanian - Full width -->
 				<div>
 					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
@@ -217,7 +215,6 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 						Placeholder: getTitlePlaceholder(locale),
 					})
 				</div>
-
 				<!-- Title English - Full width -->
 				<div>
 					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
@@ -235,7 +232,6 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 						Placeholder: getTitleEnPlaceholder(locale),
 					})
 				</div>
-
 				<!-- Problem Description -->
 				<div>
 					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
@@ -254,7 +250,6 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 						Placeholder: getProblemPlaceholder(locale),
 					})
 				</div>
-
 				<!-- Objective -->
 				<div>
 					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
@@ -273,7 +268,6 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 						Placeholder: getObjectivePlaceholder(locale),
 					})
 				</div>
-
 				<!-- Tasks -->
 				<div>
 					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
@@ -297,127 +291,66 @@ templ CompactFormSection(user *auth.AuthenticatedUser, topic *database.ProjectTo
 	}
 }
 
-// COMPACT VIEW SECTION
-
-// Similarly update the View section
+// UPDATED VIEW SECTION - Now includes version comparison toggle
 templ CompactViewSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, locale string) {
 	@card.Card() {
 		<div class="p-4">
-			<h3 class="text-base font-semibold mb-3">
-				if locale == "en" {
-					Topic Information
-				} else {
-					Temos informacija
-				}
-			</h3>
-			<div class="space-y-3">
-				<!-- Two column grid -->
-				<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-					<!-- Supervisor -->
-					<div>
-						@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+			<!-- Add hidden topic ID for JavaScript to use -->
+			if topic != nil {
+				<input type="hidden" id="current-topic-id" value={ strconv.Itoa(topic.ID) }/>
+			}
+			<div class="flex items-center justify-between mb-3">
+				<h3 class="text-base font-semibold">
+					if locale == "en" {
+						Topic Information
+					} else {
+						Temos informacija
+					}
+				</h3>
+				<!-- Version selector dropdown -->
+				if topic != nil && topic.CurrentVersion > 1 {
+					<div class="flex items-center gap-2">
+						<span class="text-sm text-gray-600">
 							if locale == "en" {
-								Supervisor
+								Compare with:
 							} else {
-								Vadovas(-ė)
+								Palyginti su:
 							}
-						}
-						<div class="p-2 bg-muted border rounded text-sm">
-							{ getSupervisorValue(topic) }
-						</div>
-					</div>
-
-					<!-- Completion Date -->
-					if getCompletionValue(topic) != "" {
-						<div>
-							@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+						</span>
+						<select
+							id="version-selector"
+							onchange="loadVersionComparison(this.value)"
+							class="text-sm border rounded px-2 py-1"
+						>
+							<option value="">
 								if locale == "en" {
-									Completion Date
+									Current version only
 								} else {
-									Užbaigimo data
+									Tik dabartinė versija
 								}
+							</option>
+							for i := 1; i < topic.CurrentVersion; i++ {
+								<option value={ strconv.Itoa(i) }>
+									if locale == "en" {
+										Version { strconv.Itoa(i) }
+									} else {
+										Versija { strconv.Itoa(i) }
+									}
+								</option>
 							}
-							<div class="p-2 bg-muted border rounded text-sm">
-								{ getCompletionValue(topic) }
-							</div>
-						</div>
-					}
-				</div>
-
-				<!-- Rest of the fields remain full width -->
-				<!-- Title Lithuanian -->
-				<div>
-					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
-						if locale == "en" {
-							Title (Lithuanian)
-						} else {
-							Tema (Lietuvių k.)
-						}
-					}
-					<div class="p-2 bg-muted border rounded text-sm">
-						{ getTitleValue(topic) }
+						</select>
 					</div>
-				</div>
+				}
+			</div>
 
-				<!-- Title English -->
-				<div>
-					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
-						if locale == "en" {
-							Title (English)
-						} else {
-							Tema (Anglų k.)
-						}
-					}
-					<div class="p-2 bg-muted border rounded text-sm">
-						{ getTitleEnValue(topic) }
-					</div>
-				</div>
-
-				<!-- Problem Description -->
-				<div>
-					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
-						if locale == "en" {
-							Problem Description
-						} else {
-							Problemos aprašymas
-						}
-					}
-					<div class="p-2 bg-muted border rounded text-sm whitespace-pre-wrap">
-						{ getProblemValue(topic) }
-					</div>
-				</div>
-
-				<!-- Objective -->
-				<div>
-					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
-						if locale == "en" {
-							Objective
-						} else {
-							Tikslas
-						}
-					}
-					<div class="p-2 bg-muted border rounded text-sm whitespace-pre-wrap">
-						{ getObjectiveValue(topic) }
-					</div>
-				</div>
-
-				<!-- Tasks -->
-				<div>
-					@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
-						if locale == "en" {
-							Tasks and Content Plan
-						} else {
-							Uždaviniai ir turinio planas
-						}
-					}
-					<div class="p-2 bg-muted border rounded text-sm whitespace-pre-wrap">
-						{ getTasksValue(topic) }
-					</div>
-				</div>
+			<!-- Current content display -->
+			<div id="topic-content-display">
+				@TopicContentDisplay(topic, nil, false, locale)
 			</div>
 		</div>
 	}
 }
+
 
 // COMMENTS SECTION
 templ CommentsSection(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration, comments []database.TopicRegistrationComment, locale string) {
@@ -435,11 +368,11 @@ templ CommentsSection(user *auth.AuthenticatedUser, topic *database.ProjectTopic
 			<!-- Add Comment Form -->
 			if canAddComments(user, topic) {
 				<form
+					id="comment-form"
+					class="mb-4"
 					hx-post={ fmt.Sprintf("/api/topic/%d/comment", topic.ID) }
 					hx-target="#comments-list"
 					hx-swap="beforeend"
-					hx-on::after-request="this.reset()"
-					class="mb-4"
 				>
 					@textarea.Textarea(textarea.Props{
 						Name:        "comment",
@@ -589,15 +522,15 @@ templ DepartmentReviewSection(user *auth.AuthenticatedUser, topic *database.Proj
 					Variant: button.VariantDestructive,
 					Class:   "h-9 px-4 text-sm",
 					Attributes: templ.Attributes{
-						"onclick": "showRejectModal(" + strconv.Itoa(topic.ID) + ")",
+						"onclick": "showDepartmentRevisionModal(" + strconv.Itoa(topic.ID) + ")",
 					},
 				}) {
-					@icon.CircleX(icon.Props{Size: 16})
+					@icon.RotateCcw(icon.Props{Size: 16})
 					<span class="ml-1">
 						if locale == "en" {
-							Reject
+							Request Revision
 						} else {
-							Atmesti
+							Prašyti pataisymų
 						}
 					</span>
 				}
@@ -755,8 +688,31 @@ templ TopicStatusAlert(topic *database.ProjectTopicRegistration, locale string) 
 								}
 							</span>
 						</div>
+						// Show department revision reason if exists
+						if topic.RejectionReason != nil {
+							<p class="text-sm mt-1 pl-4">
+								<strong>
+									if locale == "en" {
+										Department:
+									} else {
+										Katedra:
+									}
+								</strong>
+								{ " " + *topic.RejectionReason }
+							</p>
+						}
+						// Show supervisor revision reason if exists
 						if topic.SupervisorRejectionReason != nil {
-							<p class="text-sm mt-1 pl-4">{ *topic.SupervisorRejectionReason }</p>
+							<p class="text-sm mt-1 pl-4">
+								<strong>
+									if locale == "en" {
+										Supervisor:
+									} else {
+										Vadovas:
+									}
+								</strong>
+								{ " " + *topic.SupervisorRejectionReason }
+							</p>
 						}
 					</div>
 				}
@@ -764,233 +720,1102 @@ templ TopicStatusAlert(topic *database.ProjectTopicRegistration, locale string) 
 	}
 }
 
-// SCRIPTS
-templ TopicModalScripts() {
-	<script>
-        // Modal opening logic
-        (function() {
-            requestAnimationFrame(function() {
-                requestAnimationFrame(function() {
-                    const modal = document.getElementById('topic-registration-modal');
-                    if (modal) {
-                        if (window.modalState && window.modalState.openModalId) {
-                            const existingModal = document.getElementById(window.modalState.openModalId);
-                            if (existingModal && existingModal !== modal) {
-                                existingModal.style.display = 'none';
-                                existingModal.classList.add('opacity-0');
-                            }
-                        }
+// NEW: Topic content display component (can show single version or comparison)
+templ TopicContentDisplay(currentTopic *database.ProjectTopicRegistration, comparisonTopic *database.ProjectTopicRegistration, showComparison bool, locale string) {
+	<div class="space-y-3">
+		<!-- Two column grid for supervisor and date -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+			<!-- Supervisor -->
+			<div>
+				@TopicFieldDisplay("supervisor", getSupervisorValue(currentTopic), comparisonTopic, showComparison, locale)
+			</div>
+			<!-- Completion Date -->
+			if getCompletionValue(currentTopic) != "" || (showComparison && comparisonTopic != nil) {
+				<div>
+					@TopicFieldDisplay("completion_date", getCompletionValue(currentTopic), comparisonTopic, showComparison, locale)
+				</div>
+			}
+		</div>
 
-                        if (!window.modalState) {
-                            window.modalState = { openModalId: null };
-                        }
+		<!-- Full width fields -->
+		@TopicFieldDisplay("title", getTitleValue(currentTopic), comparisonTopic, showComparison, locale)
+		@TopicFieldDisplay("title_en", getTitleEnValue(currentTopic), comparisonTopic, showComparison, locale)
+		@TopicFieldDisplay("problem", getProblemValue(currentTopic), comparisonTopic, showComparison, locale)
+		@TopicFieldDisplay("objective", getObjectiveValue(currentTopic), comparisonTopic, showComparison, locale)
+		@TopicFieldDisplay("tasks", getTasksValue(currentTopic), comparisonTopic, showComparison, locale)
+	</div>
+}
+// NEW: Individual field display component with comparison support
+// NEW: Individual field display component with comparison support
+templ TopicFieldDisplay(fieldType, currentValue string, comparisonTopic *database.ProjectTopicRegistration, showComparison bool, locale string) {
+	<div>
+		<!-- Field label -->
+		@label.Label(label.Props{Class: "text-sm font-medium mb-1"}) {
+			{ getFieldDisplayName(fieldType, locale) }
+		}
 
-                        window.modalState.openModalId = 'topic-registration-modal';
-                        document.body.style.overflow = 'hidden';
-                        modal.style.display = 'flex';
-                        modal.offsetHeight;
-                        modal.classList.remove('opacity-0', 'hidden');
-                        modal.classList.add('opacity-100');
-
-                        const content = modal.querySelector('[data-modal-content]');
-                        if (content) {
-                            content.classList.remove('scale-95', 'opacity-0');
-                            content.classList.add('scale-100', 'opacity-100');
-                        }
-                    }
-                });
-            });
-        })();
-
-        // Handle modal close and form responses
-        document.addEventListener('htmx:afterRequest', function(evt) {
-            if (evt.detail.successful && (
-                evt.target.closest('#modal-result') ||
-                evt.detail.xhr.getResponseHeader('HX-Trigger') === 'topicUpdated'
-            )) {
-                const modal = document.getElementById('topic-registration-modal');
-                if (modal && window.modalState) {
-                    setTimeout(() => {
-                        window.modalState.openModalId = null;
-                        document.body.style.overflow = '';
-                        // Refresh the student table if it exists
-                        const tableContainer = document.getElementById('student-table-container');
-                        if (tableContainer) {
-                            htmx.ajax('GET', '/students-list', {
-                                target: '#student-table-container',
-                                values: htmx.values('#filters-form')
-                            });
-                        }
-                    }, 300);
-                }
-            }
-        });
-
-        // Handle escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'topic-registration-modal') {
-                const modal = document.getElementById('topic-registration-modal');
-                if (modal) {
-                    modal.classList.remove('opacity-100');
-                    modal.classList.add('opacity-0');
-                    setTimeout(() => {
-                        modal.style.display = 'none';
-                        window.modalState.openModalId = null;
-                        document.body.style.overflow = '';
-                    }, 300);
-                }
-            }
-        });
-
-        // Functions for revision/rejection modals
-        // Update the revision modal function
-               // Revision Modal Functions
-                     // Set up HTMX event listeners when the modal loads
-                         document.addEventListener('DOMContentLoaded', function() {
-                             setupRevisionModalEvents();
-                         });
-
-                         function setupRevisionModalEvents() {
-                             const revisionForm = document.getElementById('revision-form');
-                             if (revisionForm) {
-                                 // Listen for HTMX after request event
-                                 revisionForm.addEventListener('htmx:afterRequest', function(event) {
-                                     handleRevisionResponse(event);
-                                 });
-                             }
-                         }
-
-                         // Revision Modal Functions
-                         function showRevisionModal(topicId) {
-                             console.log('Show revision modal for topic:', topicId);
-                             const modal = document.getElementById('revision-modal');
-                             if (modal) {
-                                 // Show modal with animation
-                                 modal.classList.remove('hidden');
-
-                                 // Force reflow
-                                 modal.offsetHeight;
-
-                                 // Add opacity and scale
-                                 modal.classList.remove('opacity-0');
-                                 modal.classList.add('opacity-100');
-
-                                 const content = document.getElementById('revision-modal-content');
-                                 if (content) {
-                                     content.classList.remove('scale-95');
-                                     content.classList.add('scale-100');
-                                 }
-
-                                 // Set up event listeners for this modal instance
-                                 setupRevisionModalEvents();
-
-                                 // Focus on textarea after animation
-                                 setTimeout(() => {
-                                     const textarea = modal.querySelector('textarea[name="revision_reason"]');
-                                     if (textarea) {
-                                         textarea.focus();
-                                     }
-                                 }, 100);
-
-                                 // Prevent body scroll
-                                 document.body.style.overflow = 'hidden';
-                             }
-                         }
-
-                         function closeRevisionModal() {
-                             const modal = document.getElementById('revision-modal');
-                             if (modal) {
-                                 // Animate out
-                                 modal.classList.remove('opacity-100');
-                                 modal.classList.add('opacity-0');
-
-                                 const content = document.getElementById('revision-modal-content');
-                                 if (content) {
-                                     content.classList.remove('scale-100');
-                                     content.classList.add('scale-95');
-                                 }
-
-                                 // Hide after animation
-                                 setTimeout(() => {
-                                     modal.classList.add('hidden');
-                                     document.body.style.overflow = '';
-
-                                     // Clear the form
-                                     const form = document.getElementById('revision-form');
-                                     if (form) {
-                                         form.reset();
-                                     }
-                                 }, 300);
-                             }
-                         }
-
-                         function handleRevisionResponse(event) {
-                             console.log('Handling revision response:', event);
-                             const xhr = event.detail.xhr;
-
-                             if (xhr.status >= 200 && xhr.status < 300) {
-                                 console.log('Revision request successful');
-
-                                 // Close modal after a short delay to show success message
-                                 setTimeout(() => {
-                                     closeRevisionModal();
-                                 }, 1500);
-
-                                 // Refresh the student table if it exists
-                                 setTimeout(() => {
-                                     const tableContainer = document.getElementById('student-table-container');
-                                     if (tableContainer) {
-                                         htmx.ajax('GET', '/students-list', {
-                                             target: '#student-table-container',
-                                             values: htmx.values('#filters-form') || {}
-                                         });
-                                     }
-
-                                     // Close the main modal
-                                     closeModal();
-                                 }, 2000);
-                             } else {
-                                 console.log('Revision request failed');
-                                 // Error is already displayed in #modal-result, so just log it
-                             }
-                         }
-
-                         // Close revision modal on escape key
-                         document.addEventListener('keydown', function(e) {
-                             if (e.key === 'Escape') {
-                                 const revisionModal = document.getElementById('revision-modal');
-                                 if (revisionModal && !revisionModal.classList.contains('hidden')) {
-                                     closeRevisionModal();
-                                     e.preventDefault();
-                                 }
-                             }
-                         });
-
-
-
-
-        function showRejectModal(topicId) {
-            console.log('Show reject modal for topic:', topicId);
-            // TODO: Implement rejection modal
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('topic-registration-modal');
-            if (modal) {
-                modal.classList.remove('opacity-100');
-                modal.classList.add('opacity-0');
-                setTimeout(() => {
-                    modal.style.display = 'none';
-                    document.body.style.overflow = '';
-                    if (window.modalState) {
-                        window.modalState.openModalId = null;
-                    }
-                }, 300);
-            }
-        }
-    </script>
+		if showComparison && comparisonTopic != nil {
+			<!-- Comparison view -->
+			if currentValue != getFieldValue(comparisonTopic, fieldType) {
+				<!-- Show side-by-side comparison -->
+				<div class="grid grid-cols-2 gap-2">
+					<div>
+						<div class="text-xs font-medium text-red-700 mb-1 flex items-center gap-1">
+							<span class="w-2 h-2 bg-red-500 rounded-full"></span>
+							if locale == "en" {
+								Previous
+							} else {
+								Ankstesnė
+							}
+						</div>
+						<div class="p-2 bg-red-50 border border-red-200 rounded text-sm whitespace-pre-wrap">
+							if getFieldValue(comparisonTopic, fieldType) == "" {
+								<span class="text-gray-400 italic">
+									if locale == "en" {
+										(empty)
+									} else {
+										(tuščia)
+									}
+								</span>
+							} else {
+								{ getFieldValue(comparisonTopic, fieldType) }
+							}
+						</div>
+					</div>
+					<div>
+						<div class="text-xs font-medium text-green-700 mb-1 flex items-center gap-1">
+							<span class="w-2 h-2 bg-green-500 rounded-full"></span>
+							if locale == "en" {
+								Current
+							} else {
+								Dabartinė
+							}
+						</div>
+						<div class="p-2 bg-green-50 border border-green-200 rounded text-sm whitespace-pre-wrap">
+							if currentValue == "" {
+								<span class="text-gray-400 italic">
+									if locale == "en" {
+										(empty)
+									} else {
+										(tuščia)
+									}
+								</span>
+							} else {
+								{ currentValue }
+							}
+						</div>
+					</div>
+				</div>
+			} else {
+				<!-- No changes, show single value with neutral styling -->
+				<div class="p-2 bg-gray-50 border rounded text-sm whitespace-pre-wrap">
+					<div class="flex items-center gap-2 mb-1">
+						<span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+						<span class="text-xs text-gray-600">
+							if locale == "en" {
+								No changes
+							} else {
+								Pakeitimų nėra
+							}
+						</span>
+					</div>
+					if currentValue == "" {
+						<span class="text-gray-400 italic">
+							if locale == "en" {
+								(empty)
+							} else {
+								(tuščia)
+							}
+						</span>
+					} else {
+						{ currentValue }
+					}
+				</div>
+			}
+		} else {
+			<!-- Single version view -->
+			<div class="p-2 bg-muted border rounded text-sm whitespace-pre-wrap">
+				{ currentValue }
+			</div>
+		}
+	</div>
 }
 
+
+// SIMPLIFIED VERSION HISTORY - Now just shows timeline
+templ TopicVersionHistory(topic *database.ProjectTopicRegistration, versions []database.ProjectTopicRegistrationVersion, locale string) {
+	if topic != nil && len(versions) > 0 {
+		@card.Card() {
+			<div class="p-4">
+				<h3 class="text-base font-semibold mb-3 flex items-center gap-2">
+					@icon.History(icon.Props{Size: 18})
+					if locale == "en" {
+						Version Timeline
+					} else {
+						Versijų chronologija
+					}
+					<span class="text-sm text-muted-foreground">({ fmt.Sprintf("v%d", topic.CurrentVersion) })</span>
+				</h3>
+				<div class="space-y-3">
+					for i, version := range versions {
+						if i < 5 {
+							@VersionTimelineItem(version, locale)
+						}
+					}
+					if len(versions) > 5 {
+						<button
+							onclick="toggleVersionTimeline()"
+							class="text-sm text-primary hover:underline"
+						>
+							if locale == "en" {
+								Show all { fmt.Sprintf("%d", len(versions)) } versions
+							} else {
+								Rodyti visas { fmt.Sprintf("%d", len(versions)) } versijas
+							}
+						</button>
+					}
+				</div>
+			</div>
+		}
+	}
+}
+
+// NEW: Timeline item (simpler than version card)
+templ VersionTimelineItem(version database.ProjectTopicRegistrationVersion, locale string) {
+	<div class="flex gap-3 items-start">
+		<div class="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+		<div class="flex-1 min-w-0">
+			<div class="flex items-center gap-2 mb-1">
+				<span class="text-sm font-medium">
+					if locale == "en" {
+						Version { fmt.Sprintf("%d", version.VersionNumber) }
+					} else {
+						Versija { fmt.Sprintf("%d", version.VersionNumber) }
+					}
+				</span>
+				<span class="text-xs text-gray-500">
+					{ version.CreatedAt.Format("2006-01-02 15:04") }
+				</span>
+				<button
+					data-version={ strconv.Itoa(version.VersionNumber) }
+					onclick="loadVersionComparison(this.getAttribute('data-version'))"
+					class="text-xs text-primary hover:underline"
+				>
+					if locale == "en" {
+						Compare
+					} else {
+						Palyginti
+					}
+				</button>
+			</div>
+			<p class="text-sm text-gray-600">{ version.ChangeSummary }</p>
+			<div class="text-xs text-gray-500">
+				if locale == "en" {
+					by { version.CreatedBy }
+				} else {
+					{ version.CreatedBy }
+				}
+			</div>
+		</div>
+	</div>
+}
+// UPDATED VERSION CARD - Now uses inline comparison
+templ VersionCard(version database.ProjectTopicRegistrationVersion, locale string) {
+	<div class="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+		<div class="flex items-start justify-between">
+			<div class="flex-1">
+				<div class="flex items-center gap-2 mb-1">
+					<span class="text-sm font-medium">
+						if locale == "en" {
+							Version { fmt.Sprintf("%d", version.VersionNumber) }
+						} else {
+							Versija { fmt.Sprintf("%d", version.VersionNumber) }
+						}
+					</span>
+					<span class="text-xs text-muted-foreground">
+						{ version.CreatedAt.Format("2006-01-02 15:04") }
+					</span>
+				</div>
+				<p class="text-sm text-muted-foreground mb-1">
+					{ version.ChangeSummary }
+				</p>
+				<div class="flex items-center gap-2 text-xs text-muted-foreground">
+					@icon.User(icon.Props{Size: 12})
+					<span>{ version.CreatedBy }</span>
+				</div>
+			</div>
+			<button
+				hx-get={ fmt.Sprintf("/api/topic/%d/version/%d/changes", version.TopicRegistrationID, version.VersionNumber) }
+				hx-target={ fmt.Sprintf("#version-%d-changes", version.VersionNumber) }
+				hx-swap="innerHTML"
+				onclick="handleVersionClick(this)"
+				class="text-xs text-primary hover:underline disabled:text-gray-400"
+			>
+				if locale == "en" {
+					Show changes
+				} else {
+					Rodyti pakeitimus
+				}
+			</button>
+		</div>
+		<!-- Inline changes container -->
+		<div id={ fmt.Sprintf("version-%d-changes", version.VersionNumber) } class="mt-3"></div>
+	</div>
+}
+
+// INLINE VERSION COMPARISON - GitHub style
+templ VersionInlineComparison(changes map[string][]string, locale string) {
+	<div class="border rounded-lg overflow-hidden bg-white">
+		<div class="bg-gray-50 px-4 py-2 border-b">
+			<h4 class="font-medium text-sm flex items-center gap-2">
+				@icon.GitCompare(icon.Props{Size: 16})
+				if locale == "en" {
+					Changes in this version
+				} else {
+					Pakeitimai šioje versijoje
+				}
+				<span class="text-xs text-gray-500">({ fmt.Sprintf("%d fields", len(changes)) })</span>
+			</h4>
+		</div>
+		if len(changes) > 0 {
+			<div class="max-h-96 overflow-y-auto">
+				for fieldName, values := range changes {
+					if len(values) >= 2 {
+						@InlineDiffField(fieldName, values[0], values[1], locale)
+					}
+				}
+			</div>
+		} else {
+			<div class="p-4 text-center text-gray-500">
+				<p class="text-sm">
+					if locale == "en" {
+						No changes detected
+					} else {
+						Pakeitimų nerasta
+					}
+				</p>
+			</div>
+		}
+	</div>
+}
+
+// INLINE DIFF FIELD - Side by side comparison
+templ InlineDiffField(fieldName, oldValue, newValue string, locale string) {
+	<div class="border-b border-gray-100 last:border-b-0">
+		<div class="px-4 py-2 bg-gray-50 text-sm font-medium text-gray-700 border-b">
+			{ fieldName }
+		</div>
+		<div class="grid grid-cols-2">
+			<!-- Old version -->
+			<div class="p-4 bg-red-50 border-r border-gray-200">
+				<div class="text-xs font-medium text-red-700 mb-2 flex items-center gap-1">
+					<span class="w-2 h-2 bg-red-500 rounded-full"></span>
+					if locale == "en" {
+						Previous
+					} else {
+						Ankstesnė
+					}
+				</div>
+				<div class="text-sm text-gray-900 whitespace-pre-wrap">
+					if oldValue == "" {
+						<span class="text-gray-400 italic">
+							if locale == "en" {
+								(empty)
+							} else {
+								(tuščia)
+							}
+						</span>
+					} else {
+						{ oldValue }
+					}
+				</div>
+			</div>
+			<!-- New version -->
+			<div class="p-4 bg-green-50">
+				<div class="text-xs font-medium text-green-700 mb-2 flex items-center gap-1">
+					<span class="w-2 h-2 bg-green-500 rounded-full"></span>
+					if locale == "en" {
+						Current
+					} else {
+						Dabartinė
+					}
+				</div>
+				<div class="text-sm text-gray-900 whitespace-pre-wrap">
+					if newValue == "" {
+						<span class="text-gray-400 italic">
+							if locale == "en" {
+								(empty)
+							} else {
+								(tuščia)
+							}
+						</span>
+					} else {
+						{ newValue }
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+// REVISION MODALS
+templ RevisionModal(topicID int, locale string) {
+	<div id="revision-modal" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
+		<div class="fixed inset-0 bg-black bg-opacity-50" onclick="closeRevisionModal()"></div>
+		<div class="fixed inset-0 flex items-center justify-center p-4">
+			<div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform scale-95 transition-transform duration-300" id="revision-modal-content">
+				<div class="p-6">
+					<h3 class="text-lg font-semibold mb-4 text-gray-900">
+						if locale == "en" {
+							Request Revision
+						} else {
+							Prašyti pataisymų
+						}
+					</h3>
+					<form
+						id="revision-form"
+						hx-post={ fmt.Sprintf("/api/topic/%d/supervisor-revision", topicID) }
+						hx-target="#revision-result"
+						hx-swap="innerHTML"
+						hx-indicator="#revision-loading"
+					>
+						<div class="mb-4">
+							@label.Label(label.Props{Class: "text-sm font-medium mb-2 block text-gray-700"}) {
+								if locale == "en" {
+									Reason for revision *
+								} else {
+									Pataisymų priežastis *
+								}
+							}
+							@textarea.Textarea(textarea.Props{
+								Name:        "revision_reason",
+								Required:    true,
+								Class:       "text-sm w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500",
+								Rows:        4,
+								Placeholder: getRevisionPlaceholder(locale),
+							})
+						</div>
+						<div id="revision-loading" class="htmx-indicator mb-4">
+							<div class="text-sm text-gray-600">Submitting...</div>
+						</div>
+						<div id="revision-result" class="mb-4"></div>
+						<div class="flex justify-end gap-3">
+							@button.Button(button.Props{
+								Variant: button.VariantGhost,
+								Type:    "button",
+								Class:   "h-9 px-4 text-sm",
+								Attributes: templ.Attributes{
+									"onclick": "closeRevisionModal()",
+								},
+							}) {
+								if locale == "en" {
+									Cancel
+								} else {
+									Atšaukti
+								}
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantDestructive,
+								Type:    button.TypeSubmit,
+								Class:   "h-9 px-4 text-sm",
+							}) {
+								@icon.RotateCcw(icon.Props{Size: 16})
+								<span class="ml-1">
+									if locale == "en" {
+										Request Revision
+									} else {
+										Prašyti pataisymų
+									}
+								</span>
+							}
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ DepartmentRevisionModal(topicID int, locale string) {
+	<div id="department-revision-modal" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
+		<div class="fixed inset-0 bg-black bg-opacity-50" onclick="closeDepartmentRevisionModal()"></div>
+		<div class="fixed inset-0 flex items-center justify-center p-4">
+			<div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform scale-95 transition-transform duration-300" id="department-revision-modal-content">
+				<div class="p-6">
+					<h3 class="text-lg font-semibold mb-4 text-gray-900">
+						if locale == "en" {
+							Request Revision (Department)
+						} else {
+							Prašyti pataisymų (Katedra)
+						}
+					</h3>
+					<form
+						id="department-revision-form"
+						hx-post={ fmt.Sprintf("/api/topic/%d/department-revision", topicID) }
+						hx-target="#department-revision-result"
+						hx-swap="innerHTML"
+						hx-indicator="#department-revision-loading"
+					>
+						<div class="mb-4">
+							@label.Label(label.Props{Class: "text-sm font-medium mb-2 block text-gray-700"}) {
+								if locale == "en" {
+									Reason for revision *
+								} else {
+									Pataisymų priežastis *
+								}
+							}
+							@textarea.Textarea(textarea.Props{
+								Name:        "revision_reason",
+								Required:    true,
+								Class:       "text-sm w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500",
+								Rows:        4,
+								Placeholder: getDepartmentRevisionPlaceholder(locale),
+							})
+						</div>
+						<div id="department-revision-loading" class="htmx-indicator mb-4">
+							<div class="text-sm text-gray-600">Submitting...</div>
+						</div>
+						<div id="department-revision-result" class="mb-4"></div>
+						<div class="flex justify-end gap-3">
+							@button.Button(button.Props{
+								Variant: button.VariantGhost,
+								Type:    "button",
+								Class:   "h-9 px-4 text-sm",
+								Attributes: templ.Attributes{
+									"onclick": "closeDepartmentRevisionModal()",
+								},
+							}) {
+								if locale == "en" {
+									Cancel
+								} else {
+									Atšaukti
+								}
+							}
+							@button.Button(button.Props{
+								Variant: button.VariantDestructive,
+								Type:    button.TypeSubmit,
+								Class:   "h-9 px-4 text-sm",
+							}) {
+								@icon.RotateCcw(icon.Props{Size: 16})
+								<span class="ml-1">
+									if locale == "en" {
+										Request Revision
+									} else {
+										Prašyti pataisymų
+									}
+								</span>
+							}
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+// UPDATED SCRIPTS
+templ TopicModalScripts() {
+	<script>
+    // Configure HTMX to prevent script processing issues
+    if (typeof htmx !== 'undefined') {
+        htmx.config.allowScriptTags = false;
+        htmx.config.includeIndicatorStyles = false;
+    }
+
+    (function() {
+        // Check if ModalManager exists and has required methods before using it
+        const hasModalManager = window.ModalManager &&
+                               typeof window.ModalManager.register === 'function' &&
+                               typeof window.ModalManager.unregister === 'function';
+
+        // Register this modal with the manager only if it exists
+        if (hasModalManager) {
+            window.ModalManager.register('topic-registration-modal');
+        }
+
+        // Store initial state
+        window.currentReviewStudentId = window.currentReviewStudentId || null;
+
+        // Modal initialization
+        const modal = document.getElementById('topic-registration-modal');
+        if (modal) {
+            // Show the modal with proper animations
+            requestAnimationFrame(() => {
+                modal.style.display = 'flex';
+                modal.offsetHeight; // Force reflow
+
+                modal.classList.remove('opacity-0', 'hidden');
+                modal.classList.add('opacity-100');
+
+                const content = modal.querySelector('[data-modal-content]');
+                if (content) {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }
+
+                document.body.style.overflow = 'hidden';
+
+                // Initialize auto-save if form exists
+                const form = document.getElementById('topic-modal-form');
+                if (form && !form.querySelector('[disabled]')) {
+                    initializeFormAutoSave();
+                }
+            });
+        }
+
+        // Form auto-save functionality
+        let autoSaveTimer = null;
+        let hasUnsavedChanges = false;
+
+        function initializeFormAutoSave() {
+            const form = document.getElementById('topic-modal-form');
+            if (!form) return;
+
+            const inputs = form.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.addEventListener('input', handleFormChange);
+                input.addEventListener('change', handleFormChange);
+            });
+        }
+
+        function handleFormChange() {
+            hasUnsavedChanges = true;
+            clearTimeout(autoSaveTimer);
+
+            autoSaveTimer = setTimeout(() => {
+                saveDraft();
+            }, 2000);
+        }
+
+        function saveDraft() {
+            const form = document.getElementById('topic-modal-form');
+            if (!form || !hasUnsavedChanges) return;
+
+            const formData = new FormData(form);
+
+            if (typeof htmx !== 'undefined' && htmx.ajax) {
+                htmx.ajax('POST', '/api/topic/save-draft', {
+                    values: Object.fromEntries(formData),
+                    target: '#modal-result',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    hasUnsavedChanges = false;
+                    showSaveIndicator();
+                }).catch(() => {
+                    console.warn('Auto-save failed');
+                });
+            }
+        }
+
+        function showSaveIndicator() {
+            const result = document.getElementById('modal-result');
+            if (result) {
+                result.innerHTML = '<div class="text-sm text-green-600">✓ Draft saved</div>';
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 2000);
+            }
+        }
+
+        // Helper function to safely get form values
+        function getFormValues() {
+            const filtersForm = document.getElementById('filters-form');
+            if (filtersForm && typeof htmx !== 'undefined' && typeof htmx.values === 'function') {
+                try {
+                    return htmx.values(filtersForm);
+                } catch (e) {
+                    console.warn('Could not get form values:', e);
+                    return {};
+                }
+            }
+            return {};
+        }
+
+        // Safe HTMX ajax call
+        function safeHTMXCall(method, url, options) {
+            if (typeof htmx !== 'undefined' && htmx.ajax) {
+                return htmx.ajax(method, url, options);
+            } else {
+                console.warn('HTMX not available for request');
+                return Promise.reject('HTMX not available');
+            }
+        }
+
+        // Main close modal function
+        window.closeModal = function() {
+            const modal = document.getElementById('topic-registration-modal');
+            if (!modal) return;
+
+            // Check for unsaved changes
+            if (hasUnsavedChanges) {
+                if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
+                    return;
+                }
+            }
+
+            // Clear timers
+            clearTimeout(autoSaveTimer);
+
+            // Animate out
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+
+            const content = modal.querySelector('[data-modal-content]');
+            if (content) {
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+            }
+
+            // Clean up after animation
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+
+                // Clear stored data
+                window.currentReviewStudentId = null;
+                hasUnsavedChanges = false;
+
+                // Unregister and cleanup only if ModalManager exists
+                if (hasModalManager) {
+                    window.ModalManager.unregister('topic-registration-modal');
+
+                    // Only call cleanup if the method exists
+                    if (typeof window.ModalManager.cleanupModalContainer === 'function') {
+                        window.ModalManager.cleanupModalContainer();
+                    }
+                }
+
+                // Fallback cleanup if no ModalManager
+                const modalContainer = document.getElementById('modal-container');
+                if (modalContainer) {
+                    modalContainer.innerHTML = '';
+                    modalContainer.style.display = 'none';
+                }
+            }, 300);
+        };
+
+        // Version click handler
+        window.handleVersionClick = function(button) {
+            const originalText = button.textContent;
+            const targetId = button.getAttribute('hx-target');
+            const targetEl = document.querySelector(targetId);
+
+            if (targetEl && targetEl.innerHTML.trim() !== '') {
+                // Already expanded, collapse it
+                targetEl.innerHTML = '';
+                button.textContent = originalText.includes('Hide') ? originalText.replace('Hide', 'Show') : originalText;
+            } else {
+                // Will expand via HTMX
+                button.textContent = 'Loading...';
+                button.disabled = true;
+            }
+        };
+
+       // Version comparison functionality
+               window.loadVersionComparison = function(versionNumber) {
+                   // Try multiple methods to get topic ID
+                   let topicId = window.currentTopicId;
+
+
+if (!topicId) {
+    const topicElement = document.getElementById('current-topic-id');
+    if (topicElement && topicElement.value) {
+        topicId = topicElement.value;
+    }
+}
+
+                   // If not set globally, try to get from hidden input
+                   if (!topicId) {
+                       const topicInput = document.querySelector('input[name="topic_id"]');
+                       if (topicInput && topicInput.value) {
+                           topicId = topicInput.value;
+                       }
+                   }
+
+                   // If still not found, try to extract from URL or other elements
+                   if (!topicId) {
+                       // Try to get from any element that might have the topic ID
+                       const revisionForm = document.getElementById('revision-form');
+                       if (revisionForm) {
+                           const action = revisionForm.getAttribute('hx-post');
+                           if (action) {
+                               const match = action.match(/\/api\/topic\/(\d+)\//);
+                               if (match && match[1]) {
+                                   topicId = match[1];
+                               }
+                           }
+                       }
+                   }
+
+                   // Try to get from department revision form as well
+                   if (!topicId) {
+                       const deptRevisionForm = document.getElementById('department-revision-form');
+                       if (deptRevisionForm) {
+                           const action = deptRevisionForm.getAttribute('hx-post');
+                           if (action) {
+                               const match = action.match(/\/api\/topic\/(\d+)\//);
+                               if (match && match[1]) {
+                                   topicId = match[1];
+                               }
+                           }
+                       }
+                   }
+
+                   // Try to get from version history buttons
+                   if (!topicId) {
+                       const versionButtons = document.querySelectorAll('button[hx-get*="/api/topic/"]');
+                       for (let button of versionButtons) {
+                           const hxGet = button.getAttribute('hx-get');
+                           if (hxGet) {
+                               const match = hxGet.match(/\/api\/topic\/(\d+)\//);
+                               if (match && match[1]) {
+                                   topicId = match[1];
+                                   break;
+                               }
+                           }
+                       }
+                   }
+
+                   if (!topicId) {
+                       console.error('Topic ID not found - unable to load version comparison');
+                       alert('Error: Unable to determine topic ID');
+                       return;
+                   }
+
+                   // Store it globally for future use
+                   window.currentTopicId = topicId;
+
+                   if (!versionNumber) {
+                       // Show current version only
+                       htmx.ajax('GET', '/api/topic/' + topicId + '/content', {
+                           target: '#topic-content-display',
+                           swap: 'innerHTML'
+                       });
+                       return;
+                   }
+
+                   // Load comparison view
+                   htmx.ajax('GET', '/api/topic/' + topicId + '/compare/' + versionNumber, {
+                       target: '#topic-content-display',
+                       swap: 'innerHTML'
+                   });
+               };
+
+        // Update version selector when comparison loads
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.target && evt.target.id === 'topic-content-display') {
+                // Update selector state based on loaded content
+                const selector = document.getElementById('version-selector');
+                if (selector && evt.detail.successful) {
+                    // Visual feedback that comparison is loaded
+                    if (selector.value) {
+                        selector.style.backgroundColor = '#e0f2fe';
+                    } else {
+                        selector.style.backgroundColor = '';
+                    }
+                }
+            }
+        });
+
+        // Revision modal functions
+        window.showRevisionModal = function(topicId) {
+            console.log('Show revision modal for topic:', topicId);
+            const modal = document.getElementById('revision-modal');
+            if (!modal) return;
+
+            modal.classList.remove('hidden');
+            modal.offsetHeight;
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+
+            const content = document.getElementById('revision-modal-content');
+            if (content) {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }
+
+            setTimeout(() => {
+                const textarea = modal.querySelector('textarea[name="revision_reason"]');
+                if (textarea) textarea.focus();
+            }, 100);
+
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeRevisionModal = function() {
+            const modal = document.getElementById('revision-modal');
+            if (!modal) return;
+
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+
+            const content = document.getElementById('revision-modal-content');
+            if (content) {
+                content.classList.remove('scale-100');
+                content.classList.add('scale-95');
+            }
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+
+                const mainModal = document.getElementById('topic-registration-modal');
+                if (!mainModal || mainModal.style.display === 'none') {
+                    document.body.style.overflow = '';
+                }
+
+                const form = document.getElementById('revision-form');
+                if (form) form.reset();
+
+                const result = document.getElementById('revision-result');
+                if (result) result.innerHTML = '';
+            }, 300);
+        };
+
+        // Department revision modal functions
+        window.showDepartmentRevisionModal = function(topicId) {
+            console.log('Show department revision modal for topic:', topicId);
+            const modal = document.getElementById('department-revision-modal');
+            if (!modal) return;
+
+            modal.classList.remove('hidden');
+            modal.offsetHeight;
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+
+            const content = document.getElementById('department-revision-modal-content');
+            if (content) {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }
+
+            setTimeout(() => {
+                const textarea = modal.querySelector('textarea[name="revision_reason"]');
+                if (textarea) textarea.focus();
+            }, 100);
+
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeDepartmentRevisionModal = function() {
+            const modal = document.getElementById('department-revision-modal');
+            if (!modal) return;
+
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+
+            const content = document.getElementById('department-revision-modal-content');
+            if (content) {
+                content.classList.remove('scale-100');
+                content.classList.add('scale-95');
+            }
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+
+                const mainModal = document.getElementById('topic-registration-modal');
+                if (!mainModal || mainModal.style.display === 'none') {
+                    document.body.style.overflow = '';
+                }
+
+                const form = document.getElementById('department-revision-form');
+                if (form) form.reset();
+
+                const result = document.getElementById('department-revision-result');
+                if (result) result.innerHTML = '';
+            }, 300);
+        };
+
+        // Version history functions
+        window.toggleVersionHistory = function() {
+            const hiddenVersions = document.querySelectorAll('.version-item.hidden');
+            const button = event.target;
+
+            if (hiddenVersions.length > 0) {
+                hiddenVersions.forEach(v => v.classList.remove('hidden'));
+                button.textContent = button.dataset.hideText || 'Hide older versions';
+            } else {
+                const allVersions = document.querySelectorAll('.version-item');
+                allVersions.forEach((v, i) => {
+                    if (i >= 3) v.classList.add('hidden');
+                });
+                button.textContent = button.dataset.showText || 'Show all versions';
+            }
+        };
+
+        // HTMX event handlers - Fixed
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            try {
+                // Handle comment form
+                if (evt.target && evt.target.id === 'comment-form' && evt.detail && evt.detail.successful) {
+                    evt.target.reset();
+                    return;
+                }
+
+                // Handle version changes requests
+                if (evt.target && evt.target.tagName === 'BUTTON' &&
+                    evt.target.hasAttribute('hx-get') &&
+                    evt.target.getAttribute('hx-get').includes('/changes')) {
+
+                    const button = evt.target;
+                    button.disabled = false;
+
+                    if (evt.detail && evt.detail.successful) {
+                        const targetId = button.getAttribute('hx-target');
+                        const targetEl = document.querySelector(targetId);
+                        if (targetEl && targetEl.innerHTML.trim() !== '') {
+                            button.textContent = button.textContent.includes('Show') ?
+                                button.textContent.replace('Show', 'Hide') :
+                                'Hide changes';
+                        }
+                    } else {
+                        button.textContent = 'Show changes';
+                        alert('Error loading version comparison');
+                    }
+                    return;
+                }
+
+                // Handle revision form
+                if (evt.target && evt.target.id === 'revision-form') {
+                    if (evt.detail && evt.detail.successful) {
+                        setTimeout(() => {
+                            closeRevisionModal();
+
+                            const studentId = window.currentReviewStudentId;
+                            if (studentId && hasModalManager && typeof window.ModalManager.openHTMXModal === 'function') {
+                                window.ModalManager.openHTMXModal(
+                                    '/topic-registration/' + studentId + '?mode=review',
+                                    null,
+                                    null
+                                );
+                            }
+
+                            const tableContainer = document.getElementById('student-table-container');
+                            if (tableContainer) {
+                                safeHTMXCall('GET', '/students-list', {
+                                    target: '#student-table-container',
+                                    values: getFormValues()
+                                });
+                            }
+                        }, 2000);
+                    }
+                    return;
+                }
+
+                // Handle department revision form
+                if (evt.target && evt.target.id === 'department-revision-form') {
+                    if (evt.detail && evt.detail.successful) {
+                        setTimeout(() => {
+                            closeDepartmentRevisionModal();
+
+                            const studentId = window.currentReviewStudentId;
+                            if (studentId && hasModalManager && typeof window.ModalManager.openHTMXModal === 'function') {
+                                window.ModalManager.openHTMXModal(
+                                    '/topic-registration/' + studentId + '?mode=review',
+                                    null,
+                                    null
+                                );
+                            }
+
+                            const tableContainer = document.getElementById('student-table-container');
+                            if (tableContainer) {
+                                safeHTMXCall('GET', '/students-list', {
+                                    target: '#student-table-container',
+                                    values: getFormValues()
+                                });
+                            }
+                        }, 2000);
+                    }
+                    return;
+                }
+
+                // Handle main form submission
+                if (evt.target && (evt.target.id === 'topic-modal-form' ||
+                    (evt.target.closest && evt.target.closest('#topic-modal-form')))) {
+
+                    if (evt.detail && evt.detail.successful) {
+                        hasUnsavedChanges = false;
+
+                        const result = document.getElementById('modal-result');
+                        if (result) {
+                            result.innerHTML = '<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded text-sm">✓ Topic saved successfully</div>';
+                        }
+
+                        const tableContainer = document.getElementById('student-table-container');
+                        if (tableContainer) {
+                            safeHTMXCall('GET', '/students-list', {
+                                target: '#student-table-container',
+                                values: getFormValues()
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('Error in htmx:afterRequest handler:', error);
+            }
+        });
+
+        // Handle HTMX errors
+        document.addEventListener('htmx:responseError', function(evt) {
+            try {
+                if (evt.target && evt.target.tagName === 'BUTTON' &&
+                    evt.target.hasAttribute('hx-get')) {
+
+                    const button = evt.target;
+                    button.disabled = false;
+                    button.textContent = 'Show changes';
+
+                    const status = evt.detail && evt.detail.xhr ? evt.detail.xhr.status : 0;
+                    const errorMsg = status === 404 ?
+                        'Version comparison not found' :
+                        'Error loading version comparison';
+                    alert(errorMsg);
+                }
+            } catch (error) {
+                console.warn('Error in htmx:responseError handler:', error);
+            }
+        });
+
+        // Handle HTMX send errors
+        document.addEventListener('htmx:sendError', function(evt) {
+            console.warn('HTMX send error:', evt.detail);
+        });
+
+        // Keyboard event handlers
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const deptRevisionModal = document.getElementById('department-revision-modal');
+                if (deptRevisionModal && !deptRevisionModal.classList.contains('hidden')) {
+                    closeDepartmentRevisionModal();
+                    e.preventDefault();
+                    return;
+                }
+
+                const revisionModal = document.getElementById('revision-modal');
+                if (revisionModal && !revisionModal.classList.contains('hidden')) {
+                    closeRevisionModal();
+                    e.preventDefault();
+                    return;
+                }
+
+                const mainModal = document.getElementById('topic-registration-modal');
+                if (mainModal && mainModal.style.display !== 'none') {
+                    closeModal();
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Clean up on beforeunload
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+    })();
+    </script>
+}
 // HELPER FUNCTIONS - All remain the same
 func shouldShowForm(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
 	if user.Role == auth.RoleStudent {
@@ -1007,9 +1832,7 @@ func shouldShowViewOnly(user *auth.AuthenticatedUser, topic *database.ProjectTop
 }
 
 func shouldShowSupervisorReview(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
-
-        return user.Role == "supervisor" && topic.Status == "submitted"
-    //return user.Role == auth.RoleSupervisor && topic.CanSupervisorReview()
+	return user.Role == auth.RoleSupervisor && topic.Status == "submitted"
 }
 
 func shouldShowDepartmentReview(user *auth.AuthenticatedUser, topic *database.ProjectTopicRegistration) bool {
@@ -1188,78 +2011,6 @@ func getTopicRoleDisplayName(role, locale string) string {
 	}
 	return role
 }
-// Add this revision modal template
-templ RevisionModal(topicID int, locale string) {
-	<div id="revision-modal" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
-		<div class="fixed inset-0 bg-black bg-opacity-50" onclick="closeRevisionModal()"></div>
-		<div class="fixed inset-0 flex items-center justify-center p-4">
-			<div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform scale-95 transition-transform duration-300" id="revision-modal-content">
-				<div class="p-6">
-					<h3 class="text-lg font-semibold mb-4 text-gray-900">
-						if locale == "en" {
-							Request Revision
-						} else {
-							Prašyti pataisymų
-						}
-					</h3>
-
-					<form id="revision-form"
-					    hx-post={ fmt.Sprintf("/api/topic/%d/supervisor-revision", topicID) }
-                        hx-target="#modal-result">
-
-						<div class="mb-4">
-							@label.Label(label.Props{Class: "text-sm font-medium mb-2 block text-gray-700"}) {
-								if locale == "en" {
-									Reason for revision *
-								} else {
-									Pataisymų priežastis *
-								}
-							}
-							@textarea.Textarea(textarea.Props{
-								Name:        "revision_reason",
-								Required:    true,
-								Class:       "text-sm w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500",
-								Rows:        4,
-								Placeholder: getRevisionPlaceholder(locale),
-							})
-						</div>
-
-						<div class="flex justify-end gap-3">
-							@button.Button(button.Props{
-								Variant: button.VariantGhost,
-								Type:    "button",
-								Class:   "h-9 px-4 text-sm",
-								Attributes: templ.Attributes{
-									"onclick": "closeRevisionModal()",
-								},
-							}) {
-								if locale == "en" {
-									Cancel
-								} else {
-									Atšaukti
-								}
-							}
-							@button.Button(button.Props{
-								Variant: button.VariantDestructive,
-								Type:    button.TypeSubmit,
-								Class:   "h-9 px-4 text-sm",
-							}) {
-								@icon.RotateCcw(icon.Props{Size: 16})
-								<span class="ml-1">
-									if locale == "en" {
-										Request Revision
-									} else {
-										Prašyti pataisymų
-									}
-								</span>
-							}
-						</div>
-					</form>
-				</div>
-			</div>
-		</div>
-	</div>
-}
 
 // Add helper function for revision placeholder
 func getRevisionPlaceholder(locale string) string {
@@ -1267,4 +2018,83 @@ func getRevisionPlaceholder(locale string) string {
 		return "Please explain what needs to be revised..."
 	}
 	return "Paaiškinkite, ko reikia pataisyti..."
+}
+
+// ADD NEW HELPER FUNCTION FOR DEPARTMENT REVISION PLACEHOLDER
+func getDepartmentRevisionPlaceholder(locale string) string {
+	if locale == "en" {
+		return "Please explain what needs to be revised before final approval..."
+	}
+	return "Paaiškinkite, ko reikia pataisyti prieš galutinį patvirtinimą..."
+}
+
+func getShowAllVersionsText(locale string) string {
+	if locale == "en" {
+		return "Show all versions"
+	}
+	return "Rodyti visas versijas"
+}
+
+func getHideOlderVersionsText(locale string) string {
+	if locale == "en" {
+		return "Hide older versions"
+	}
+	return "Slėpti senesnes versijas"
+}
+// Helper function to get field display name
+func getFieldDisplayName(fieldType, locale string) string {
+	fieldNames := map[string]map[string]string{
+		"en": {
+			"supervisor":      "Supervisor",
+			"completion_date": "Completion Date",
+			"title":          "Title (Lithuanian)",
+			"title_en":       "Title (English)",
+			"problem":        "Problem Description",
+			"objective":      "Objective",
+			"tasks":          "Tasks and Content Plan",
+		},
+		"lt": {
+			"supervisor":      "Vadovas(-ė)",
+			"completion_date": "Užbaigimo data",
+			"title":          "Tema (Lietuvių k.)",
+			"title_en":       "Tema (Anglų k.)",
+			"problem":        "Problemos aprašymas",
+			"objective":      "Tikslas",
+			"tasks":          "Uždaviniai ir turinio planas",
+		},
+	}
+
+	if fieldNames[locale] != nil && fieldNames[locale][fieldType] != "" {
+		return fieldNames[locale][fieldType]
+	}
+	return fieldType
+}
+
+// Helper function to get field value from topic
+func getFieldValue(topic *database.ProjectTopicRegistration, fieldType string) string {
+	if topic == nil {
+		return ""
+	}
+
+	switch fieldType {
+	case "supervisor":
+		return topic.Supervisor
+	case "completion_date":
+		if topic.CompletionDate != nil {
+			return *topic.CompletionDate
+		}
+		return ""
+	case "title":
+		return topic.Title
+	case "title_en":
+		return topic.TitleEn
+	case "problem":
+		return topic.Problem
+	case "objective":
+		return topic.Objective
+	case "tasks":
+		return topic.Tasks
+	default:
+		return ""
+	}
 }

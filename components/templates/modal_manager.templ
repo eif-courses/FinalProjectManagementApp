@@ -1,0 +1,140 @@
+package templates
+templ ModalManager() {
+   <script>
+    (function() {
+        // Global modal management system
+        window.ModalManager = {
+            // Clean up modal container
+            cleanupModalContainer: function() {
+                console.log('ModalManager: Starting cleanup');
+
+                // CRITICAL: Check navbar exists BEFORE cleanup
+                const navbarBefore = document.querySelector('nav');
+                console.log('ModalManager: Navbar exists before cleanup:', !!navbarBefore);
+
+                const modalContainer = document.getElementById('modal-container');
+                if (modalContainer) {
+                    console.log('ModalManager: Cleaning modal container');
+                    // Use more surgical cleanup - only remove modals, not everything
+                    const modals = modalContainer.querySelectorAll('[id$="-modal"]');
+                    modals.forEach(modal => {
+                        modal.remove();
+                    });
+                    modalContainer.style.display = 'none';
+                }
+
+                // Only reset body overflow
+                document.body.style.overflow = '';
+
+                // Check navbar after cleanup
+                const navbarAfter = document.querySelector('nav');
+                if (!navbarAfter && navbarBefore) {
+                    console.error('ModalManager: Navbar was accidentally removed during cleanup!');
+                    // Emergency: reload the page to restore navbar
+                    if (confirm('The navigation was accidentally removed. Reload the page?')) {
+                        window.location.reload();
+                    }
+                }
+            },
+
+            // Ensure modal container exists with proper z-index
+            ensureModalContainer: function() {
+                let container = document.getElementById('modal-container');
+                if (!container) {
+                    console.log('ModalManager: Creating new modal container');
+                    container = document.createElement('div');
+                    container.id = 'modal-container';
+                    container.style.display = 'none';
+                    container.style.position = 'fixed';
+                    container.style.inset = '0';
+                    container.style.zIndex = '1000';
+                    document.body.appendChild(container);
+                } else {
+                    console.log('ModalManager: Using existing modal container');
+                }
+
+                // Ensure z-index is correct
+                container.style.zIndex = '1000';
+                return container;
+            },
+
+            // Open a modal via HTMX
+            openHTMXModal: function(url, onSuccess, onError) {
+                console.log('ModalManager: Opening modal from URL:', url);
+
+                // Check navbar before any operations
+                const navbarBefore = document.querySelector('nav');
+                console.log('ModalManager: Navbar exists before opening:', !!navbarBefore);
+
+                this.cleanupModalContainer();
+                const container = this.ensureModalContainer();
+
+                return htmx.ajax('GET', url, {
+                    target: '#modal-container',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    console.log('ModalManager: Modal content loaded');
+
+                    // CRITICAL: Check navbar after HTMX swap
+                    const navbarAfter = document.querySelector('nav');
+                    console.log('ModalManager: Navbar exists after HTMX swap:', !!navbarAfter);
+
+                    if (!navbarAfter && navbarBefore) {
+                        console.error('ModalManager: HTMX swap removed the navbar!');
+                        // This is the smoking gun - the HTMX response is problematic
+
+                        // Emergency recovery
+                        container.innerHTML = '<div>Error: Invalid modal response removed navigation. Please reload.</div>';
+                        if (confirm('An error occurred that removed the navigation. Reload the page?')) {
+                            window.location.reload();
+                        }
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    document.body.style.overflow = 'hidden';
+
+                    if (onSuccess) onSuccess();
+                }).catch((error) => {
+                    console.error('ModalManager: Modal load error:', error);
+                    this.cleanupModalContainer();
+                    if (onError) onError(error);
+                });
+            },
+
+            // Close all modals
+            closeAll: function() {
+                console.log('ModalManager: Closing all modals');
+
+                // Check navbar before closing
+                const navbarBefore = document.querySelector('nav');
+                console.log('ModalManager: Navbar exists before closing:', !!navbarBefore);
+
+                this.cleanupModalContainer();
+
+                // Check navbar after closing
+                const navbarAfter = document.querySelector('nav');
+                console.log('ModalManager: Navbar exists after closing:', !!navbarAfter);
+            }
+        };
+
+        // Global escape key handler
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modalContainer = document.getElementById('modal-container');
+                if (modalContainer && modalContainer.style.display !== 'none') {
+                    console.log('ModalManager: Escape key pressed, closing modal');
+                    ModalManager.closeAll();
+                }
+            }
+        });
+
+        // Clean up on navigation
+        window.addEventListener('beforeunload', () => ModalManager.closeAll());
+        document.addEventListener('htmx:beforeHistoryUpdate', () => ModalManager.closeAll());
+
+        console.log('ModalManager: Initialized');
+
+    })();
+    </script>
+}

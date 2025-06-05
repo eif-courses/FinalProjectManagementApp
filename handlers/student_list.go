@@ -2488,3 +2488,71 @@ func (h *StudentListHandler) ReviewerReportModalHandler(w http.ResponseWriter, r
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 	}
 }
+
+// SupervisorMyStudentsHandler shows only students assigned to the current supervisor
+func (h *StudentListHandler) SupervisorMyStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(auth.UserContextKey).(*auth.AuthenticatedUser)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Check if user is supervisor or department head
+	if user.Role != auth.RoleSupervisor && user.Role != auth.RoleDepartmentHead {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	// Parse parameters
+	locale := r.URL.Query().Get("locale")
+	if locale == "" {
+		locale = "lt"
+	}
+
+	search := r.URL.Query().Get("search")
+	page := 1
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	limit := 20
+
+	// Create filter params with search
+	filterParams := &database.TemplateFilterParams{
+		Page:   page,
+		Limit:  limit,
+		Search: search,
+	}
+
+	// Get students where current user is supervisor
+	students, total, err := h.getStudentsForSupervisor(user.Email, filterParams)
+	if err != nil {
+		log.Printf("Error fetching supervisor's students: %v", err)
+		http.Error(w, "Failed to fetch students", http.StatusInternalServerError)
+		return
+	}
+
+	// Create pagination
+	pagination := database.NewPaginationInfo(page, limit, total)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	// Check if this is an HTMX request
+	if r.Header.Get("HX-Request") == "true" {
+		// For HTMX requests, only render the table
+		err = templates.SupervisorStudentTable(user, students, locale).Render(r.Context(), w)
+		if err == nil && pagination != nil {
+			err = templates.SupervisorPagination(pagination).Render(r.Context(), w)
+		}
+	} else {
+		// For full page requests, render the complete page
+		err = templates.SupervisorStudentList(user, students, locale, pagination, search).Render(r.Context(), w)
+	}
+
+	if err != nil {
+		log.Printf("Error rendering supervisor students template: %v", err)
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+	}
+}

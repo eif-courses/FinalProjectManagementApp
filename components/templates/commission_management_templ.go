@@ -122,7 +122,7 @@ func CommissionManagement(user *auth.AuthenticatedUser, locale string, data Comm
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Layout(user, locale, "Commission Access Management").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Layout(user, locale, "Commission Access Management", "/admin/commission").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -169,9 +169,9 @@ func SimpleAccessCodeRow(member *database.CommissionMember, locale string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s/commission/%s", "https://finalprojectmanagementapp-production.up.railway.app", member.AccessCode))
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s/commission/%s", "http://localhost:8080", member.AccessCode))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_management.templ`, Line: 130, Col: 120}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/commission_management.templ`, Line: 130, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {

@@ -37,8 +37,9 @@ templ CompactReviewerForm(props database.ReviewerReportFormProps, formData *data
                 </div>
             </div>
         }
+
         @modal.Body() {
-    <div class={ "px-6 py-3", templ.KV("modal-body-readonly", props.IsReadOnly) } style={ getModalBodyStyle(props.IsReadOnly) }>
+            <div class="px-6 py-3" style="max-height: calc(90vh - 120px); overflow-y: auto;">
                 <!-- Auto-save indicator -->
                 if !props.IsReadOnly {
                     <div class="flex items-center justify-between mb-3">
@@ -99,6 +100,7 @@ templ CompactReviewerForm(props database.ReviewerReportFormProps, formData *data
                 <div id="modal-result" class="mt-3"></div>
             </div>
         }
+
         @modal.Footer() {
             <div class="border-t pt-2 px-6 pb-2">
                 <div class="flex flex-wrap justify-end gap-2">
@@ -161,30 +163,33 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
     <input type="hidden" name="is_draft" id="is_draft" value="false"/>
 
     <!-- Add style for read-only textareas -->
-   if props.IsReadOnly {
-       <style>
-           textarea[disabled] {
-               resize: none;
-               overflow: hidden;
-               background-color: transparent;
-               border-color: transparent;
-               padding: 0.5rem;
-               min-height: unset !important;
-               height: auto !important;
-               white-space: pre-wrap;
-               word-wrap: break-word;
-           }
-           textarea[disabled]:focus {
-               outline: none;
-               box-shadow: none;
-           }
-           /* Ensure the modal body is scrollable */
-           .modal-body-readonly {
-               max-height: calc(90vh - 120px);
-               overflow-y: auto;
-           }
-       </style>
-   }
+ if props.IsReadOnly {
+     <style>
+         textarea[disabled] {
+             resize: none !important;
+             overflow: hidden !important;
+             background-color: transparent !important;
+             border: 1px solid transparent !important;
+             padding: 0.5rem !important;
+             min-height: 1.5rem !important;
+             height: auto !important;
+             white-space: pre-wrap !important;
+             word-wrap: break-word !important;
+             line-height: 1.5 !important;
+             font-family: inherit !important;
+             font-size: inherit !important;
+         }
+         textarea[disabled]:focus {
+             outline: none !important;
+             box-shadow: none !important;
+             border-color: transparent !important;
+         }
+         /* Remove any conflicting styles from the templUI component */
+         textarea[disabled][data-textarea] {
+             min-height: 1.5rem !important;
+         }
+     </style>
+ }
 
     <!-- Compact Header Info -->
     <div class="bg-gray-50 dark:bg-gray-800 rounded p-3 space-y-2 text-sm">
@@ -233,6 +238,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
             Rows:        getTextareaRowsSmall(props.IsReadOnly),
             Placeholder: getReviewerPlaceholder(props.FormVariant),
             Disabled:    props.IsReadOnly,
+            AutoResize:  !props.IsReadOnly,
         })
         if !props.IsReadOnly {
             @form.Description() {
@@ -274,6 +280,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getGoalsPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
+                    AutoResize:  !props.IsReadOnly,
                 })
             }
 
@@ -302,6 +309,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getTheoryPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
+                    AutoResize:  !props.IsReadOnly,
                 })
             }
 
@@ -330,6 +338,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getPracticalPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
+                    AutoResize:  !props.IsReadOnly,
                 })
             }
         </div>
@@ -361,6 +370,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Rows:        getTextareaRowsSmall(props.IsReadOnly),
                     Placeholder: getTheoryPracticalLinkPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
+                    AutoResize:  !props.IsReadOnly,
                 })
             }
 
@@ -389,6 +399,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getResultsPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
+                    AutoResize:  !props.IsReadOnly,
                 })
             }
 
@@ -414,6 +425,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Rows:        getTextareaRowsSmall(props.IsReadOnly),
                     Placeholder: getPracticalSignificancePlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
+                    AutoResize:  !props.IsReadOnly,
                 })
             }
         </div>
@@ -444,6 +456,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                         Rows:        getTextareaRowsSmall(props.IsReadOnly),
                         Placeholder: getLanguagePlaceholder(props.FormVariant),
                         Disabled:    props.IsReadOnly,
+                        AutoResize:  !props.IsReadOnly,
                     })
                 }
 
@@ -470,6 +483,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                         Rows:        getTextareaRowsSmall(props.IsReadOnly),
                         Placeholder: getProsPlaceholder(props.FormVariant),
                         Disabled:    props.IsReadOnly,
+                        AutoResize:  !props.IsReadOnly,
                     })
                 }
 
@@ -496,6 +510,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                         Rows:        getTextareaRowsSmall(props.IsReadOnly),
                         Placeholder: getConsPlaceholder(props.FormVariant),
                         Disabled:    props.IsReadOnly,
+                        AutoResize:  !props.IsReadOnly,
                     })
                 }
             </div>
@@ -523,6 +538,7 @@ templ formContent(props database.ReviewerReportFormProps, formData *database.Rev
                     Rows:        getTextareaRowsLarge(props.IsReadOnly),
                     Placeholder: getQuestionsPlaceholder(props.FormVariant),
                     Disabled:    props.IsReadOnly,
+                    AutoResize:  !props.IsReadOnly,
                 })
             }
 
@@ -574,32 +590,68 @@ templ ReviewerModalScripts(accessToken string, isReadOnly bool) {
             // Auto-resize textareas for read-only mode
             if (isReadOnly) {
                 const autoResizeTextarea = function(textarea) {
-                    // Reset styles to get accurate measurement
+                    // Store original styles
+                    const originalHeight = textarea.style.height;
+                    const originalOverflow = textarea.style.overflow;
+
+                    // Reset to get accurate measurement
                     textarea.style.height = 'auto';
                     textarea.style.overflow = 'hidden';
-                    textarea.style.minHeight = 'unset';
 
-                    // Get the scroll height
+                    // Calculate the needed height
                     const scrollHeight = textarea.scrollHeight;
+                    const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 20;
+                    const paddingTop = parseInt(window.getComputedStyle(textarea).paddingTop) || 0;
+                    const paddingBottom = parseInt(window.getComputedStyle(textarea).paddingBottom) || 0;
 
-                    // Set the height with a small buffer
-                    textarea.style.height = (scrollHeight + 4) + 'px';
+                    // Set minimum height to at least one line
+                    const minHeight = lineHeight + paddingTop + paddingBottom;
+                    const finalHeight = Math.max(scrollHeight, minHeight);
+
+                    // Apply the calculated height
+                    textarea.style.height = finalHeight + 'px';
+                    textarea.style.minHeight = finalHeight + 'px';
+                    textarea.style.overflow = 'hidden';
+                    textarea.style.resize = 'none';
                 };
 
-                // Initial resize after modal opens
-                setTimeout(function() {
-                    const textareas = document.querySelectorAll('textarea.read-only-textarea');
-                    textareas.forEach(textarea => {
-                        autoResizeTextarea(textarea);
-                    });
+                // Function to resize all textareas
+                const resizeAllTextareas = function() {
+                    const textareas = document.querySelectorAll('textarea[disabled]');
+                    textareas.forEach(autoResizeTextarea);
+                };
 
-                    // Also resize on window resize
-                    window.addEventListener('resize', function() {
-                        textareas.forEach(textarea => {
-                            autoResizeTextarea(textarea);
-                        });
+                // Initial resize with multiple attempts to ensure proper rendering
+                const initResize = function() {
+                    resizeAllTextareas();
+
+                    // Additional resize attempts to handle dynamic content loading
+                    setTimeout(resizeAllTextareas, 50);
+                    setTimeout(resizeAllTextareas, 100);
+                    setTimeout(resizeAllTextareas, 200);
+                    setTimeout(resizeAllTextareas, 300);
+                };
+
+                // Run initial resize
+                initResize();
+
+                // Resize on window resize
+                window.addEventListener('resize', resizeAllTextareas);
+
+                // Also observe for content changes
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                            setTimeout(resizeAllTextareas, 10);
+                        }
                     });
-                }, 100);
+                });
+
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
             }
 
             // Auto-save functionality - encapsulated in function scope
@@ -987,31 +1039,28 @@ func getQuestionsPlaceholder(variant string) string {
     return "Klausimai studentui gynimo metu..."
 }
 
-// New helper functions for conditional styling
+// Updated helper functions for conditional styling
 func getModalBodyStyle(isReadOnly bool) string {
-    if isReadOnly {
-        return "overflow-y: auto;"
-    }
-    return "max-height: calc(90vh - 120px); overflow-y: auto;"
+    return "" // Let the inline styles handle it
 }
 
 func getTextareaClass(isReadOnly bool) string {
     if isReadOnly {
-        return "text-sm w-full read-only-textarea"
+        return "text-sm w-full read-only-textarea !min-h-0"
     }
     return "text-sm w-full auto-save-field"
 }
 
 func getTextareaRowsSmall(isReadOnly bool) int {
     if isReadOnly {
-        return 0  // Let auto-resize handle it
+        return 1  // Start with 1 row, let auto-resize handle the rest
     }
     return 2
 }
 
 func getTextareaRowsLarge(isReadOnly bool) int {
     if isReadOnly {
-        return 0  // Let auto-resize handle it
+        return 1  // Start with 1 row, let auto-resize handle the rest
     }
     return 3
 }

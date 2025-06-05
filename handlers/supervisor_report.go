@@ -29,6 +29,32 @@ func NewSupervisorReportHandler(db *sqlx.DB) *SupervisorReportHandler {
 }
 
 // Add this method to SupervisorReportHandler
+//func (h *SupervisorReportHandler) GetCompactSupervisorModal(w http.ResponseWriter, r *http.Request) {
+//	w.Header().Set("Content-Type", "text/html")
+//	w.Header().Set("X-Modal-Response", "true") // Debug header
+//
+//	// Check if this is an HTMX request
+//	if r.Header.Get("HX-Request") != "true" {
+//		log.Printf("WARNING: Modal endpoint called without HTMX")
+//	}
+//
+//	// ABSOLUTELY MINIMAL response - just the modal
+//	minimalHTML := `<div id="supervisor-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+//    <div class="bg-white rounded-lg p-6 max-w-md">
+//        <h2>Test Modal</h2>
+//        <p>Navbar should still be there...</p>
+//        <button onclick="window.ModalManager.closeAll()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">
+//            Close
+//        </button>
+//    </div>
+//</div>`
+//
+//	// Log what we're sending
+//	log.Printf("Sending modal HTML (%d bytes): %s", len(minimalHTML), minimalHTML[:min(100, len(minimalHTML))])
+//
+//	w.Write([]byte(minimalHTML))
+//}
+
 func (h *SupervisorReportHandler) GetCompactSupervisorModal(w http.ResponseWriter, r *http.Request) {
 	studentID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -81,16 +107,16 @@ func (h *SupervisorReportHandler) GetCompactSupervisorModal(w http.ResponseWrite
 	component.Render(r.Context(), w)
 }
 
-//func (h *SupervisorReportHandler) getTopicStatus(studentID int) (string, error) {
-//	var status string
-//	query := `
-//		SELECT COALESCE(status, '')
-//		FROM project_topic_registrations
-//		WHERE student_record_id = ?
-//	`
-//	err := h.db.Get(&status, query, studentID)
-//	return status, err
-//}
+func (h *SupervisorReportHandler) getTopicStatus(studentID int) (string, error) {
+	var status string
+	query := `
+		SELECT COALESCE(status, '')
+		FROM project_topic_registrations
+		WHERE student_record_id = ?
+	`
+	err := h.db.Get(&status, query, studentID)
+	return status, err
+}
 
 // SubmitSupervisorReport handles form submission
 func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, r *http.Request) {
@@ -186,37 +212,41 @@ func (h *SupervisorReportHandler) SubmitSupervisorReport(w http.ResponseWriter, 
 	//w.Header().Set("HX-Trigger", "closeModal,refreshStudentTable") // Custom trigger
 	//w.WriteHeader(http.StatusOK)
 
+	// SIMPLIFIED: Just return a trigger for the JavaScript to handle closing
 	w.Header().Set("Content-Type", "text/html")
 	w.Header().Set("HX-Trigger", "supervisorReportSaved")
-	w.WriteHeader(http.StatusNoContent) // 204 No Content
+	w.WriteHeader(http.StatusOK)
 
-	successHTML := `
-    <div id="success-notification" class="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg max-w-sm">
-        <div class="flex items-center">
-            <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <div class="text-green-600 text-sm font-medium">Supervisor report saved successfully!</div>
+	// Simple success message for the modal-result div
+	w.Write([]byte(`
+        <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+            <div class="flex items-center">
+                <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Report saved successfully!</span>
+            </div>
+        </div>
+    `))
+}
+
+func (h *SupervisorReportHandler) GetCompactSupervisorModalTEST(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	minimalHTML := `
+    <div id="supervisor-modal" class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg p-6 max-w-md">
+            <h2>Minimal Test Modal</h2>
+            <p>Testing if this removes the navbar...</p>
+            <button onclick="window.ModalManager.closeAll()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">
+                Close
+            </button>
         </div>
     </div>
-    <script>
-        // Close modal immediately
-        const modal = document.getElementById('supervisor-modal');
-        if (modal && window.modalState) {
-            modal.style.display = 'none';
-            window.modalState.openModalId = null;
-            document.body.style.overflow = '';
-        }
+    <script>console.log('Minimal test modal loaded');</script>
+    `
 
-        // Remove success notification after 3 seconds
-        setTimeout(function() {
-            const notification = document.getElementById('success-notification');
-            if (notification) {
-                notification.remove();
-            }
-        }, 3000);
-    </script>`
-	w.Write([]byte(successHTML))
+	w.Write([]byte(minimalHTML))
 }
 
 // Database helper methods using sqlx

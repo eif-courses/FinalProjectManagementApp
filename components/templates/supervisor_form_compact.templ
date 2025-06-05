@@ -12,66 +12,66 @@ import (
 )
 
 templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *database.SupervisorReportFormData) {
-	@modal.Modal(modal.Props{ID: "supervisor-modal", Class: "w-[95vw] max-w-4xl mx-auto my-2"}) {
-		@modal.Header() {
-			<div class="relative px-6 py-2 border-b">
-				<button onclick="closeSupervisorModal()" class="absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">
-					×
-				</button>
-				<div class="text-center pr-8">
-					<h2 class="text-lg font-bold text-gray-900 dark:text-white">
-						if props.FormVariant == "en" {
-							if props.IsReadOnly {
-								SUPERVISOR'S EVALUATION REPORT (VIEW ONLY)
-							} else {
-								SUPERVISOR'S EVALUATION REPORT
-							}
-						} else {
-							if props.IsReadOnly {
-								BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS (PERŽIŪRA)
-							} else {
-								BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS
-							}
-						}
-					</h2>
-				</div>
-			</div>
-		}
-		@modal.Body() {
-			<div class="px-6 py-3" style="max-height: calc(90vh - 120px); overflow-y: auto;">
-				<!-- Auto-save indicator -->
-				if !props.IsReadOnly {
-					<div class="flex items-center justify-between mb-3">
-						<div id="auto-save-status" class="text-sm text-gray-500 flex items-center gap-2">
-							<span id="save-icon" class="hidden">
-								@icon.Save(icon.Props{Size: 14})
-							</span>
-							<span id="save-text">
-								if props.FormVariant == "en" {
-									Auto-save enabled
-								} else {
-									Automatinis išsaugojimas įjungtas
-								}
-							</span>
-						</div>
-						<div class="text-xs text-gray-400">
-							<span id="last-saved"></span>
-						</div>
-					</div>
-				}
+    @modal.Modal(modal.Props{ID: "supervisor-modal", Class: "w-[95vw] max-w-4xl mx-auto my-2"}) {
+        @modal.Header() {
+            <div class="relative px-6 py-2 border-b">
+                <button onclick="closeSupervisorModal()" class="absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold">
+                    ×
+                </button>
+                <div class="text-center pr-8">
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+                        if props.FormVariant == "en" {
+                            if props.IsReadOnly {
+                                SUPERVISOR'S EVALUATION REPORT (VIEW ONLY)
+                            } else {
+                                SUPERVISOR'S EVALUATION REPORT
+                            }
+                        } else {
+                            if props.IsReadOnly {
+                                BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS (PERŽIŪRA)
+                            } else {
+                                BAIGIAMOJO DARBO VADOVO ATSILIEPIMAS
+                            }
+                        }
+                    </h2>
+                </div>
+            </div>
+        }
+	     @modal.Body() {
+                <div class="px-6 py-3" style="max-height: calc(90vh - 120px); overflow-y: auto;">
+                    <!-- Auto-save indicator -->
+                    if !props.IsReadOnly {
+                        <div class="flex items-center justify-between mb-3">
+                            <div id="auto-save-status" class="text-sm text-gray-500 flex items-center gap-2">
+                                <span id="save-icon" class="hidden">
+                                    @icon.Save(icon.Props{Size: 14})
+                                </span>
+                                <span id="save-text">
+                                    if props.FormVariant == "en" {
+                                        Auto-save enabled
+                                    } else {
+                                        Automatinis išsaugojimas įjungtas
+                                    }
+                                </span>
+                            </div>
+                            <div class="text-xs text-gray-400">
+                                <span id="last-saved"></span>
+                            </div>
+                        </div>
+                    }
 
-				<form
-					id="compact-supervisor-form"
-					if !props.IsReadOnly {
-						hx-post={ fmt.Sprintf("/supervisor-report/%d/submit", props.StudentRecord.ID) }
-						hx-target="#supervisor-modal"
-						hx-swap="outerHTML"
-					}
-					class="space-y-4"
-					data-student-id={ fmt.Sprintf("%d", props.StudentRecord.ID) }
-				>
+			  <form
+                                id="compact-supervisor-form"
+                                if !props.IsReadOnly {
+                                    hx-post={ fmt.Sprintf("/supervisor-report/%d/submit", props.StudentRecord.ID) }
+                                    hx-target="#modal-result"
+                                    hx-swap="innerHTML"
+                                }
+                                class="space-y-4"
+                                data-student-id={ fmt.Sprintf("%d", props.StudentRecord.ID) }
+                            >
 					<!-- Add hidden field to track if this is a draft -->
-					<input type="hidden" name="is_draft" id="is_draft" value="false"/>
+				   <input type="hidden" name="is_draft" id="is_draft" value="false"/>
 
 					<!-- Compact Header Info -->
 					<div class="bg-gray-50 dark:bg-gray-800 rounded p-3 space-y-2 text-sm">
@@ -472,399 +472,375 @@ templ CompactSupervisorForm(props database.SupervisorReportFormProps, formData *
 
 
 templ SupervisorModalScripts() {
-	<script>
-		// Wrap everything in an IIFE and use a namespace to avoid global scope pollution
-		(function() {
-			// Check if already initialized
-			if (window.supervisorForm) {
-				// Clean up existing timers
-				if (window.supervisorForm.autoSaveTimer) {
-					clearTimeout(window.supervisorForm.autoSaveTimer);
-				}
-			}
+    <script>
+        console.log('SupervisorModalScripts: Starting initialization');
 
-			// Create namespace for supervisor form
-			window.supervisorForm = {
-				autoSaveTimer: null,
-				hasUnsavedChanges: false,
-				AUTOSAVE_DELAY: 3000
-			};
+        // Wrap everything in an IIFE and use a namespace to avoid global scope pollution
+        (function() {
+            // Create namespace for supervisor form
+            window.supervisorForm = {
+                autoSaveTimer: null,
+                hasUnsavedChanges: false,
+                AUTOSAVE_DELAY: 3000
+            };
 
-			// Set current date
-			const dateElement = document.getElementById('current-date');
-			if (dateElement) {
-				dateElement.textContent = new Date().toLocaleDateString('lt-LT');
-			}
+            // Set current date SAFELY
+            function setCurrentDate() {
+                const dateElement = document.getElementById('current-date');
+                if (dateElement) {
+                    dateElement.textContent = new Date().toLocaleDateString('lt-LT');
+                }
+            }
 
-			// Define functions in namespace
-			window.initializeSupervisorAutoSave = function() {
-				const form = document.getElementById('compact-supervisor-form');
-				if (!form || form.querySelector('[disabled]')) return;
-
-				// Remove existing listeners first
-				const fields = form.querySelectorAll('.auto-save-field');
-				fields.forEach(field => {
-					// Clone node to remove all event listeners
-					const newField = field.cloneNode(true);
-					field.parentNode.replaceChild(newField, field);
-
-					// Add new listeners
-					newField.addEventListener('input', window.handleSupervisorFieldChange);
-					newField.addEventListener('change', window.handleSupervisorFieldChange);
-				});
-			};
-
-			window.handleSupervisorFieldChange = function() {
-				window.supervisorForm.hasUnsavedChanges = true;
-				clearTimeout(window.supervisorForm.autoSaveTimer);
-
-				// Update status to show saving will occur
-				window.updateSupervisorSaveStatus('pending');
-
-				// Set timer for auto-save
-				window.supervisorForm.autoSaveTimer = setTimeout(() => {
-					window.supervisorAutoSave();
-				}, window.supervisorForm.AUTOSAVE_DELAY);
-			};
-
-			window.updateSupervisorSaveStatus = function(status) {
-				const saveIcon = document.getElementById('save-icon');
-				const saveText = document.getElementById('save-text');
-				const lastSaved = document.getElementById('last-saved');
-
-				if (!saveText) return;
-
-				switch(status) {
-					case 'pending':
-						if (saveIcon) saveIcon.classList.remove('hidden');
-						saveText.textContent = 'Changes detected...';
-						saveText.classList.add('text-yellow-600');
-						saveText.classList.remove('text-green-600', 'text-red-600');
-						break;
-					case 'saving':
-						if (saveIcon) saveIcon.classList.remove('hidden');
-						saveText.textContent = 'Saving...';
-						saveText.classList.add('text-blue-600');
-						saveText.classList.remove('text-yellow-600', 'text-green-600');
-						break;
-					case 'saved':
-						if (saveIcon) saveIcon.classList.remove('hidden');
-						saveText.textContent = 'All changes saved';
-						saveText.classList.remove('text-blue-600', 'text-yellow-600');
-						saveText.classList.add('text-green-600');
-						const now = new Date();
-						if (lastSaved) {
-							lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;
-						}
-						window.supervisorForm.hasUnsavedChanges = false;
-						break;
-					case 'error':
-						if (saveIcon) saveIcon.classList.add('hidden');
-						saveText.textContent = 'Error saving';
-						saveText.classList.add('text-red-600');
-						break;
-				}
-			};
-
-			window.supervisorAutoSave = function() {
-				const form = document.getElementById('compact-supervisor-form');
-				if (!form) return;
-
-				const studentId = form.dataset.studentId;
-
-				// Set draft flag
-				const draftInput = document.getElementById('is_draft');
-				if (draftInput) draftInput.value = 'true';
-
-				window.updateSupervisorSaveStatus('saving');
-
-				// Gather form data
-				const formData = new FormData(form);
-
-				// Send via HTMX
-				htmx.ajax('POST', `/supervisor-report/${studentId}/save-draft`, {
-					values: Object.fromEntries(formData),
-					target: '#modal-result',
-					swap: 'innerHTML'
-				}).then(() => {
-					window.updateSupervisorSaveStatus('saved');
-				}).catch(() => {
-					window.updateSupervisorSaveStatus('error');
-				});
-			};
-
-			window.saveSupervisorDraft = function() {
-				const form = document.getElementById('compact-supervisor-form');
-				if (!form) return;
-
-				const studentId = form.dataset.studentId;
-
-				// Set draft flag
-				const draftInput = document.getElementById('is_draft');
-				if (draftInput) draftInput.value = 'true';
-
-				// Gather form data
-				const formData = new FormData(form);
-
-				// Show saving indicator
-				window.updateSupervisorSaveStatus('saving');
-
-				// Send via HTMX
-				htmx.ajax('POST', `/supervisor-report/${studentId}/save-draft`, {
-					values: Object.fromEntries(formData),
-					target: '#modal-result',
-					swap: 'innerHTML'
-				}).then(() => {
-					window.updateSupervisorSaveStatus('saved');
-					setTimeout(() => {
-						window.showSupervisorSuccessMessage('Draft saved successfully!');
-					}, 500);
-				});
-			};
-
-			window.updateCharCount = function(textarea) {
-				const charCount = document.getElementById('char-count');
-				if (charCount) {
-					const length = textarea.value.length;
-					charCount.textContent = length;
-
-					if (length < 50) {
-						charCount.style.color = 'red';
-					} else {
-						charCount.style.color = 'green';
-					}
-				}
-			};
-
-			window.validateAndSubmitSupervisor = function() {
-				// Set draft flag to false for final submission
-				const draftInput = document.getElementById('is_draft');
-				if (draftInput) draftInput.value = 'false';
-
-				// Validate form
-				return window.validateSupervisorForm();
-			};
-
-			window.validateSupervisorForm = function() {
-				const form = document.getElementById('compact-supervisor-form');
-				if (!form) return false;
-
-				const comments = form.querySelector('#supervisor_comments');
-				const workplace = form.querySelector('#supervisor_workplace');
-				const position = form.querySelector('#supervisor_position');
-
-				if (!comments || !workplace || !position) {
-					alert('Form fields not found');
-					return false;
-				}
-
-				const commentsValue = comments.value.trim();
-				const workplaceValue = workplace.value.trim();
-				const positionValue = position.value.trim();
-
-				if (!commentsValue || !workplaceValue || !positionValue) {
-					alert('Please fill in all required fields');
-					return false;
-				}
-
-				if (commentsValue.length < 50) {
-					alert('Supervisor comments must be at least 50 characters long. Current length: ' + commentsValue.length);
-					return false;
-				}
-
-				// Check if defense eligibility is selected
-				const defenseEligibility = form.querySelector('input[name="is_pass_or_failed"]:checked');
-				if (!defenseEligibility) {
-					alert('Please select defense eligibility status');
-					return false;
-				}
-
-				return true;
-			};
-
-			window.showSupervisorSuccessMessage = function(message) {
-				const result = document.getElementById('modal-result');
-				if (!result) return;
-
-				result.innerHTML = `
-					<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
-						<div class="flex items-center">
-							<svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							</svg>
-							<span>${message}</span>
-						</div>
-					</div>
-				`;
-
-				setTimeout(() => {
-					result.innerHTML = '';
-				}, 3000);
-			};
-
-		window.closeSupervisorModal = function() {
-            if (window.supervisorForm && window.supervisorForm.hasUnsavedChanges) {
-                if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
+            // SAFE modal initialization with proper element checking
+            function initializeModal() {
+                const modal = document.getElementById('supervisor-modal');
+                if (!modal) {
+                    console.log('SupervisorModalScripts: Modal not found, retrying...');
+                    setTimeout(initializeModal, 100);
                     return;
                 }
-            }
 
-            const modal = document.getElementById('supervisor-modal');
-            if (modal) {
-                modal.classList.remove('opacity-100');
-                modal.classList.add('opacity-0');
+                console.log('SupervisorModalScripts: Initializing modal without z-index changes');
+
+                modal.classList.remove('opacity-0', 'hidden');
+                modal.classList.add('opacity-100');
+
                 const content = modal.querySelector('[data-modal-content]');
                 if (content) {
-                    content.classList.remove('scale-100', 'opacity-100');
-                    content.classList.add('scale-95', 'opacity-0');
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
                 }
 
+                // SAFE initialization of auto-save
                 setTimeout(() => {
-                    modal.style.display = 'none';
-                    document.body.style.overflow = '';
-                    if (window.modalState) {
-                        window.modalState.openModalId = null;
-                    }
-                    if (window.supervisorForm) {
-                        window.supervisorForm.hasUnsavedChanges = false;
-                        // Clear timer
-                        if (window.supervisorForm.autoSaveTimer) {
-                            clearTimeout(window.supervisorForm.autoSaveTimer);
-                        }
-                    }
+                    initializeSupervisorAutoSave();
+                    setCurrentDate();
+                    initializeCharCount();
+                }, 200);
 
-                    // IMPORTANT: Clean up the modal container
-                    const modalContainer = document.getElementById('modal-container');
-                    if (modalContainer) {
-                        modalContainer.innerHTML = '';
-                        modalContainer.style.display = 'none';
-                        modalContainer.className = '';
-                        modalContainer.removeAttribute('style');
-                        modalContainer.style.display = 'none';
-                    }
-                }, 300);
+                console.log('SupervisorModalScripts: Modal initialized successfully');
             }
-        };
 
-			// Modal opening logic
-			requestAnimationFrame(function() {
-				requestAnimationFrame(function() {
-					const modal = document.getElementById('supervisor-modal');
-					if (modal) {
-						if (window.modalState && window.modalState.openModalId) {
-							const existingModal = document.getElementById(window.modalState.openModalId);
-							if (existingModal && existingModal !== modal) {
-								existingModal.style.display = 'none';
-								existingModal.classList.add('opacity-0');
-							}
-						}
+            // SAFE auto-save initialization with null checks
+            function initializeSupervisorAutoSave() {
+                const form = document.getElementById('compact-supervisor-form');
+                if (!form) {
+                    console.log('SupervisorModalScripts: Form not found');
+                    return;
+                }
 
-						if (!window.modalState) {
-							window.modalState = { openModalId: null };
-						}
+                if (form.querySelector('[disabled]')) {
+                    console.log('SupervisorModalScripts: Form is disabled, skipping auto-save');
+                    return;
+                }
 
-						window.modalState.openModalId = 'supervisor-modal';
-						document.body.style.overflow = 'hidden';
-						modal.style.display = 'flex';
-						modal.offsetHeight;
-						modal.classList.remove('opacity-0', 'hidden');
-						modal.classList.add('opacity-100');
+                const fields = form.querySelectorAll('.auto-save-field');
+                console.log('SupervisorModalScripts: Found', fields.length, 'auto-save fields');
 
-						const content = modal.querySelector('[data-modal-content]');
-						if (content) {
-							content.classList.remove('scale-95', 'opacity-0');
-							content.classList.add('scale-100', 'opacity-100');
-						}
+                fields.forEach((field, index) => {
+                    if (!field) {
+                        console.log('SupervisorModalScripts: Field', index, 'is null, skipping');
+                        return;
+                    }
 
-						// Initialize auto-save listeners
-						window.initializeSupervisorAutoSave();
+                    try {
+                        // Clone node to remove existing listeners
+                        const newField = field.cloneNode(true);
+                        if (field.parentNode) {
+                            field.parentNode.replaceChild(newField, field);
 
-						// Initialize character count
-						setTimeout(function() {
-							const textarea = document.getElementById('supervisor_comments');
-							if (textarea && !textarea.disabled) {
-								window.updateCharCount(textarea);
-							}
-						}, 200);
-					}
-				});
-			});
+                            // Add new listeners SAFELY
+                            newField.addEventListener('input', handleSupervisorFieldChange);
+                            newField.addEventListener('change', handleSupervisorFieldChange);
+                        }
+                    } catch (error) {
+                        console.error('SupervisorModalScripts: Error setting up field', index, error);
+                    }
+                });
+            }
 
-			// Clean up old event listeners and add new ones
-			const oldBeforeUnload = window.onbeforeunload;
-			window.addEventListener('beforeunload', function (e) {
-				if (window.supervisorForm && window.supervisorForm.hasUnsavedChanges) {
-					e.preventDefault();
-					e.returnValue = '';
-				}
-			});
+            function initializeCharCount() {
+                const textarea = document.getElementById('supervisor_comments');
+                if (textarea && !textarea.disabled && window.updateCharCount) {
+                    window.updateCharCount(textarea);
+                }
+            }
 
-			// Remove old htmx listeners and add new one
-			document.removeEventListener('htmx:afterRequest', window.supervisorFormHtmxHandler);
+            function handleSupervisorFieldChange() {
+                window.supervisorForm.hasUnsavedChanges = true;
+                clearTimeout(window.supervisorForm.autoSaveTimer);
+                window.updateSupervisorSaveStatus('pending');
+                window.supervisorForm.autoSaveTimer = setTimeout(() => {
+                    window.supervisorAutoSave();
+                }, window.supervisorForm.AUTOSAVE_DELAY);
+            }
 
-			window.supervisorFormHtmxHandler = function(evt) {
+            // Make functions global
+            window.initializeSupervisorAutoSave = initializeSupervisorAutoSave;
+            window.handleSupervisorFieldChange = handleSupervisorFieldChange;
+
+            window.updateSupervisorSaveStatus = function(status) {
+                const saveIcon = document.getElementById('save-icon');
+                const saveText = document.getElementById('save-text');
+                const lastSaved = document.getElementById('last-saved');
+
+                if (!saveText) return;
+
+                switch(status) {
+                    case 'pending':
+                        if (saveIcon) saveIcon.classList.remove('hidden');
+                        saveText.textContent = 'Changes detected...';
+                        saveText.classList.add('text-yellow-600');
+                        saveText.classList.remove('text-green-600', 'text-red-600');
+                        break;
+                    case 'saving':
+                        if (saveIcon) saveIcon.classList.remove('hidden');
+                        saveText.textContent = 'Saving...';
+                        saveText.classList.add('text-blue-600');
+                        saveText.classList.remove('text-yellow-600', 'text-green-600');
+                        break;
+                    case 'saved':
+                        if (saveIcon) saveIcon.classList.remove('hidden');
+                        saveText.textContent = 'All changes saved';
+                        saveText.classList.remove('text-blue-600', 'text-yellow-600');
+                        saveText.classList.add('text-green-600');
+                        const now = new Date();
+                        if (lastSaved) {
+                            lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;
+                        }
+                        window.supervisorForm.hasUnsavedChanges = false;
+                        break;
+                    case 'error':
+                        if (saveIcon) saveIcon.classList.add('hidden');
+                        saveText.textContent = 'Error saving';
+                        saveText.classList.add('text-red-600');
+                        break;
+                }
+            };
+
+            window.supervisorAutoSave = function() {
+                const form = document.getElementById('compact-supervisor-form');
+                if (!form) return;
+
+                const studentId = form.dataset.studentId;
+                const draftInput = document.getElementById('is_draft');
+                if (draftInput) draftInput.value = 'true';
+
+                window.updateSupervisorSaveStatus('saving');
+                const formData = new FormData(form);
+
+                htmx.ajax('POST', `/supervisor-report/${studentId}/save-draft`, {
+                    values: Object.fromEntries(formData),
+                    target: '#modal-result',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    window.updateSupervisorSaveStatus('saved');
+                }).catch(() => {
+                    window.updateSupervisorSaveStatus('error');
+                });
+            };
+
+            window.saveSupervisorDraft = function() {
+                const form = document.getElementById('compact-supervisor-form');
+                if (!form) return;
+
+                const studentId = form.dataset.studentId;
+                const draftInput = document.getElementById('is_draft');
+                if (draftInput) draftInput.value = 'true';
+
+                const formData = new FormData(form);
+                window.updateSupervisorSaveStatus('saving');
+
+                htmx.ajax('POST', `/supervisor-report/${studentId}/save-draft`, {
+                    values: Object.fromEntries(formData),
+                    target: '#modal-result',
+                    swap: 'innerHTML'
+                }).then(() => {
+                    window.updateSupervisorSaveStatus('saved');
+                    setTimeout(() => {
+                        window.showSupervisorSuccessMessage('Draft saved successfully!');
+                    }, 500);
+                });
+            };
+
+            window.updateCharCount = function(textarea) {
+                if (!textarea) return;
+                const charCount = document.getElementById('char-count');
+                if (charCount) {
+                    const length = textarea.value.length;
+                    charCount.textContent = length;
+                    charCount.style.color = length < 50 ? 'red' : 'green';
+                }
+            };
+
+            window.validateAndSubmitSupervisor = function() {
+                const draftInput = document.getElementById('is_draft');
+                if (draftInput) draftInput.value = 'false';
+                return window.validateSupervisorForm();
+            };
+
+            window.validateSupervisorForm = function() {
+                const form = document.getElementById('compact-supervisor-form');
+                if (!form) return false;
+
+                const comments = form.querySelector('#supervisor_comments');
+                const workplace = form.querySelector('#supervisor_workplace');
+                const position = form.querySelector('#supervisor_position');
+
+                if (!comments || !workplace || !position) {
+                    alert('Form fields not found');
+                    return false;
+                }
+
+                const commentsValue = comments.value.trim();
+                const workplaceValue = workplace.value.trim();
+                const positionValue = position.value.trim();
+
+                if (!commentsValue || !workplaceValue || !positionValue) {
+                    alert('Please fill in all required fields');
+                    return false;
+                }
+
+                if (commentsValue.length < 50) {
+                    alert('Supervisor comments must be at least 50 characters long. Current length: ' + commentsValue.length);
+                    return false;
+                }
+
+                const defenseEligibility = form.querySelector('input[name="is_pass_or_failed"]:checked');
+                if (!defenseEligibility) {
+                    alert('Please select defense eligibility status');
+                    return false;
+                }
+
+                return true;
+            };
+
+            window.showSupervisorSuccessMessage = function(message) {
+                const result = document.getElementById('modal-result');
+                if (!result) return;
+
+                result.innerHTML = `
+                    <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+                        <div class="flex items-center">
+                            <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>${message}</span>
+                        </div>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    result.innerHTML = '';
+                }, 3000);
+            };
+
+            window.closeSupervisorModal = function() {
+                console.log('SupervisorModalScripts: closeSupervisorModal called');
+
+                if (window.supervisorForm && window.supervisorForm.hasUnsavedChanges) {
+                    if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
+                        return;
+                    }
+                }
+
+                // Clear timer and reset state
+                if (window.supervisorForm && window.supervisorForm.autoSaveTimer) {
+                    clearTimeout(window.supervisorForm.autoSaveTimer);
+                }
+                if (window.supervisorForm) {
+                    window.supervisorForm.hasUnsavedChanges = false;
+                }
+
+                // Use ModalManager to close properly
+                if (window.ModalManager) {
+                    console.log('SupervisorModalScripts: Using ModalManager to close');
+                    window.ModalManager.closeAll();
+                } else {
+                    console.log('SupervisorModalScripts: ModalManager not available, using fallback');
+                    const modal = document.getElementById('supervisor-modal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                    }
+                    const container = document.getElementById('modal-container');
+                    if (container) {
+                        container.style.display = 'none';
+                        container.innerHTML = '';
+                    }
+                    document.body.style.overflow = '';
+                }
+            };
+
+            // Event listeners with safety checks
+            window.addEventListener('beforeunload', function (e) {
+                if (window.supervisorForm && window.supervisorForm.hasUnsavedChanges) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
+            // HTMX handling with safety checks
+            window.supervisorFormHtmxHandler = function(evt) {
                 if (evt.detail.successful && (
                     evt.target.closest('#compact-supervisor-form') ||
                     evt.detail.xhr.getResponseHeader('HX-Trigger') === 'supervisorReportSaved'
                 )) {
-                    window.supervisorForm.hasUnsavedChanges = false;
+                    if (window.supervisorForm) {
+                        window.supervisorForm.hasUnsavedChanges = false;
+                    }
 
                     const draftInput = document.getElementById('is_draft');
                     const isDraft = draftInput && draftInput.value === 'true';
 
                     if (!isDraft) {
-                        // Final submission - close modal properly
-                        window.closeSupervisorModal();
-
-                        // Wait for modal to close before refreshing
+                        console.log('SupervisorModalScripts: Form submitted, closing modal');
                         setTimeout(() => {
-                            // Refresh the page or specific content as needed
+                            window.closeSupervisorModal();
+                            // Refresh the student list
                             if (typeof htmx !== 'undefined') {
-                                htmx.ajax('GET', window.location.pathname, {
-                                    target: 'body',
-                                    swap: 'outerHTML'
+                                htmx.ajax('GET', '/my-students', {
+                                    target: '#student-table-container',
+                                    values: { search: document.getElementById('search')?.value || '' }
                                 });
-                            } else {
-                                location.reload();
                             }
                         }, 400);
                     }
                 }
             };
 
-			document.addEventListener('htmx:afterRequest', window.supervisorFormHtmxHandler);
+            // Remove old listener and add new one
+            document.removeEventListener('htmx:afterRequest', window.supervisorFormHtmxHandler);
+            document.addEventListener('htmx:afterRequest', window.supervisorFormHtmxHandler);
 
-			// Remove old keydown listener and add new one
-			document.removeEventListener('keydown', window.supervisorFormEscapeHandler);
+            // Escape key handler with safety checks
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('supervisor-modal');
+                    if (modal && modal.style.display !== 'none') {
+                        console.log('SupervisorModalScripts: Escape key pressed');
+                        if (window.supervisorForm && window.supervisorForm.hasUnsavedChanges) {
+                            if (confirm('You have unsaved changes. Are you sure you want to close?')) {
+                                window.closeSupervisorModal();
+                            }
+                        } else {
+                            window.closeSupervisorModal();
+                        }
+                    }
+                }
+            });
 
-			window.supervisorFormEscapeHandler = function(e) {
-				if (e.key === 'Escape' && window.modalState && window.modalState.openModalId === 'supervisor-modal') {
-					if (window.supervisorForm && window.supervisorForm.hasUnsavedChanges) {
-						if (confirm('You have unsaved changes. Are you sure you want to close?')) {
-							window.closeSupervisorModal();
-						}
-					} else {
-						window.closeSupervisorModal();
-					}
-				}
-			};
+            // START INITIALIZATION - with proper timing
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    initializeModal();
+                });
+            });
 
-			document.addEventListener('keydown', window.supervisorFormEscapeHandler);
-
-			// Clean up on modal close
-			document.addEventListener('htmx:beforeSwap', function(evt) {
-				if (evt.detail.target && evt.detail.target.id === 'supervisor-modal') {
-					// Clean up timers
-					if (window.supervisorForm && window.supervisorForm.autoSaveTimer) {
-						clearTimeout(window.supervisorForm.autoSaveTimer);
-					}
-				}
-			});
-
-		})();
-	</script>
+            console.log('SupervisorModalScripts: Initialization complete');
+        })();
+    </script>
 }
-
 
 
 // Helper function

@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "FinalProjectManagementApp/auth"
 
-func Layout(user *auth.AuthenticatedUser, currentLocale string, title string) templ.Component {
+func Layout(user *auth.AuthenticatedUser, currentLocale string, title string, currentPath string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -57,11 +57,11 @@ func Layout(user *auth.AuthenticatedUser, currentLocale string, title string) te
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " - Baigiamųjų darbų talpykla</title><link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground min-h-screen\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " - Baigiamųjų darbų talpykla</title><link rel=\"stylesheet\" href=\"/assets/css/output.css\"><link rel=\"stylesheet\" href=\"/static/css/main.css\"></head><body class=\"bg-background text-foreground min-h-screen\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Navbar(user, currentLocale).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Navbar(user, currentLocale, currentPath).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -73,7 +73,15 @@ func Layout(user *auth.AuthenticatedUser, currentLocale string, title string) te
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</main><!-- Add HTMX --><script src=\"https://unpkg.com/htmx.org@1.9.10\"></script><script src=\"/static/js/navbar.js\"></script><script src=\"/static/js/repository-preview.js\"></script><!-- Modal System Initialization --><script nonce=\"\">\r\n            if (typeof window.modalState === 'undefined') {\r\n                window.modalState = {\r\n                    openModalId: null\r\n                };\r\n            }\r\n\r\n            (function() { // IIFE\r\n                function closeModal(modal, immediate = false) {\r\n                    if (!modal || modal.style.display === 'none') return;\r\n\r\n                    const content = modal.querySelector('[data-modal-content]');\r\n                    const modalId = modal.id;\r\n\r\n                    // Apply leaving transitions\r\n                    modal.classList.remove('opacity-100');\r\n                    modal.classList.add('opacity-0');\r\n\r\n                    if (content) {\r\n                        content.classList.remove('scale-100', 'opacity-100');\r\n                        content.classList.add('scale-95', 'opacity-0');\r\n                    }\r\n\r\n                    function hideModal() {\r\n                        modal.style.display = 'none';\r\n\r\n                        if (window.modalState.openModalId === modalId) {\r\n                            window.modalState.openModalId = null;\r\n                            document.body.style.overflow = '';\r\n                        }\r\n\r\n                        // Clean up modal container if it exists\r\n                        const modalContainer = document.getElementById('modal-container');\r\n                        if (modalContainer) {\r\n                            modalContainer.innerHTML = '';\r\n                            modalContainer.style.display = 'none';\r\n                            modalContainer.className = '';\r\n                            modalContainer.removeAttribute('style');\r\n                            modalContainer.style.display = 'none';\r\n                        }\r\n                    }\r\n\r\n                    if (immediate) {\r\n                        hideModal();\r\n                    } else {\r\n                        setTimeout(hideModal, 300);\r\n                    }\r\n                }\r\n\r\n                function openModal(modal) {\r\n                    if (!modal) return;\r\n\r\n                    // Close any open modal first\r\n                    if (window.modalState.openModalId) {\r\n                        const openModal = document.getElementById(window.modalState.openModalId);\r\n                        if (openModal && openModal !== modal) {\r\n                            closeModal(openModal, true);\r\n                        }\r\n                    }\r\n\r\n                    const content = modal.querySelector('[data-modal-content]');\r\n\r\n                    // Display and prepare for animation\r\n                    modal.style.display = 'flex';\r\n\r\n                    // Store as currently open modal\r\n                    window.modalState.openModalId = modal.id;\r\n                    document.body.style.overflow = 'hidden';\r\n\r\n                    // Force reflow before adding transition classes\r\n                    void modal.offsetHeight;\r\n\r\n                    // Start animations\r\n                    modal.classList.remove('opacity-0');\r\n                    modal.classList.add('opacity-100');\r\n\r\n                    if (content) {\r\n                        content.classList.remove('scale-95', 'opacity-0');\r\n                        content.classList.add('scale-100', 'opacity-100');\r\n\r\n                        // Focus first focusable element\r\n                        setTimeout(() => {\r\n                            const focusable = content.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])');\r\n                            if (focusable) focusable.focus();\r\n                        }, 50);\r\n                    }\r\n                }\r\n\r\n                function closeModalById(modalId, immediate = false) {\r\n                    const modal = document.getElementById(modalId);\r\n                    if (modal) closeModal(modal, immediate);\r\n                }\r\n\r\n                function openModalById(modalId) {\r\n                    const modal = document.getElementById(modalId);\r\n                    if (modal) openModal(modal);\r\n                }\r\n\r\n                function handleClickAway(e) {\r\n                    const openModalId = window.modalState.openModalId;\r\n                    if (!openModalId) return;\r\n\r\n                    const modal = document.getElementById(openModalId);\r\n                    if (!modal || modal.getAttribute('data-disable-click-away') === 'true') return;\r\n\r\n                    const content = modal.querySelector('[data-modal-content]');\r\n                    const trigger = e.target.closest('[data-modal-trigger]');\r\n\r\n                    if (content && !content.contains(e.target) &&\r\n                        (!trigger || trigger.getAttribute('data-modal-target-id') !== openModalId)) {\r\n                        closeModal(modal);\r\n                    }\r\n                }\r\n\r\n                function handleEscKey(e) {\r\n                    if (e.key !== 'Escape' || !window.modalState.openModalId) return;\r\n\r\n                    const modal = document.getElementById(window.modalState.openModalId);\r\n                    if (modal && modal.getAttribute('data-disable-esc') !== 'true') {\r\n                        closeModal(modal);\r\n                    }\r\n                }\r\n\r\n                function initTrigger(trigger) {\r\n                    const targetId = trigger.getAttribute('data-modal-target-id');\r\n                    if (!targetId) return;\r\n\r\n                    trigger.addEventListener('click', () => {\r\n                        if (!trigger.hasAttribute('disabled') &&\r\n                            !trigger.classList.contains('opacity-50')) {\r\n                            openModalById(targetId);\r\n                        }\r\n                    });\r\n                }\r\n\r\n                function initCloseButton(closeBtn) {\r\n                    closeBtn.addEventListener('click', () => {\r\n                        const targetId = closeBtn.getAttribute('data-modal-target-id');\r\n                        if (targetId) {\r\n                            closeModalById(targetId);\r\n                        } else {\r\n                            const modal = closeBtn.closest('[data-modal]');\r\n                            if (modal && modal.id) {\r\n                                closeModal(modal);\r\n                            }\r\n                        }\r\n                    });\r\n                }\r\n\r\n                function initAllComponents(root = document) {\r\n                    if (root instanceof Element && root.matches('[data-modal-trigger]')) {\r\n                        initTrigger(root);\r\n                    }\r\n                    for (const trigger of root.querySelectorAll('[data-modal-trigger]')) {\r\n                        initTrigger(trigger);\r\n                    }\r\n\r\n                    if (root instanceof Element && root.matches('[data-modal-close]')) {\r\n                        initCloseButton(root);\r\n                    }\r\n                    for (const closeBtn of root.querySelectorAll('[data-modal-close]')) {\r\n                        initCloseButton(closeBtn);\r\n                    }\r\n                }\r\n\r\n                const handleHtmxSwap = (event) => {\r\n                    const target = event.detail.elt\r\n                    if (target instanceof Element) {\r\n                        requestAnimationFrame(() => initAllComponents(target));\r\n                    }\r\n                };\r\n\r\n                if (typeof window.modalEventsInitialized === 'undefined') {\r\n                    document.addEventListener('click', handleClickAway);\r\n                    document.addEventListener('keydown', handleEscKey);\r\n                    window.modalEventsInitialized = true;\r\n                }\r\n\r\n                // Make functions globally available\r\n                window.closeModal = closeModal;\r\n                window.openModal = openModal;\r\n                window.closeModalById = closeModalById;\r\n                window.openModalById = openModalById;\r\n\r\n                initAllComponents();\r\n                document.addEventListener('DOMContentLoaded', () => initAllComponents());\r\n                document.body.addEventListener('htmx:afterSwap', handleHtmxSwap);\r\n                document.body.addEventListener('htmx:oobAfterSwap', handleHtmxSwap);\r\n            })(); // End of IIFE\r\n        </script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</main><script src=\"/static/vendor/htmx.js\"></script><!-- Modal Manager -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = ModalManager().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<script src=\"/static/js/navbar.js\"></script><script src=\"/static/js/repository-preview.js\"></script><script>\r\n        document.addEventListener('htmx:beforeSwap', function(evt) {\r\n            const navbar = document.querySelector('nav');\r\n            console.log('HTMX beforeSwap - Navbar exists:', !!navbar);\r\n            console.log('HTMX beforeSwap - Target:', evt.detail.target.id);\r\n            console.log('HTMX beforeSwap - Response preview:', evt.detail.xhr.responseText.substring(0, 200) + '...');\r\n        });\r\n\r\n        document.addEventListener('htmx:afterSwap', function(evt) {\r\n            const navbar = document.querySelector('nav');\r\n            console.log('HTMX afterSwap - Navbar exists:', !!navbar);\r\n\r\n            if (!navbar) {\r\n                console.error('🚨 HTMX SWAP REMOVED THE NAVBAR!');\r\n                console.error('Target that caused the issue:', evt.detail.target);\r\n                console.error('Full response length:', evt.detail.xhr.responseText.length);\r\n                console.error('Response preview:', evt.detail.xhr.responseText.substring(0, 500));\r\n\r\n                // This will help us identify exactly what response is causing the issue\r\n                alert('CRITICAL: Navigation was removed by HTMX swap. Check console for details.');\r\n            }\r\n        });\r\n\r\n\r\n        </script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -81,7 +89,7 @@ func Layout(user *auth.AuthenticatedUser, currentLocale string, title string) te
 	})
 }
 
-func LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, title string, showSidebar bool) templ.Component {
+func LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, title string, showSidebar bool, currentPath string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -102,50 +110,50 @@ func LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, title
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<!doctype html><html lang=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<!doctype html><html lang=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(currentLocale)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 222, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 62, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 226, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 66, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, " - Baigiamųjų darbų talpykla</title><link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground\"><div class=\"min-h-screen flex flex-col\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " - Baigiamųjų darbų talpykla</title><link rel=\"stylesheet\" href=\"/assets/css/output.css\"></head><body class=\"bg-background text-foreground\"><div class=\"min-h-screen flex flex-col\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Navbar(user, currentLocale).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Navbar(user, currentLocale, currentPath).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if showSidebar && user != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex flex-1\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = Sidebar(user).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = Sidebar(user, currentPath).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<main class=\"flex-1 p-6\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<main class=\"flex-1 p-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -153,12 +161,12 @@ func LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, title
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</main></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</main></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<main class=\"flex-1 container mx-auto px-4 py-6\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<main class=\"flex-1 container mx-auto px-4 py-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -166,12 +174,20 @@ func LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, title
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><!-- Add HTMX --><script src=\"https://unpkg.com/htmx.org@1.9.10\"></script><script src=\"/static/js/navbar.js\"></script><!-- Modal System Initialization (same as above) --><script nonce=\"\">\r\n                   if (typeof window.modalState === 'undefined') {\r\n                       window.modalState = {\r\n                           openModalId: null\r\n                       };\r\n                   }\r\n\r\n                   (function() { // IIFE\r\n                       function closeModal(modal, immediate = false) {\r\n                           if (!modal || modal.style.display === 'none') return;\r\n\r\n                           const content = modal.querySelector('[data-modal-content]');\r\n                           const modalId = modal.id;\r\n\r\n                           // Apply leaving transitions\r\n                           modal.classList.remove('opacity-100');\r\n                           modal.classList.add('opacity-0');\r\n\r\n                           if (content) {\r\n                               content.classList.remove('scale-100', 'opacity-100');\r\n                               content.classList.add('scale-95', 'opacity-0');\r\n                           }\r\n\r\n                           function hideModal() {\r\n                               modal.style.display = 'none';\r\n\r\n                               if (window.modalState.openModalId === modalId) {\r\n                                   window.modalState.openModalId = null;\r\n                                   document.body.style.overflow = '';\r\n                               }\r\n\r\n                               // Clean up modal container if it exists\r\n                               const modalContainer = document.getElementById('modal-container');\r\n                               if (modalContainer) {\r\n                                   modalContainer.innerHTML = '';\r\n                                   modalContainer.style.display = 'none';\r\n                                   modalContainer.className = '';\r\n                                   modalContainer.removeAttribute('style');\r\n                                   modalContainer.style.display = 'none';\r\n                               }\r\n                           }\r\n\r\n                           if (immediate) {\r\n                               hideModal();\r\n                           } else {\r\n                               setTimeout(hideModal, 300);\r\n                           }\r\n                       }\r\n\r\n                       function openModal(modal) {\r\n                           if (!modal) return;\r\n\r\n                           // Close any open modal first\r\n                           if (window.modalState.openModalId) {\r\n                               const openModal = document.getElementById(window.modalState.openModalId);\r\n                               if (openModal && openModal !== modal) {\r\n                                   closeModal(openModal, true);\r\n                               }\r\n                           }\r\n\r\n                           const content = modal.querySelector('[data-modal-content]');\r\n\r\n                           // Display and prepare for animation\r\n                           modal.style.display = 'flex';\r\n\r\n                           // Store as currently open modal\r\n                           window.modalState.openModalId = modal.id;\r\n                           document.body.style.overflow = 'hidden';\r\n\r\n                           // Force reflow before adding transition classes\r\n                           void modal.offsetHeight;\r\n\r\n                           // Start animations\r\n                           modal.classList.remove('opacity-0');\r\n                           modal.classList.add('opacity-100');\r\n\r\n                           if (content) {\r\n                               content.classList.remove('scale-95', 'opacity-0');\r\n                               content.classList.add('scale-100', 'opacity-100');\r\n\r\n                               // Focus first focusable element\r\n                               setTimeout(() => {\r\n                                   const focusable = content.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])');\r\n                                   if (focusable) focusable.focus();\r\n                               }, 50);\r\n                           }\r\n                       }\r\n\r\n                       function closeModalById(modalId, immediate = false) {\r\n                           const modal = document.getElementById(modalId);\r\n                           if (modal) closeModal(modal, immediate);\r\n                       }\r\n\r\n                       function openModalById(modalId) {\r\n                           const modal = document.getElementById(modalId);\r\n                           if (modal) openModal(modal);\r\n                       }\r\n\r\n                       function handleClickAway(e) {\r\n                           const openModalId = window.modalState.openModalId;\r\n                           if (!openModalId) return;\r\n\r\n                           const modal = document.getElementById(openModalId);\r\n                           if (!modal || modal.getAttribute('data-disable-click-away') === 'true') return;\r\n\r\n                           const content = modal.querySelector('[data-modal-content]');\r\n                           const trigger = e.target.closest('[data-modal-trigger]');\r\n\r\n                           if (content && !content.contains(e.target) &&\r\n                               (!trigger || trigger.getAttribute('data-modal-target-id') !== openModalId)) {\r\n                               closeModal(modal);\r\n                           }\r\n                       }\r\n\r\n                       function handleEscKey(e) {\r\n                           if (e.key !== 'Escape' || !window.modalState.openModalId) return;\r\n\r\n                           const modal = document.getElementById(window.modalState.openModalId);\r\n                           if (modal && modal.getAttribute('data-disable-esc') !== 'true') {\r\n                               closeModal(modal);\r\n                           }\r\n                       }\r\n\r\n                       function initTrigger(trigger) {\r\n                           const targetId = trigger.getAttribute('data-modal-target-id');\r\n                           if (!targetId) return;\r\n\r\n                           trigger.addEventListener('click', () => {\r\n                               if (!trigger.hasAttribute('disabled') &&\r\n                                   !trigger.classList.contains('opacity-50')) {\r\n                                   openModalById(targetId);\r\n                               }\r\n                           });\r\n                       }\r\n\r\n                       function initCloseButton(closeBtn) {\r\n                           closeBtn.addEventListener('click', () => {\r\n                               const targetId = closeBtn.getAttribute('data-modal-target-id');\r\n                               if (targetId) {\r\n                                   closeModalById(targetId);\r\n                               } else {\r\n                                   const modal = closeBtn.closest('[data-modal]');\r\n                                   if (modal && modal.id) {\r\n                                       closeModal(modal);\r\n                                   }\r\n                               }\r\n                           });\r\n                       }\r\n\r\n                       function initAllComponents(root = document) {\r\n                           if (root instanceof Element && root.matches('[data-modal-trigger]')) {\r\n                               initTrigger(root);\r\n                           }\r\n                           for (const trigger of root.querySelectorAll('[data-modal-trigger]')) {\r\n                               initTrigger(trigger);\r\n                           }\r\n\r\n                           if (root instanceof Element && root.matches('[data-modal-close]')) {\r\n                               initCloseButton(root);\r\n                           }\r\n                           for (const closeBtn of root.querySelectorAll('[data-modal-close]')) {\r\n                               initCloseButton(closeBtn);\r\n                           }\r\n                       }\r\n\r\n                       const handleHtmxSwap = (event) => {\r\n                           const target = event.detail.elt\r\n                           if (target instanceof Element) {\r\n                               requestAnimationFrame(() => initAllComponents(target));\r\n                           }\r\n                       };\r\n\r\n                       if (typeof window.modalEventsInitialized === 'undefined') {\r\n                           document.addEventListener('click', handleClickAway);\r\n                           document.addEventListener('keydown', handleEscKey);\r\n                           window.modalEventsInitialized = true;\r\n                       }\r\n\r\n                       // Make functions globally available\r\n                       window.closeModal = closeModal;\r\n                       window.openModal = openModal;\r\n                       window.closeModalById = closeModalById;\r\n                       window.openModalById = openModalById;\r\n\r\n                       initAllComponents();\r\n                       document.addEventListener('DOMContentLoaded', () => initAllComponents());\r\n                       document.body.addEventListener('htmx:afterSwap', handleHtmxSwap);\r\n                       document.body.addEventListener('htmx:oobAfterSwap', handleHtmxSwap);\r\n                   })(); // End of IIFE\r\n               </script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><!-- Add HTMX --><script src=\"/static/vendor/htmx.js\"></script><!-- Modal Manager -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = ModalManager().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<script src=\"/static/js/navbar.js\"></script><script src=\"/static/js/repository-preview.js\"></script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -179,7 +195,7 @@ func LayoutWithSidebar(user *auth.AuthenticatedUser, currentLocale string, title
 	})
 }
 
-func Sidebar(user *auth.AuthenticatedUser) templ.Component {
+func Sidebar(user *auth.AuthenticatedUser, currentPath string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -200,27 +216,27 @@ func Sidebar(user *auth.AuthenticatedUser) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<aside class=\"w-64 border-r bg-card text-card-foreground\"><div class=\"p-6\"><h2 class=\"text-lg font-semibold mb-4\">Navigation</h2><nav class=\"space-y-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<aside class=\"w-64 border-r bg-card text-card-foreground\"><div class=\"p-6\"><h2 class=\"text-lg font-semibold mb-4\">Navigation</h2><nav class=\"space-y-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SidebarLink("/dashboard", "Dashboard", "🏠").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SidebarLink("/dashboard", "Dashboard", "🏠", currentPath == "/dashboard").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SidebarLink("/projects", "Projects", "📁").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SidebarLink("/projects", "Projects", "📁", currentPath == "/projects").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SidebarLink("/submissions", "Submissions", "📄").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SidebarLink("/submissions", "Submissions", "📄", currentPath == "/submissions").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SidebarLink("/settings", "Settings", "⚙️").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SidebarLink("/settings", "Settings", "⚙️", currentPath == "/settings").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</nav></div></aside>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</nav></div></aside>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -228,7 +244,7 @@ func Sidebar(user *auth.AuthenticatedUser) templ.Component {
 	})
 }
 
-func SidebarLink(href string, text string, icon string) templ.Component {
+func SidebarLink(href string, text string, icon string, isActive bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -249,42 +265,64 @@ func SidebarLink(href string, text string, icon string) templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<a href=\"")
+		var templ_7745c5c3_Var9 = []any{
+			"flex items-center space-x-3 text-sm font-medium rounded-md px-3 py-2 transition-colors",
+			templ.KV("bg-accent text-accent-foreground", isActive),
+			templ.KV("hover:bg-accent hover:text-accent-foreground", !isActive),
+		}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var9...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var9 templ.SafeURL = templ.SafeURL(href)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var9)))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" class=\"flex items-center space-x-3 text-sm font-medium rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground transition-colors\"><span class=\"text-lg\">")
+		var templ_7745c5c3_Var10 templ.SafeURL = templ.SafeURL(href)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var10)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 465, Col: 36}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(text)
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var9).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 466, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\"><span class=\"text-lg\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var12 string
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(icon)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 119, Col: 36}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</span> <span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var13 string
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(text)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/templates/layout.templ`, Line: 120, Col: 20}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -8,7 +8,7 @@ import (
 
 // Use the main layout instead of creating a separate one
 templ RepositoryLayout(user *auth.AuthenticatedUser, student *database.StudentRecord, repoInfo *database.Document, currentLocale string) {
-    @templates.Layout(user, currentLocale, "Repository - " + student.StudentName + " " + student.StudentLastname) {
+    @templates.Layout(user, currentLocale, "Repository - " + student.StudentName + " " + student.StudentLastname, "/repository") {
         // Repository-specific styles
         <style>
             .file-tree {

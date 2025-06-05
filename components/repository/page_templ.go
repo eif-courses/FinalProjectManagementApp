@@ -221,7 +221,7 @@ func NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRec
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 69, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 68, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRec
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentLastname)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 69, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 68, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -247,7 +247,7 @@ func NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRec
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentNumber)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 73, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 72, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -260,7 +260,7 @@ func NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRec
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentEmail)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 77, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 76, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -273,7 +273,7 @@ func NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRec
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(student.Department)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 81, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 80, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -324,7 +324,7 @@ func NoRepositoryPage(user *auth.AuthenticatedUser, student *database.StudentRec
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = templates.Layout(user, currentLocale, "No Repository - "+student.StudentName+" "+student.StudentLastname).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templates.Layout(user, currentLocale, "No Repository - "+student.StudentName+" "+student.StudentLastname, "/repository").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -372,7 +372,7 @@ func FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentRecor
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(content.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 117, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 116, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -385,7 +385,7 @@ func FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentRecor
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 118, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 117, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -398,7 +398,7 @@ func FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentRecor
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudentLastname)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 118, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 117, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -411,7 +411,7 @@ func FileViewerPage(user *auth.AuthenticatedUser, student *database.StudentRecor
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(student.StudyProgram)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 118, Col: 127}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/repository/page.templ`, Line: 117, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {

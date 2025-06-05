@@ -3,9 +3,13 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"github.com/jmoiron/sqlx"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"FinalProjectManagementApp/auth"
@@ -14,11 +18,13 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Update the struct definition
 type TopicHandlers struct {
-	db *sql.DB
+	db *sqlx.DB // Change from *sql.DB to *sqlx.DB
 }
 
-func NewTopicHandlers(db *sql.DB) *TopicHandlers {
+// Update the constructor
+func NewTopicHandlers(db *sqlx.DB) *TopicHandlers {
 	return &TopicHandlers{db: db}
 }
 
@@ -44,16 +50,24 @@ func (h *TopicHandlers) ShowTopicRegistrationForm(w http.ResponseWriter, r *http
 
 	// Get comments if topic exists
 	var comments []database.TopicRegistrationComment
+	var versions []database.ProjectTopicRegistrationVersion // ADD THIS
+
 	if topic != nil {
 		comments, err = h.getTopicComments(topic.ID)
 		if err != nil {
 			comments = []database.TopicRegistrationComment{}
 		}
+
+		// GET VERSION HISTORY - ADD THIS
+		versions, err = h.getTopicVersions(topic.ID)
+		if err != nil {
+			versions = []database.ProjectTopicRegistrationVersion{}
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	//err = templates.TopicRegistrationForm(user, topic, comments, locale).Render(r.Context(), w)
-	err = templates.TopicRegistrationModal(user, topic, comments, locale).Render(r.Context(), w)
+	// PASS VERSIONS TO THE TEMPLATE - UPDATE THIS
+	err = templates.TopicRegistrationModal(user, topic, comments, versions, locale).Render(r.Context(), w)
 
 	if err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
@@ -119,16 +133,33 @@ func (h *TopicHandlers) SubmitTopic(w http.ResponseWriter, r *http.Request) {
 }
 
 // SubmitTopicForReview handles submitting topic for supervisor review
+// Update the SubmitTopicForReview method with better logging
 func (h *TopicHandlers) SubmitTopicForReview(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		log.Printf("SubmitTopicForReview: No user in context")
+		h.renderFormError(w, "Unauthorized - please login again")
 		return
 	}
 
+	if user.Role != auth.RoleStudent {
+		log.Printf("SubmitTopicForReview: User %s has role %s, not student", user.Email, user.Role)
+		h.renderFormError(w, "Only students can submit topics")
+		return
+	}
+
+	log.Printf("SubmitTopicForReview: User %s (Role: %s) attempting to submit topic", user.Email, user.Role)
+
 	if err := r.ParseForm(); err != nil {
+		log.Printf("SubmitTopicForReview: Failed to parse form: %v", err)
 		h.renderFormError(w, "Invalid form data")
 		return
+	}
+
+	// Log all form values
+	log.Printf("Form values received:")
+	for key, values := range r.Form {
+		log.Printf("  %s: %v", key, values)
 	}
 
 	// Create topic data
@@ -142,45 +173,71 @@ func (h *TopicHandlers) SubmitTopicForReview(w http.ResponseWriter, r *http.Requ
 		Supervisor:     r.FormValue("supervisor"),
 	}
 
+	log.Printf("Topic data created: %+v", topicData)
+
 	// Validate
 	if err := topicData.Validate(); err != nil {
+		log.Printf("SubmitTopicForReview: Validation failed: %v", err)
 		h.renderFormError(w, err.Error())
 		return
 	}
 
+	log.Printf("Validation passed")
+
 	// Get student record
 	studentRecord, err := h.getStudentRecord(user.Email)
 	if err != nil {
-		h.renderFormError(w, "Student record not found")
+		log.Printf("SubmitTopicForReview: Failed to get student record for %s: %v", user.Email, err)
+		if err == sql.ErrNoRows {
+			h.renderFormError(w, "Student record not found. Please contact administrator.")
+		} else {
+			h.renderFormError(w, "Database error while fetching student record")
+		}
 		return
 	}
+
+	log.Printf("Student record found: ID=%d, Email=%s", studentRecord.ID, studentRecord.StudentEmail)
 
 	// Check if topic already exists
 	existingTopic, err := h.getStudentTopic(user.Email)
 	if err != nil && err != sql.ErrNoRows {
+		log.Printf("SubmitTopicForReview: Database error checking existing topic: %v", err)
 		h.renderFormError(w, "Database error")
 		return
 	}
 
 	var topicID int
 	if existingTopic != nil {
+		log.Printf("Existing topic found: ID=%d, Status=%s, CanSubmit=%v",
+			existingTopic.ID, existingTopic.Status, existingTopic.CanSubmit())
+
 		// Update existing topic and submit
 		if !existingTopic.CanSubmit() {
-			h.renderFormError(w, "Topic cannot be submitted in current status")
+			log.Printf("Topic cannot be submitted - current status: %s", existingTopic.Status)
+			h.renderFormError(w, fmt.Sprintf("Topic cannot be submitted in current status: %s", existingTopic.Status))
 			return
 		}
 		topicID = existingTopic.ID
-		err = h.updateTopicAndSubmit(topicID, topicData)
+		err = h.updateTopicAndSubmit(topicID, topicData, user)
+		if err != nil {
+			log.Printf("Failed to update and submit topic: %v", err)
+		}
 	} else {
+		log.Printf("No existing topic, creating new one")
 		// Create new topic and submit
 		topicID, err = h.createTopicAndSubmit(studentRecord.ID, topicData)
+		if err != nil {
+			log.Printf("Failed to create and submit topic: %v", err)
+		}
 	}
 
 	if err != nil {
-		h.renderFormError(w, "Failed to submit topic")
+		log.Printf("SubmitTopicForReview: Failed to submit topic: %v", err)
+		h.renderFormError(w, "Failed to submit topic: "+err.Error())
 		return
 	}
 
+	log.Printf("Topic submitted successfully: ID=%d", topicID)
 	h.renderFormSuccess(w, "Topic submitted for review successfully", topicID)
 }
 
@@ -227,26 +284,27 @@ func (h *TopicHandlers) SupervisorApproveTopic(w http.ResponseWriter, r *http.Re
 }
 
 // SupervisorRequestRevision handles supervisor revision requests
+// SupervisorRequestRevision handles supervisor revision requests
 func (h *TopicHandlers) SupervisorRequestRevision(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
-	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if user == nil || user.Role != auth.RoleSupervisor {
+		h.renderApprovalError(w, "Unauthorized access")
 		return
 	}
 
 	topicIDStr := chi.URLParam(r, "id")
 	topicID, err := strconv.Atoi(topicIDStr)
 	if err != nil {
-		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+		h.renderApprovalError(w, "Invalid topic ID")
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		h.renderApprovalError(w, "Invalid form data")
 		return
 	}
 
-	revisionReason := r.FormValue("revision_reason")
+	revisionReason := strings.TrimSpace(r.FormValue("revision_reason"))
 	if revisionReason == "" {
 		h.renderApprovalError(w, "Revision reason is required")
 		return
@@ -264,13 +322,63 @@ func (h *TopicHandlers) SupervisorRequestRevision(w http.ResponseWriter, r *http
 		return
 	}
 
-	err = h.updateTopicStatusWithSupervisor(topicID, "revision_requested", user.Email, revisionReason)
+	// Begin transaction for version tracking
+	tx, err := h.db.Beginx()
 	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		h.renderApprovalError(w, "Database error")
+		return
+	}
+	defer tx.Rollback()
+
+	// Save current version before making changes
+	changeSummary := fmt.Sprintf("Supervisor requested revision: %s", revisionReason)
+	err = h.saveTopicVersion(tx, topicID, user.Email, changeSummary)
+	if err != nil {
+		log.Printf("Error saving topic version: %v", err)
+	}
+
+	// Update topic status
+	query := `
+        UPDATE project_topic_registrations 
+        SET status = 'revision_requested',
+            supervisor_rejection_reason = ?,
+            updated_at = CURRENT_TIMESTAMP,
+            current_version = current_version + 1
+        WHERE id = ?
+    `
+
+	_, err = tx.Exec(query, revisionReason, topicID)
+	if err != nil {
+		log.Printf("Error updating topic status: %v", err)
 		h.renderApprovalError(w, "Failed to request revision")
 		return
 	}
 
-	h.renderApprovalSuccess(w, "Revision requested")
+	// Add comment about the revision request
+	commentQuery := `
+        INSERT INTO topic_registration_comments 
+        (topic_registration_id, author_role, author_name, author_email, comment_text, comment_type, is_read)
+        VALUES (?, ?, ?, ?, ?, 'revision', true)
+    `
+
+	commentText := fmt.Sprintf("Supervisor requested revision: %s", revisionReason)
+	_, err = tx.Exec(commentQuery, topicID, user.Role, user.Name, user.Email, commentText)
+	if err != nil {
+		log.Printf("Error adding comment: %v", err)
+		// Don't fail the whole transaction if comment fails
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		h.renderApprovalError(w, "Failed to save changes")
+		return
+	}
+
+	// Send success response
+	h.renderApprovalSuccess(w, "Revision request sent successfully")
 }
 
 // ApproveTopic handles final approval by department head
@@ -684,21 +792,275 @@ func (h *TopicHandlers) updateTopic(topicID int, data *database.TopicSubmissionD
 	return err
 }
 
-func (h *TopicHandlers) updateTopicAndSubmit(topicID int, data *database.TopicSubmissionData) error {
+// Update the updateTopicAndSubmit method
+func (h *TopicHandlers) updateTopicAndSubmit(topicID int, data *database.TopicSubmissionData, user *auth.AuthenticatedUser) error {
+	tx, err := h.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Get the original topic BEFORE any changes
+	var originalTopic database.ProjectTopicRegistration
+	err = tx.Get(&originalTopic, "SELECT * FROM project_topic_registrations WHERE id = ?", topicID)
+	if err != nil {
+		return err
+	}
+
+	// Detect what will change
+	changes := h.detectChanges(&originalTopic, data)
+	changeSummary := h.buildChangeSummary(changes)
+
+	// If there are actual changes, save the current version
+	if len(changes) > 0 {
+		// Save the CURRENT state before updating
+		err = h.saveTopicVersion(tx, topicID, user.Email, changeSummary)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Now perform the update
 	query := `
         UPDATE project_topic_registrations 
         SET title = ?, title_en = ?, problem = ?, objective = ?, tasks = ?,
             completion_date = ?, supervisor = ?, status = 'submitted', 
-            submitted_at = ?, updated_at = CURRENT_TIMESTAMP
+            submitted_at = ?, updated_at = CURRENT_TIMESTAMP,
+            current_version = current_version + 1
         WHERE id = ?
     `
-
-	_, err := h.db.Exec(query,
+	_, err = tx.Exec(query,
 		data.Title, data.TitleEn, data.Problem, data.Objective,
 		data.Tasks, data.CompletionDate, data.Supervisor,
 		time.Now().Unix(), topicID)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// Helper method to detect changes
+func (h *TopicHandlers) detectChanges(original *database.ProjectTopicRegistration, new *database.TopicSubmissionData) map[string][]string {
+	changes := make(map[string][]string)
+
+	if original.Title != new.Title {
+		changes["Title"] = []string{original.Title, new.Title}
+	}
+	if original.TitleEn != new.TitleEn {
+		changes["Title (English)"] = []string{original.TitleEn, new.TitleEn}
+	}
+	if original.Problem != new.Problem {
+		changes["Problem"] = []string{original.Problem, new.Problem}
+	}
+	if original.Objective != new.Objective {
+		changes["Objective"] = []string{original.Objective, new.Objective}
+	}
+	if original.Tasks != new.Tasks {
+		changes["Tasks"] = []string{original.Tasks, new.Tasks}
+	}
+	if original.Supervisor != new.Supervisor {
+		changes["Supervisor"] = []string{original.Supervisor, new.Supervisor}
+	}
+
+	return changes
+}
+
+// Helper to build change summary
+func (h *TopicHandlers) buildChangeSummary(changes map[string][]string) string {
+	if len(changes) == 0 {
+		return "No changes"
+	}
+
+	var parts []string
+	for field := range changes {
+		parts = append(parts, field)
+	}
+
+	return fmt.Sprintf("Updated: %s", strings.Join(parts, ", "))
+}
+
+// Add this to TopicHandlers
+func (h *TopicHandlers) ShowTopicVersionHistory(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	topicIDStr := chi.URLParam(r, "id")
+	topicID, err := strconv.Atoi(topicIDStr)
+	if err != nil {
+		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get the topic first
+	topic, err := h.getTopicByID(topicID)
+	if err != nil {
+		http.Error(w, "Topic not found", http.StatusNotFound)
+		return
+	}
+
+	versions, err := h.getTopicVersions(topicID)
+	if err != nil {
+		http.Error(w, "Failed to load versions", http.StatusInternalServerError)
+		return
+	}
+
+	// Render version history component with topic
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	templates.TopicVersionHistory(topic, versions, getLocale(r)).Render(r.Context(), w)
+}
+
+// Add this method to TopicHandlers in topic.go
+//func (h *TopicHandlers) ShowVersionDiff(w http.ResponseWriter, r *http.Request) {
+//	user := auth.GetUserFromContext(r.Context())
+//	if user == nil {
+//		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+//		return
+//	}
+//
+//	topicIDStr := chi.URLParam(r, "id")
+//	versionIDStr := chi.URLParam(r, "versionId")
+//
+//	topicID, err := strconv.Atoi(topicIDStr)
+//	if err != nil {
+//		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+//		return
+//	}
+//
+//	versionNumber, err := strconv.Atoi(versionIDStr)
+//	if err != nil {
+//		http.Error(w, "Invalid version ID", http.StatusBadRequest)
+//		return
+//	}
+//
+//	// Get the requested version
+//	var requestedVersion database.ProjectTopicRegistrationVersion
+//	query := `
+//		SELECT * FROM project_topic_registration_versions
+//		WHERE topic_registration_id = ? AND version_number = ?
+//	`
+//	err = h.db.Get(&requestedVersion, query, topicID, versionNumber)
+//	if err != nil {
+//		http.Error(w, "Version not found", http.StatusNotFound)
+//		return
+//	}
+//
+//	// Parse the version data
+//	var versionData database.ProjectTopicRegistration
+//	err = json.Unmarshal([]byte(requestedVersion.VersionData), &versionData)
+//	if err != nil {
+//		http.Error(w, "Failed to parse version data", http.StatusInternalServerError)
+//		return
+//	}
+//
+//	// Get the previous version for comparison (if exists)
+//	var previousVersionData *database.ProjectTopicRegistration
+//	changes := make(map[string][]string)
+//
+//	if versionNumber > 1 {
+//		var previousVersion database.ProjectTopicRegistrationVersion
+//		err = h.db.Get(&previousVersion, query, topicID, versionNumber-1)
+//		if err == nil {
+//			var prevData database.ProjectTopicRegistration
+//			if err := json.Unmarshal([]byte(previousVersion.VersionData), &prevData); err == nil {
+//				previousVersionData = &prevData
+//				changes = h.compareVersions(&prevData, &versionData)
+//			}
+//		}
+//	} else {
+//		// For version 1, compare with empty state
+//		emptyTopic := &database.ProjectTopicRegistration{}
+//		changes = h.compareVersions(emptyTopic, &versionData)
+//	}
+//
+//	// Get locale
+//	locale := r.URL.Query().Get("locale")
+//	if locale == "" {
+//		locale = "lt"
+//	}
+//
+//	// Render the diff modal
+//	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+//	templates.VersionDiffModal(previousVersionData, &versionData, changes, locale).Render(r.Context(), w)
+//}
+
+// Helper method to compare two versions
+func (h *TopicHandlers) compareVersions(old, new *database.ProjectTopicRegistration) map[string][]string {
+	changes := make(map[string][]string)
+
+	// Compare title
+	if old.Title != new.Title {
+		changes["Tema (Lietuvių k.) / Title (Lithuanian)"] = []string{old.Title, new.Title}
+	}
+
+	// Compare English title
+	if old.TitleEn != new.TitleEn {
+		changes["Tema (Anglų k.) / Title (English)"] = []string{old.TitleEn, new.TitleEn}
+	}
+
+	// Compare problem
+	if old.Problem != new.Problem {
+		changes["Problemos aprašymas / Problem Description"] = []string{old.Problem, new.Problem}
+	}
+
+	// Compare objective
+	if old.Objective != new.Objective {
+		changes["Tikslas / Objective"] = []string{old.Objective, new.Objective}
+	}
+
+	// Compare tasks
+	if old.Tasks != new.Tasks {
+		changes["Uždaviniai / Tasks"] = []string{old.Tasks, new.Tasks}
+	}
+
+	// Compare supervisor
+	if old.Supervisor != new.Supervisor {
+		changes["Vadovas / Supervisor"] = []string{old.Supervisor, new.Supervisor}
+	}
+
+	// Compare completion date
+	oldDate := ""
+	newDate := ""
+	if old.CompletionDate != nil {
+		oldDate = *old.CompletionDate
+	}
+	if new.CompletionDate != nil {
+		newDate = *new.CompletionDate
+	}
+	if oldDate != newDate {
+		changes["Užbaigimo data / Completion Date"] = []string{oldDate, newDate}
+	}
+
+	// Compare status
+	if old.Status != new.Status {
+		changes["Būsena / Status"] = []string{
+			h.getStatusDisplayForDiff(old.Status),
+			h.getStatusDisplayForDiff(new.Status),
+		}
+	}
+
+	return changes
+}
+
+// Helper to get status display for diff
+func (h *TopicHandlers) getStatusDisplayForDiff(status string) string {
+	statusMap := map[string]string{
+		"draft":               "Juodraštis / Draft",
+		"submitted":           "Pateikta / Submitted",
+		"supervisor_approved": "Vadovas patvirtino / Supervisor Approved",
+		"approved":            "Patvirtinta / Approved",
+		"rejected":            "Atmesta / Rejected",
+		"revision_requested":  "Prašoma pataisymų / Revision Requested",
+	}
+
+	if display, ok := statusMap[status]; ok {
+		return display
+	}
+	return status
 }
 
 func (h *TopicHandlers) updateTopicStatusWithSupervisor(topicID int, status, supervisorEmail, reason string) error {
@@ -814,68 +1176,8 @@ func (h *TopicHandlers) addTopicComment(comment *database.TopicRegistrationComme
 	return err
 }
 
-// Render helper methods
-func (h *TopicHandlers) renderFormError(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
-	html := fmt.Sprintf(`
-       <div class="rounded-md bg-destructive/15 p-3">
-           <div class="flex">
-               <div class="ml-3">
-                   <h3 class="text-sm font-medium text-destructive">❌ %s</h3>
-               </div>
-           </div>
-       </div>
-   `, message)
-	w.Write([]byte(html))
-}
-
-func (h *TopicHandlers) renderFormSuccess(w http.ResponseWriter, message string, topicID int) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := fmt.Sprintf(`
-       <div class="rounded-md bg-green-50 p-3">
-           <div class="flex">
-               <div class="ml-3">
-                   <h3 class="text-sm font-medium text-green-700">✅ %s</h3>
-               </div>
-           </div>
-       </div>
-       <script>
-           setTimeout(function() {
-               window.location.reload();
-           }, 2000);
-       </script>
-   `, message)
-	w.Write([]byte(html))
-}
-
-func (h *TopicHandlers) renderApprovalError(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
-	html := fmt.Sprintf(`
-       <div class="rounded-md bg-destructive/15 p-3">
-           <div class="text-destructive text-sm font-medium">❌ %s</div>
-       </div>
-   `, message)
-	w.Write([]byte(html))
-}
-
-func (h *TopicHandlers) renderApprovalSuccess(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	html := fmt.Sprintf(`
-       <div class="rounded-md bg-green-50 p-3">
-           <div class="text-green-700 text-sm font-medium">✅ %s</div>
-       </div>
-       <script>
-           setTimeout(function() {
-               window.location.reload();
-           }, 2000);
-       </script>
-   `, message)
-	w.Write([]byte(html))
-}
-
 // ShowTopicRegistrationModal displays the topic registration form in a modal
+// Update ShowTopicRegistrationModal to include versions
 func (h *TopicHandlers) ShowTopicRegistrationModal(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {
@@ -916,16 +1218,24 @@ func (h *TopicHandlers) ShowTopicRegistrationModal(w http.ResponseWriter, r *htt
 
 	// Get comments if topic exists
 	var comments []database.TopicRegistrationComment
+	var versions []database.ProjectTopicRegistrationVersion // ADD THIS
+
 	if topic != nil {
 		comments, err = h.getTopicComments(topic.ID)
 		if err != nil {
 			comments = []database.TopicRegistrationComment{}
 		}
+
+		// GET VERSION HISTORY - ADD THIS
+		versions, err = h.getTopicVersions(topic.ID)
+		if err != nil {
+			versions = []database.ProjectTopicRegistrationVersion{}
+		}
 	}
 
-	// ✅ PASS THE REAL AUTHENTICATED USER (SUPERVISOR), NOT A FAKE STUDENT USER
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = templates.TopicRegistrationModal(user, topic, comments, locale).Render(r.Context(), w)
+	// PASS VERSIONS TO THE TEMPLATE - UPDATE THIS
+	err = templates.TopicRegistrationModal(user, topic, comments, versions, locale).Render(r.Context(), w)
 	if err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 	}
@@ -952,4 +1262,362 @@ func (h *TopicHandlers) getStudentRecordByID(studentID int) (*database.StudentRe
 	)
 
 	return &record, err
+}
+
+// Add this method to save versions when topics are updated
+func (h *TopicHandlers) saveTopicVersion(tx *sqlx.Tx, topicID int, changedBy string, changeSummary string) error {
+	// Get current topic data
+	var topic database.ProjectTopicRegistration
+	query := `
+		SELECT * FROM project_topic_registrations WHERE id = ?
+	`
+	err := tx.Get(&topic, query, topicID)
+	if err != nil {
+		return err
+	}
+
+	// Serialize topic data to JSON
+	topicJSON, err := json.Marshal(topic)
+	if err != nil {
+		return err
+	}
+
+	// Get current version number
+	var currentVersion int
+	err = tx.Get(&currentVersion,
+		"SELECT COALESCE(MAX(version_number), 0) FROM project_topic_registration_versions WHERE topic_registration_id = ?",
+		topicID)
+	if err != nil {
+		return err
+	}
+
+	// Insert new version
+	insertQuery := `
+		INSERT INTO project_topic_registration_versions 
+		(topic_registration_id, version_data, created_by, version_number, change_summary)
+		VALUES (?, ?, ?, ?, ?)
+	`
+	_, err = tx.Exec(insertQuery, topicID, string(topicJSON), changedBy, currentVersion+1, changeSummary)
+	return err
+}
+
+// Add this method to get version history
+func (h *TopicHandlers) getTopicVersions(topicID int) ([]database.ProjectTopicRegistrationVersion, error) {
+	query := `
+		SELECT * FROM project_topic_registration_versions 
+		WHERE topic_registration_id = ? 
+		ORDER BY version_number DESC
+	`
+	var versions []database.ProjectTopicRegistrationVersion
+	err := h.db.Select(&versions, query, topicID)
+	return versions, err
+}
+
+// DepartmentRequestRevision handles department head revision requests
+func (h *TopicHandlers) DepartmentRequestRevision(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil || (user.Role != auth.RoleDepartmentHead && user.Role != auth.RoleAdmin) {
+		h.renderApprovalError(w, "Unauthorized access")
+		return
+	}
+
+	topicIDStr := chi.URLParam(r, "id")
+	topicID, err := strconv.Atoi(topicIDStr)
+	if err != nil {
+		h.renderApprovalError(w, "Invalid topic ID")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		h.renderApprovalError(w, "Invalid form data")
+		return
+	}
+
+	revisionReason := strings.TrimSpace(r.FormValue("revision_reason"))
+	if revisionReason == "" {
+		h.renderApprovalError(w, "Revision reason is required")
+		return
+	}
+
+	// Verify topic can be reviewed by department
+	topic, err := h.getTopicByID(topicID)
+	if err != nil {
+		h.renderApprovalError(w, "Topic not found")
+		return
+	}
+
+	// Department can request revision on supervisor_approved or submitted topics
+	if topic.Status != "supervisor_approved" && topic.Status != "submitted" {
+		h.renderApprovalError(w, "Topic is not available for department review")
+		return
+	}
+
+	// Begin transaction for version tracking
+	tx, err := h.db.Beginx()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		h.renderApprovalError(w, "Database error")
+		return
+	}
+	defer tx.Rollback()
+
+	// Save current version before making changes
+	changeSummary := fmt.Sprintf("Department requested revision: %s", revisionReason)
+	err = h.saveTopicVersion(tx, topicID, user.Email, changeSummary)
+	if err != nil {
+		log.Printf("Error saving topic version: %v", err)
+	}
+
+	// Update topic status to revision_requested
+	query := `
+        UPDATE project_topic_registrations 
+        SET status = 'revision_requested',
+            rejection_reason = ?,
+            updated_at = CURRENT_TIMESTAMP,
+            current_version = current_version + 1
+        WHERE id = ?
+    `
+
+	_, err = tx.Exec(query, revisionReason, topicID)
+	if err != nil {
+		log.Printf("Error updating topic status: %v", err)
+		h.renderApprovalError(w, "Failed to request revision")
+		return
+	}
+
+	// Add comment about the revision request
+	commentQuery := `
+        INSERT INTO topic_registration_comments 
+        (topic_registration_id, author_role, author_name, author_email, comment_text, comment_type, is_read)
+        VALUES (?, ?, ?, ?, ?, 'revision', true)
+    `
+
+	commentText := fmt.Sprintf("Department requested revision: %s", revisionReason)
+	_, err = tx.Exec(commentQuery, topicID, user.Role, user.Name, user.Email, commentText)
+	if err != nil {
+		log.Printf("Error adding comment: %v", err)
+		// Don't fail the whole transaction if comment fails
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		h.renderApprovalError(w, "Failed to save changes")
+		return
+	}
+
+	// Send success response
+	h.renderApprovalSuccess(w, "Revision request sent successfully")
+}
+
+// renderApprovalSuccess renders a success message for HTMX responses
+func (h *TopicHandlers) renderApprovalSuccess(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+
+	// Return clean HTML without any scripts
+	html := fmt.Sprintf(`<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded text-sm">
+        ✓ %s
+    </div>`, message)
+
+	w.Write([]byte(html))
+}
+
+// renderApprovalError renders an error message for HTMX responses
+func (h *TopicHandlers) renderApprovalError(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK) // Use 200 for HTMX to process the response
+
+	// Return clean HTML without any scripts
+	html := fmt.Sprintf(`<div class="bg-red-50 border border-red-200 text-red-800 px-3 py-2 rounded text-sm">
+        ❌ %s
+    </div>`, message)
+
+	w.Write([]byte(html))
+}
+
+// renderFormError renders a form error message for HTMX responses
+func (h *TopicHandlers) renderFormError(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK) // Use 200 for HTMX to process the response
+
+	html := fmt.Sprintf(`<div class="bg-red-50 border border-red-200 text-red-800 px-3 py-2 rounded text-sm">
+        ❌ %s
+    </div>`, message)
+
+	w.Write([]byte(html))
+}
+
+// renderFormSuccess renders a form success message for HTMX responses
+func (h *TopicHandlers) renderFormSuccess(w http.ResponseWriter, message string, topicID int) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+
+	html := fmt.Sprintf(`<div class="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded text-sm">
+        ✓ %s
+    </div>`, message)
+
+	w.Write([]byte(html))
+}
+
+// ShowVersionChanges shows inline version changes
+func (h *TopicHandlers) ShowVersionChanges(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	topicIDStr := chi.URLParam(r, "id")
+	versionIDStr := chi.URLParam(r, "versionId")
+
+	topicID, err := strconv.Atoi(topicIDStr)
+	if err != nil {
+		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+		return
+	}
+
+	versionNumber, err := strconv.Atoi(versionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid version ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get the requested version
+	var requestedVersion database.ProjectTopicRegistrationVersion
+	query := `
+		SELECT * FROM project_topic_registration_versions 
+		WHERE topic_registration_id = ? AND version_number = ?
+	`
+	err = h.db.Get(&requestedVersion, query, topicID, versionNumber)
+	if err != nil {
+		http.Error(w, "Version not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse the version data
+	var versionData database.ProjectTopicRegistration
+	err = json.Unmarshal([]byte(requestedVersion.VersionData), &versionData)
+	if err != nil {
+		http.Error(w, "Failed to parse version data", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the previous version for comparison (if exists)
+	changes := make(map[string][]string)
+
+	if versionNumber > 1 {
+		var previousVersion database.ProjectTopicRegistrationVersion
+		err = h.db.Get(&previousVersion, query, topicID, versionNumber-1)
+		if err == nil {
+			var prevData database.ProjectTopicRegistration
+			if err := json.Unmarshal([]byte(previousVersion.VersionData), &prevData); err == nil {
+				changes = h.compareVersions(&prevData, &versionData)
+			}
+		}
+	} else {
+		// For version 1, compare with empty state
+		emptyTopic := &database.ProjectTopicRegistration{}
+		changes = h.compareVersions(emptyTopic, &versionData)
+	}
+
+	// Get locale
+	locale := r.URL.Query().Get("locale")
+	if locale == "" {
+		locale = "lt"
+	}
+
+	// Render the inline comparison
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	templates.VersionInlineComparison(changes, locale).Render(r.Context(), w)
+}
+
+// GetTopicContent returns current topic content
+func (h *TopicHandlers) GetTopicContent(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	topicIDStr := chi.URLParam(r, "id")
+	topicID, err := strconv.Atoi(topicIDStr)
+	if err != nil {
+		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+		return
+	}
+
+	topic, err := h.getTopicByID(topicID)
+	if err != nil {
+		http.Error(w, "Topic not found", http.StatusNotFound)
+		return
+	}
+
+	locale := r.URL.Query().Get("locale")
+	if locale == "" {
+		locale = "lt"
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	templates.TopicContentDisplay(topic, nil, false, locale).Render(r.Context(), w)
+}
+
+// CompareTopicVersions returns comparison view
+func (h *TopicHandlers) CompareTopicVersions(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	topicIDStr := chi.URLParam(r, "id")
+	versionIDStr := chi.URLParam(r, "versionId")
+
+	topicID, err := strconv.Atoi(topicIDStr)
+	if err != nil {
+		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+		return
+	}
+
+	versionNumber, err := strconv.Atoi(versionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid version ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get current topic
+	currentTopic, err := h.getTopicByID(topicID)
+	if err != nil {
+		http.Error(w, "Topic not found", http.StatusNotFound)
+		return
+	}
+
+	// Get comparison version
+	var comparisonVersion database.ProjectTopicRegistrationVersion
+	query := `
+		SELECT * FROM project_topic_registration_versions 
+		WHERE topic_registration_id = ? AND version_number = ?
+	`
+	err = h.db.Get(&comparisonVersion, query, topicID, versionNumber)
+	if err != nil {
+		http.Error(w, "Version not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse comparison version data
+	var comparisonTopic database.ProjectTopicRegistration
+	err = json.Unmarshal([]byte(comparisonVersion.VersionData), &comparisonTopic)
+	if err != nil {
+		http.Error(w, "Failed to parse version data", http.StatusInternalServerError)
+		return
+	}
+
+	locale := r.URL.Query().Get("locale")
+	if locale == "" {
+		locale = "lt"
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	templates.TopicContentDisplay(currentTopic, &comparisonTopic, true, locale).Render(r.Context(), w)
 }

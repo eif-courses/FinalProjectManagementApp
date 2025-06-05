@@ -1,0 +1,20 @@
+/* Ensure navbar stays on top */
+nav {
+    z-index: 9999 !important;
+    position: sticky !important;
+}
+
+/* Modal container should be below navbar */
+#modal-container {
+    z-index: 1000 !important;
+}
+
+/* Individual modals */
+[id$="-modal"] {
+    z-index: 1001 !important;
+}
+
+/* Modal backdrops */
+.modal-backdrop, [class*="backdrop"] {
+    z-index: 999 !important;
+}

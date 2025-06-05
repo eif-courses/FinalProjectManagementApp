@@ -7,8 +7,8 @@ import (
     "strings"
 )
 
-templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
-    <nav class="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+templ Navbar(user *auth.AuthenticatedUser, currentLocale string, currentPath string) {
+<nav class="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-[9999]">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo and Brand -->
@@ -25,7 +25,7 @@ templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
                 <!-- Desktop Navigation - Only show if user has multiple links -->
                 if hasMultipleNavLinks(user.Role) {
                     <div class="hidden md:flex items-center space-x-1">
-                        @RoleBasedNavigation(user)
+                        @RoleBasedNavigation(user, currentPath)
                     </div>
                 }
 
@@ -51,7 +51,7 @@ templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
 
             <!-- Mobile Navigation -->
             if hasNavLinks(user.Role) {
-                @MobileNavigation(user, currentLocale)
+                @MobileNavigation(user, currentLocale, currentPath)
             }
         </div>
     </nav>
@@ -107,20 +107,22 @@ templ Navbar(user *auth.AuthenticatedUser, currentLocale string) {
     </script>
 }
 
-templ RoleBasedNavigation(user *auth.AuthenticatedUser) {
+templ RoleBasedNavigation(user *auth.AuthenticatedUser, currentPath string) {
     <div class="flex items-center space-x-2">
         if user.Role == "admin" {
-            @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
-            @NavLink("/admin/commission", "key", "Komisija", getCurrentPath() == "/admin/commission")
-            @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", getCurrentPath() == "/admin/reviewer-access")
+            @NavLink("/students-list", "graduation-cap", "Studentai", currentPath == "/students-list")
+             @NavLink("/my-students", "users", "Mano studentai", currentPath == "/my-students")
+            @NavLink("/admin/commission", "key", "Komisija", currentPath == "/admin/commission")
+            @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", currentPath == "/admin/reviewer-access")
         } else if user.Role == "department_head" {
-            @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
-            @NavLink("/admin/commission", "key", "Komisija", getCurrentPath() == "/admin/commission")
-            @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", getCurrentPath() == "/admin/reviewer-access")
+            @NavLink("/students-list", "graduation-cap", "Visi studentai", currentPath == "/students-list")
+            @NavLink("/my-students", "users", "Mano studentai", currentPath == "/my-students")
+            @NavLink("/admin/commission", "key", "Komisija", currentPath == "/admin/commission")
+            @NavLink("/admin/reviewer-access", "user-check", "Recenzentai", currentPath == "/admin/reviewer-access")
         } else if user.Role == "supervisor" {
-            @NavLink("/students-list", "graduation-cap", "Studentai", getCurrentPath() == "/students-list")
+            @NavLink("/my-students", "users", "Mano studentai", currentPath == "/my-students")
         } else if user.Role == "reviewer" {
-            @NavLink("/reviews", "file-text", "Recenzijos", getCurrentPath() == "/reviews")
+            @NavLink("/reviews", "file-text", "Recenzijos", currentPath == "/reviews")
         }
     </div>
 }
@@ -319,11 +321,11 @@ templ MobileMenuButton() {
     }
 }
 
-templ MobileNavigation(user *auth.AuthenticatedUser, currentLocale string) {
+templ MobileNavigation(user *auth.AuthenticatedUser, currentLocale string, currentPath string) {
     <!-- Mobile Menu -->
     <div id="mobile-menu" class="hidden md:hidden border-t py-3">
         <div class="space-y-1">
-            @MobileRoleBasedNav(user)
+            @MobileRoleBasedNav(user, currentPath)
 
             <!-- Language selector for mobile -->
             <div class="px-3 py-2 border-t mt-3">
@@ -341,24 +343,30 @@ templ MobileNavigation(user *auth.AuthenticatedUser, currentLocale string) {
     </div>
 }
 
-templ MobileRoleBasedNav(user *auth.AuthenticatedUser) {
+templ MobileRoleBasedNav(user *auth.AuthenticatedUser, currentPath string) {
     if user.Role == "admin" {
-        @MobileNavLink("/students-list", "graduation-cap", "Studentai")
-        @MobileNavLink("/admin/commission", "key", "Komisija")
-        @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai")
+        @MobileNavLink("/students-list", "graduation-cap", "Studentai", currentPath == "/students-list")
+        @MobileNavLink("/my-students", "users", "Mano studentai", currentPath == "/my-students")
+        @MobileNavLink("/admin/commission", "key", "Komisija", currentPath == "/admin/commission")
+        @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai", currentPath == "/admin/reviewer-access")
     } else if user.Role == "department_head" {
-        @MobileNavLink("/students-list", "graduation-cap", "Studentai")
-        @MobileNavLink("/admin/commission", "key", "Komisija")
-        @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai")
+        @MobileNavLink("/students-list", "graduation-cap", "Visi studentai", currentPath == "/students-list")
+        @MobileNavLink("/my-students", "users", "Mano studentai", currentPath == "/my-students")
+        @MobileNavLink("/admin/commission", "key", "Komisija", currentPath == "/admin/commission")
+        @MobileNavLink("/admin/reviewer-access", "user-check", "Recenzentai", currentPath == "/admin/reviewer-access")
     } else if user.Role == "supervisor" {
-        @MobileNavLink("/students-list", "graduation-cap", "Studentai")
+        @MobileNavLink("/my-students", "users", "Mano studentai", currentPath == "/my-students")
     } else if user.Role == "reviewer" {
-        @MobileNavLink("/reviews", "file-text", "Recenzijos")
+        @MobileNavLink("/reviews", "file-text", "Recenzijos", currentPath == "/reviews")
     }
 }
 
-templ MobileNavLink(href, iconName, text string) {
-    <a href={ templ.SafeURL(href) } class="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors">
+templ MobileNavLink(href, iconName, text string, isActive bool) {
+    <a href={ templ.SafeURL(href) } class={
+        "flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+        templ.KV("bg-primary text-primary-foreground", isActive),
+        templ.KV("text-muted-foreground hover:text-foreground hover:bg-accent", !isActive),
+    }>
         @renderMobileIcon(iconName)
         <span>{ text }</span>
     </a>
@@ -371,12 +379,6 @@ func hasNavLinks(role string) bool {
 
 func hasMultipleNavLinks(role string) bool {
     return role == "admin" || role == "department_head" || role == "supervisor"
-}
-
-func getCurrentPath() string {
-    // This should be implemented to return the current request path
-    // For now, returning empty string - you'll need to pass this from your handler
-    return ""
 }
 
 func getLanguageCode(locale string) string {
@@ -441,6 +443,8 @@ func renderNavIcon(iconName string, isActive bool) templ.Component {
         return icon.GraduationCap(icon.Props{Size: size, Class: class})
     case "key":
         return icon.Key(icon.Props{Size: size, Class: class})
+    case "user-check":
+        return icon.UserCheck(icon.Props{Size: size, Class: class})
     default:
         return icon.Circle(icon.Props{Size: size, Class: class})
     }
@@ -473,6 +477,8 @@ func renderMobileIcon(iconName string) templ.Component {
         return icon.GraduationCap(icon.Props{Size: 18})
     case "key":
         return icon.Key(icon.Props{Size: 18})
+    case "user-check":
+        return icon.UserCheck(icon.Props{Size: 18})
     default:
         return icon.Circle(icon.Props{Size: 18})
     }

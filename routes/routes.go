@@ -42,7 +42,7 @@ func SetupRoutes(db *sqlx.DB,
 	// Initialize handlers
 	dashboardHandlers := handlers.NewDashboardHandlers(db)
 	authHandlers := handlers.NewAuthHandlers(authMiddleware)
-	topicHandlers := handlers.NewTopicHandlers(db.DB)
+	topicHandlers := handlers.NewTopicHandlers(db)
 	supervisorReportHandler := handlers.NewSupervisorReportHandler(db)
 	studentListHandler := handlers.NewStudentListHandler(db)
 	uploadHandlers := handlers.NewUploadHandlers(db)
@@ -399,6 +399,17 @@ func SetupRoutes(db *sqlx.DB,
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.RequireAuth)
 
+		// version modal
+
+		r.Get("/api/topic/{id}/version/{versionId}/changes", topicHandlers.ShowVersionChanges) // this no use anymore
+		r.Get("/api/topic/{id}/content", topicHandlers.GetTopicContent)
+		r.Get("/api/topic/{id}/compare/{versionId}", topicHandlers.CompareTopicVersions)
+		// students for supervisor
+		r.Get("/my-students", studentListHandler.SupervisorMyStudentsHandler)
+
+		r.Get("/api/topic/{id}/versions", topicHandlers.ShowTopicVersionHistory)
+		//r.Get("/api/topic/{id}/version/{versionId}/diff", topicHandlers.ShowVersionDiff)
+
 		// @TODO REVIEW IF NEED TOPIC REGISTRATION
 		r.Get("/topic-registration/{studentId}", topicHandlers.ShowTopicRegistrationModal)
 
@@ -442,7 +453,7 @@ func SetupRoutes(db *sqlx.DB,
 				r.Get("/student/{studentId}/file", repositoryHandler.GetFileContentAPI)
 			})
 		}
-
+		r.Get("/supervisor-report/{id}/compact-modal", supervisorReportHandler.GetCompactSupervisorModalTEST)
 		r.Get("/supervisor-report/{id}/compact-modal", supervisorReportHandler.GetCompactSupervisorModal)
 		r.Post("/supervisor-report/{id}/submit", supervisorReportHandler.SubmitSupervisorReport)
 		r.Post("/supervisor-report/{id}/save-draft", supervisorReportHandler.SaveSupervisorDraft)
@@ -471,6 +482,7 @@ func SetupRoutes(db *sqlx.DB,
 		// Supervisor routes - ENHANCED WITH TOPIC WORKFLOW
 		r.Route("/supervisor", func(r chi.Router) {
 			r.Use(authMiddleware.RequireRole(auth.RoleSupervisor))
+
 			r.Get("/dashboard", dashboardHandlers.DashboardHandler)
 
 			// Topic review routes for supervisors
@@ -498,7 +510,6 @@ func SetupRoutes(db *sqlx.DB,
 				}
 			})
 		})
-
 		// Topic registration routes
 		r.Route("/topic", func(r chi.Router) {
 			r.Get("/register", topicHandlers.ShowTopicRegistrationForm)
@@ -543,8 +554,9 @@ func SetupRoutes(db *sqlx.DB,
 			// Department head/Admin final approval routes
 			r.Group(func(r chi.Router) {
 				r.Use(authMiddleware.RequireRole(auth.RoleDepartmentHead, auth.RoleAdmin))
-				r.Post("/topic/{id}/approve", topicHandlers.ApproveTopic)
-				r.Post("/topic/{id}/reject", topicHandlers.RejectTopic)
+				r.Post("/topic/{id}/approve", topicHandlers.ApproveTopic)                          // Remove /api prefix
+				r.Post("/topic/{id}/department-revision", topicHandlers.DepartmentRequestRevision) // Remove /api prefix
+
 			})
 		})
 
@@ -616,16 +628,16 @@ func SetupRoutes(db *sqlx.DB,
 				}
 			})
 
-			r.Post("/topics/{id}/reject", func(w http.ResponseWriter, r *http.Request) {
-				// Call the topic rejection handler
-				topicHandlers.RejectTopic(w, r)
+			r.Post("/topics/{id}/revision", func(w http.ResponseWriter, r *http.Request) {
+				// Call the department revision handler
+				topicHandlers.DepartmentRequestRevision(w, r)
 
-				// Add notification logic after successful rejection
+				// Add notification logic after successful revision request
 				if notificationService != nil {
 					topicID := chi.URLParam(r, "id")
-					log.Printf("Topic %s rejected by department head - notification would be sent to student and supervisor", topicID)
+					log.Printf("Topic %s revision requested by department head - notification would be sent to student and supervisor", topicID)
 					// TODO: Implement notifications
-					// - Send rejection notification to student with reasons
+					// - Send revision request notification to student with reasons
 					// - Send notification to supervisor
 				}
 			})
@@ -640,12 +652,12 @@ func SetupRoutes(db *sqlx.DB,
 				}
 			})
 
-			r.Post("/topics/{id}/final-reject", func(w http.ResponseWriter, r *http.Request) {
-				topicHandlers.RejectTopic(w, r)
+			r.Post("/topics/{id}/final-revision", func(w http.ResponseWriter, r *http.Request) {
+				topicHandlers.DepartmentRequestRevision(w, r)
 
 				if notificationService != nil {
 					topicID := chi.URLParam(r, "id")
-					log.Printf("Topic %s rejected by department head after supervisor approval", topicID)
+					log.Printf("Topic %s revision requested by department head after supervisor approval", topicID)
 				}
 			})
 		})
@@ -1167,7 +1179,7 @@ func createCommissionTopicRegistrationHandler(db *sqlx.DB) http.HandlerFunc {
 		db.Exec(updateQuery, time.Now().Unix(), member.ID)
 
 		// Create topic handler with database connection
-		topicHandlers := handlers.NewTopicHandlers(db.DB)
+		topicHandlers := handlers.NewTopicHandlers(db)
 
 		// Create fake authenticated user for commission member
 		fakeUser := &auth.AuthenticatedUser{

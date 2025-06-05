@@ -17,7 +17,7 @@ import (
 
 // Single unified StudentList template
 templ StudentList(user *auth.AuthenticatedUser, students []database.StudentSummaryView, currentLocale string, pagination *database.PaginationInfo, searchValue string, filters *database.TemplateFilterParams, filterOptions *database.FilterOptions) {
-	@Layout(user, currentLocale, "Studentų sąrašas") {
+	@Layout(user, currentLocale, "Studentų sąrašas", "/students-list") {
 		<div class="space-y-6">
 			<!-- Header Section -->
 			@StudentListHeader(user, searchValue)
@@ -123,23 +123,19 @@ function viewStudentRepository(studentId) {
 
 // STUDENTU LISTO ATNAUJINIMAS UZPILDZIUS VADOVO ATSILIEPIMA
 // Add this to your main page where the student list is displayed
+// Update the supervisor report saved handler
 document.addEventListener('supervisorReportSaved', function(event) {
     console.log('Supervisor report saved, refreshing...');
 
-    // Close any open modals
-    const modal = document.getElementById('supervisor-modal');
-    if (modal && window.modalState) {
-        modal.style.display = 'none';
-        window.modalState.openModalId = null;
-        document.body.style.overflow = '';
-    }
+    // Use the improved hideModal function
+    hideModal();
 
     // Show success notification
     showSuccessNotification('Supervisor report saved successfully!');
 
     // Refresh the student table
     setTimeout(function() {
-        window.location.reload(); // Simple and reliable
+        window.location.reload();
     }, 1500);
 });
 
@@ -172,14 +168,18 @@ function showSuccessNotification(message) {
 
 
 
-            function approveRegistration(studentId) {
-                console.log('approveRegistration called with:', studentId);
-                htmx.ajax('GET', `/topic-registration/${studentId}?mode=review`, {
-                    target: '#modal-container',
-                    swap: 'innerHTML'
-                });
-                showModal();
-            }
+           function approveRegistration(studentId) {
+               console.log('approveRegistration called with:', studentId);
+
+               // Store the student ID in a global variable or data attribute
+               window.currentReviewStudentId = studentId;
+
+               htmx.ajax('GET', `/topic-registration/${studentId}?mode=review`, {
+                   target: '#modal-container',
+                   swap: 'innerHTML'
+               });
+               showModal();
+           }
 
             // Supervisor Report Functions
  // Update editSupervisorReport to check if editing is allowed
@@ -218,45 +218,59 @@ function showSuccessNotification(message) {
         showModal();
     }
 
+    // Replace the hideModal function with this improved version
+    function hideModal() {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) {
+            // Clear all content
+            modalContainer.innerHTML = '';
+            modalContainer.style.display = 'none';
+
+            // Remove any inline styles that might block interaction
+            modalContainer.style.pointerEvents = '';
+            modalContainer.style.zIndex = '';
+        }
+
+        // Reset modal state
+        if (window.modalState) {
+            window.modalState.openModalId = null;
+        }
+
+        // Always reset body overflow
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+
+        // Clean up any lingering modal backdrops
+        const backdrops = document.querySelectorAll('.modal-backdrop, [class*="backdrop"]');
+        backdrops.forEach(backdrop => backdrop.remove());
+
+        // Remove any fixed positioning from body
+        document.body.classList.remove('modal-open');
+    }
+
+    // Update the showModal function to be more robust
+    function showModal() {
+        let modalContainer = document.getElementById('modal-container');
+        if (!modalContainer) {
+            modalContainer = document.createElement('div');
+            modalContainer.id = 'modal-container';
+            modalContainer.className = 'fixed inset-0 z-50';
+            document.body.appendChild(modalContainer);
+        }
+
+        // Ensure the container is properly styled
+        modalContainer.style.display = 'block';
+        modalContainer.style.pointerEvents = 'auto';
+
+        // Save current body overflow state
+        if (!window.originalBodyOverflow) {
+            window.originalBodyOverflow = document.body.style.overflow || '';
+        }
 
 
-      function showModal() {
-          let modalContainer = document.getElementById('modal-container');
-          if (!modalContainer) {
-              modalContainer = document.createElement('div');
-              modalContainer.id = 'modal-container';
-              modalContainer.className = 'fixed inset-0 z-50';
-              document.body.appendChild(modalContainer);
-          }
-          modalContainer.style.display = 'block';
 
-          // Add event listener for HTMX after content loads
-          document.addEventListener('htmx:afterSwap', function(evt) {
-              if (evt.detail.target.id === 'modal-container') {
-                  // Focus trap for accessibility
-                  setTimeout(() => {
-                      const modal = modalContainer.querySelector('[role="dialog"]');
-                      if (modal) {
-                          modal.focus();
-                      }
-                  }, 100);
-              }
-          });
-      }
 
-                  // Update hideModal to work with TemplUI modals
-                  function hideModal() {
-                      const modalContainer = document.getElementById('modal-container');
-                      if (modalContainer) {
-                          modalContainer.style.display = 'none';
-                          modalContainer.innerHTML = '';
-                      }
-                      // Reset modal state
-                      if (window.modalState) {
-                          window.modalState.openModalId = null;
-                      }
-                      document.body.style.overflow = '';
-                  }
+
 
             // Event Listeners
             document.addEventListener('htmx:afterRequest', function(evt) {
@@ -278,7 +292,76 @@ function showSuccessNotification(message) {
             console.log('All functions loaded successfully');
 
 
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
 
+    // Add event listener for HTMX after content loads
+    document.addEventListener('htmx:afterSwap', function handleAfterSwap(evt) {
+        if (evt.detail.target.id === 'modal-container') {
+            // Remove this specific listener after it fires
+            document.removeEventListener('htmx:afterSwap', handleAfterSwap);
+
+            // Focus trap for accessibility
+            setTimeout(() => {
+                const modal = modalContainer.querySelector('[role="dialog"]');
+                if (modal) {
+                    modal.focus();
+                }
+            }, 100);
+        }
+    });
+}
+
+// Add a global escape key handler that's more robust
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer && modalContainer.style.display !== 'none') {
+            e.preventDefault();
+            hideModal();
+        }
+    }
+});
+
+// Ensure modal closes properly on backdrop click
+document.addEventListener('click', function(e) {
+    const modalContainer = document.getElementById('modal-container');
+    if (modalContainer && e.target === modalContainer) {
+        hideModal();
+    }
+});
+
+// Clean up on page unload to prevent issues
+window.addEventListener('beforeunload', function() {
+    hideModal();
+});
+
+// Fix for specific modal close events
+document.addEventListener('htmx:afterRequest', function(evt) {
+    // Check for any success triggers that should close modal
+    const trigger = evt.detail.xhr.getResponseHeader('HX-Trigger');
+    if (trigger && (trigger.includes('reportSaved') || trigger.includes('modalClose'))) {
+        hideModal();
+
+        // Refresh the student table if needed
+        const tableContainer = document.getElementById('student-table-container');
+        if (tableContainer) {
+            htmx.ajax('GET', '/students-list', {
+                target: '#student-table-container',
+                values: htmx.values('#filters-form')
+            });
+        }
+    }
+});
+
+// Override the window.closeModal if it exists (from topic modal)
+if (typeof window.closeModal === 'function') {
+    const originalCloseModal = window.closeModal;
+    window.closeModal = function() {
+        originalCloseModal();
+        hideModal(); // Ensure our cleanup runs too
+    };
+}
             // ==================================================
             // MODAL FOR IMPORT EXPORT
             // =================================================
@@ -511,25 +594,21 @@ function showSuccessNotification(message) {
       }
 
            // Add event listener for reviewer report saved
-           document.addEventListener('reviewerReportSaved', function(event) {
-               console.log('Reviewer report saved, refreshing...');
+     // Update the reviewer report saved handler similarly
+     document.addEventListener('reviewerReportSaved', function(event) {
+         console.log('Reviewer report saved, refreshing...');
 
-               // Close modal
-               const modal = document.getElementById('reviewer-modal');
-               if (modal && window.modalState) {
-                   modal.style.display = 'none';
-                   window.modalState.openModalId = null;
-                   document.body.style.overflow = '';
-               }
+         // Use the improved hideModal function
+         hideModal();
 
-               // Show success notification
-               showSuccessNotification('Reviewer report saved successfully!');
+         // Show success notification
+         showSuccessNotification('Reviewer report saved successfully!');
 
-               // Refresh the student table
-               setTimeout(function() {
-                   window.location.reload();
-               }, 1500);
-           });
+         // Refresh the student table
+         setTimeout(function() {
+             window.location.reload();
+         }, 1500);
+     });
 
 
 
