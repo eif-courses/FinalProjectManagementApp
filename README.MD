@@ -1,3 +1,2 @@
-TODO 
-
-Sukurti eksportą studijų skyriui ir komisijai su klausimais ir įvertinimais
+## TODO
+- Sukurti eksportą studijų skyriui ir komisijai su klausimais ir įvertinimais
